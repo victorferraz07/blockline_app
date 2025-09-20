@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Itens em Estoque</title>
+    <style>
+        /* Um CSS muito básico só para não ficar tão feio */
+        body { font-family: sans-serif; margin: 2em; }
+        h1 { color: #1E40AF; }
+        ul { list-style: none; padding: 0; }
+        li { background-color: #f4f4f4; border: 1px solid #ddd; margin-bottom: 5px; padding: 10px; }
+        strong { color: #333; }
+    </style>
+</head>
+<body>
+    <h1>Lista de Itens em Estoque</h1>
+
+    <ul>
+        {% for item in itens %}
+            <li>
+                <strong>{{ item.nome }}</strong> - Quantidade: {{ item.quantidade }}
+            </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
