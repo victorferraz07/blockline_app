@@ -3,36 +3,33 @@
 from django.db import models
 from django.contrib.auth.models import User
 
-# ... (Os modelos Setor, ProdutoFabricado, Componente, Recebimento, SaidaProduto não mudam, mas estão aqui para o arquivo ficar completo) ...
-
+# --- Modelo para os Setores da Empresa ---
 class Setor(models.Model):
     nome = models.CharField(max_length=100, unique=True, help_text="Nome do setor")
     def __str__(self):
         return self.nome
 
+# --- Modelo para os Itens do Estoque (Com um único documento) ---
 class ItemEstoque(models.Model):
     nome = models.CharField(max_length=200, unique=True, verbose_name="Nome do Item")
     descricao = models.TextField(blank=True, null=True, verbose_name="Descrição")
     quantidade = models.PositiveIntegerField(default=0, verbose_name="Quantidade em Estoque")
     local_armazenamento = models.CharField(max_length=100, blank=True, null=True, verbose_name="Local de Armazenamento")
-    
-    # NOVO CAMPO DE DOCUMENTAÇÃO!
+    # UM ÚNICO CAMPO PARA O DOCUMENTO PRINCIPAL, COMO VOCÊ DECIDIU.
     documentacao = models.FileField(upload_to='documentos_itens/', blank=True, null=True, verbose_name="Documentação")
-
     data_criacao = models.DateTimeField(auto_now_add=True, verbose_name="Data de Criação")
     data_atualizacao = models.DateTimeField(auto_now=True, verbose_name="Última Atualização")
 
     def __str__(self):
         return f"{self.nome} ({self.quantidade} em estoque)"
 
-# NOVO MODELO PARA A GALERIA DE IMAGENS DO ITEM DE ESTOQUE!
 class ImagemItemEstoque(models.Model):
     item = models.ForeignKey(ItemEstoque, related_name='imagens', on_delete=models.CASCADE)
     imagem = models.ImageField(upload_to='imagens_itens/')
-
     def __str__(self):
         return f"Imagem de {self.item.nome}"
 
+# --- Modelo para os Produtos Finais Fabricados ---
 class ProdutoFabricado(models.Model):
     nome = models.CharField(max_length=200, unique=True, verbose_name="Nome do Produto")
     descricao = models.TextField(blank=True, null=True, verbose_name="Descrição do Produto")
@@ -42,23 +39,37 @@ class ProdutoFabricado(models.Model):
         related_name='produtos_fabricados',
         verbose_name="Lista de Componentes"
     )
-    
-    # NOVO CAMPO DE DOCUMENTAÇÃO TÉCNICA!
-    documentacao_tecnica = models.FileField(upload_to='documentos_produtos/', blank=True, null=True, verbose_name="Documentação Técnica")
-
     def __str__(self):
         return self.nome
 
-# NOVO MODELO PARA A GALERIA DE IMAGENS DO PRODUTO FABRICADO!
 class ImagemProdutoFabricado(models.Model):
     produto = models.ForeignKey(ProdutoFabricado, related_name='imagens', on_delete=models.CASCADE)
     imagem = models.ImageField(upload_to='imagens_produtos/')
-
     def __str__(self):
         return f"Imagem de {self.produto.nome}"
 
+# NOVO MODELO PARA OS MÚLTIPLOS DOCUMENTOS DO PRODUTO FABRICADO!
+class DocumentoProdutoFabricado(models.Model):
+    produto = models.ForeignKey(ProdutoFabricado, related_name='documentos', on_delete=models.CASCADE)
+    documento = models.FileField(upload_to='documentos_produtos/')
+    
+    # Vamos adicionar um superpoder: um campo para categorizar o documento!
+    TIPO_DOCUMENTO_CHOICES = [
+        ('manual', 'Manual de Instruções'),
+        ('instalacao', 'Guia de Instalação'),
+        ('erro', 'Documento de Erros e Correções'),
+        ('manutencao', 'Guia de Manutenção'),
+        ('garantia', 'Certificado de Garantia'),
+        ('outro', 'Outro'),
+    ]
+    tipo = models.CharField(max_length=20, choices=TIPO_DOCUMENTO_CHOICES, default='outro')
+
+    def __str__(self):
+        # A função get_tipo_display() pega o nome amigável da nossa lista de choices.
+        return f"{self.get_tipo_display()} para {self.produto.nome}"
 
 class Componente(models.Model):
+    # ... (sem mudanças aqui)
     produto = models.ForeignKey(ProdutoFabricado, on_delete=models.CASCADE)
     item_estoque = models.ForeignKey(ItemEstoque, on_delete=models.PROTECT, verbose_name="Componente")
     quantidade_necessaria = models.PositiveIntegerField(verbose_name="Quantidade Necessária")
@@ -66,6 +77,7 @@ class Componente(models.Model):
         return f"{self.quantidade_necessaria}x {self.item_estoque.nome} para {self.produto.nome}"
 
 class Recebimento(models.Model):
+    # ... (sem mudanças aqui)
     item = models.ForeignKey(ItemEstoque, on_delete=models.PROTECT, verbose_name="Item Recebido")
     quantidade_recebida = models.PositiveIntegerField(verbose_name="Quantidade Recebida")
     usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Usuário Responsável")
@@ -77,6 +89,7 @@ class Recebimento(models.Model):
         return f"Recebimento de {self.quantidade_recebida}x {self.item.nome} em {self.data_recebimento.strftime('%d/%m/%Y')}"
 
 class SaidaProduto(models.Model):
+    # ... (sem mudanças aqui)
     produto = models.ForeignKey(ProdutoFabricado, on_delete=models.PROTECT, verbose_name="Produto Enviado")
     quantidade = models.PositiveIntegerField(verbose_name="Quantidade Enviada")
     cliente = models.CharField(max_length=200, verbose_name="Cliente")
