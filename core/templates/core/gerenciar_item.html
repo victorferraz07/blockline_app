@@ -1,0 +1,39 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div x-data="{ editMode: false, showRetiradaModal: false, showAdicaoModal: false }" class="container mx-auto">
+    <div class="bg-white p-8 rounded-lg shadow-md max-w-2xl mx-auto border border-gray-200">
+        <div x-show="!editMode">
+            <div class="flex justify-between items-start mb-6">
+                <div><h1 class="text-3xl font-bold text-gray-800">{{ item.nome }}</h1><p class="text-gray-500 mt-1">{{ item.descricao|default:"Sem descrição." }}</p></div>
+                <button @click="editMode = true" class="bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors">Editar Dados</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center bg-gray-50 p-4 rounded-lg border">
+                <div class="text-center"><p class="text-gray-500 text-sm">Quantidade em Estoque</p><p class="text-5xl font-black text-gray-900">{{ item.quantidade }}</p><p class="text-xs text-gray-500 mt-1">@ {{ item.local_armazenamento|default:"Não especificado" }}</p></div>
+                <div class="space-y-4">
+                    <div><p class="block text-sm font-medium text-gray-600 mb-1">Foto Principal</p>{% if item.foto_principal %}<img src="{{ item.foto_principal.url }}" alt="Foto de {{ item.nome }}" class="rounded-md shadow-sm max-h-32">{% else %}<p class="text-sm text-gray-500">Nenhuma foto cadastrada.</p>{% endif %}</div>
+                    <div><p class="block text-sm font-medium text-gray-600 mb-1">Documentação</p>{% if item.documentacao %}<a href="{{ item.documentacao.url }}" target="_blank" class="text-indigo-600 hover:text-indigo-800 underline">Ver/Baixar Documento</a>{% else %}<p class="text-sm text-gray-500">Nenhum documento cadastrado.</p>{% endif %}</div>
+                </div>
+            </div>
+            <hr class="my-6">
+            <div class="flex justify-start space-x-4">
+                <button @click="showAdicaoModal = true" class="bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600 transition-colors">+ Adicionar Estoque</button>
+                <button @click="showRetiradaModal = true" class="bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 transition-colors">- Retirar Material</button>
+            </div>
+        </div>
+        <div x-show="editMode" style="display: none;">
+            <div class="flex justify-between items-center mb-6"><h1 class="text-2xl font-semibold text-gray-800">Editando: {{ item.nome }}</h1><button @click="editMode = false" class="text-gray-500 hover:text-gray-700">Cancelar</button></div>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                {% for field in form %}<div class="mb-4">{{ field.label_tag }}{{ field }}{{ field.errors }}</div>{% endfor %}
+                <div class="mt-8"><button type="submit" class="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg hover:bg-indigo-700 ...">Salvar Alterações</button></div>
+            </form>
+        </div>
+    </div>
+    <div x-show="showAdicaoModal" style="display: none;" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div @click.away="showAdicaoModal = false" class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md"><h2 class="text-2xl font-bold mb-4">Adicionar ao Estoque: {{ item.nome }}</h2><p class="mb-4">Estoque atual: <span class="font-bold">{{ item.quantidade }}</span></p><form action="{% url 'adicionar_estoque' item.pk %}" method="post">{% csrf_token %}{% for field in adicao_form %}<div class="mb-4">{{ field.label_tag }}{{ field }}{{ field.errors }}</div>{% endfor %}<div class="flex justify-end space-x-4 mt-6"><button type="button" @click="showAdicaoModal = false" class="bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300">Cancelar</button><button type="submit" class="bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600">Confirmar Adição</button></div></form></div>
+    </div>
+    <div x-show="showRetiradaModal" style="display: none;" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div @click.away="showRetiradaModal = false" class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md"><h2 class="text-2xl font-bold mb-4">Retirar: {{ item.nome }}</h2><p class="mb-4">Estoque atual: <span class="font-bold">{{ item.quantidade }}</span></p><form action="{% url 'retirar_item' item.pk %}" method="post">{% csrf_token %}{% for field in retirada_form %}<div class="mb-4">{{ field.label_tag }}{{ field }}{{ field.errors }}</div>{% endfor %}<div class="flex justify-end space-x-4 mt-6"><button type="button" @click="showRetiradaModal = false" class="bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300">Cancelar</button><button type="submit" class="bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600">Confirmar Retirada</button></div></form></div>
+    </div>
+</div>
+{% endblock %}

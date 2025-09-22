@@ -1,27 +1,38 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Itens em Estoque</title>
-    <style>
-        /* Um CSS muito básico só para não ficar tão feio */
-        body { font-family: sans-serif; margin: 2em; }
-        h1 { color: #1E40AF; }
-        ul { list-style: none; padding: 0; }
-        li { background-color: #f4f4f4; border: 1px solid #ddd; margin-bottom: 5px; padding: 10px; }
-        strong { color: #333; }
-    </style>
-</head>
-<body>
-    <h1>Lista de Itens em Estoque</h1>
+{% extends 'core/base.html' %}
 
-    <ul>
+{% block content %}
+<div class="container mx-auto">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+        <div><h1 class="text-3xl font-bold text-gray-800">Estoque</h1><p class="text-gray-600">Gerencie os itens em estoque.</p></div>
+        <div class="flex items-center space-x-4 mt-4 md:mt-0">
+            <a href="{% url 'adicionar_item' %}" class="bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap">Adicionar Item</a>
+            <form action="{% url 'lista_estoque' %}" method="GET" class="flex items-center space-x-2">
+                <input type="text" name="q" value="{{ query|default:'' }}" placeholder="Buscar itens..." class="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <button type="submit" class="bg-gray-800 text-white py-2 px-4 rounded-lg hover:bg-gray-700">Buscar</button>
+            </form>
+            <div class="hidden sm:flex space-x-2 text-sm">
+                <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full">{{ total_itens }} Itens</span>
+                <span class="bg-red-100 text-red-800 px-2 py-1 rounded-full">{{ itens_esgotados }} Esgotados</span>
+                <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">{{ itens_em_baixo_estoque }} Baixo</span>
+            </div>
+        </div>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {% for item in itens %}
-            <li>
-                <strong>{{ item.nome }}</strong> - Quantidade: {{ item.quantidade }}
-            </li>
+        <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
+            <div class="bg-gray-200 h-40 flex items-center justify-center">
+                {% if item.foto_principal %}<img src="{{ item.foto_principal.url }}" alt="{{ item.nome }}" class="h-full w-full object-cover">{% else %}<svg class="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>{% endif %}
+            </div>
+            <div class="p-4">
+                <h3 class="text-lg font-bold text-gray-800">{{ item.nome }}</h3>
+                <p class="text-gray-600 text-sm truncate">{{ item.descricao|default:"Sem descrição" }}</p>
+                <div class="mt-4"><p class="text-2xl font-black text-gray-900">{{ item.quantidade }} pcs</p><p class="text-xs text-gray-500 mt-1">@ {{ item.local_armazenamento|default:"Não especificado" }}</p></div>
+                <a href="{% url 'gerenciar_item' item.pk %}" class="block text-center mt-4 w-full bg-gray-800 text-white py-2 rounded-lg hover:bg-gray-700 transition-colors">Gerenciar</a>
+            </div>
+        </div>
         {% endfor %}
-    </ul>
-</body>
-</html>
+    </div>
+    {% if not itens and query %}<div class="bg-white rounded-lg shadow-md p-8 text-center mt-6"><h3 class="text-xl font-semibold text-gray-800">Nenhum item encontrado</h3><p class="text-gray-500 mt-2">Sua busca por "{{ query }}" não retornou resultados.</p></div>
+    {% elif not itens %}<div class="bg-white rounded-lg shadow-md p-8 text-center mt-6"><h3 class="text-xl font-semibold text-gray-800">Nenhum item em estoque</h3><p class="text-gray-500 mt-2">Clique em "Adicionar Item" para cadastrar o primeiro.</p></div>{% endif %}
+</div>
+{% endblock %}

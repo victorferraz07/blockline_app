@@ -1,11 +1,13 @@
-# core/urls.py
 from django.urls import path
-# Vamos importar nossas views daqui a pouco
 from . import views
 
 urlpatterns = [
-    # A URL '' (vazia) corresponde à raiz de '/estoque/'.
-    # Quando acessada, ela chamará a view 'lista_estoque' que ainda vamos criar.
-    # 'name' é um apelido para a URL, muito útil no futuro.
-    path('', views.lista_estoque, name='lista_estoque'),
+    path('', views.dashboard, name='dashboard'),
+    path('estoque/', views.lista_estoque, name='lista_estoque'),
+    path('estoque/adicionar/', views.adicionar_item, name='adicionar_item'),
+    path('estoque/<int:pk>/gerenciar/', views.gerenciar_item, name='gerenciar_item'),
+    path('estoque/<int:pk>/retirar/', views.retirar_item, name='retirar_item'),
+    path('estoque/<int:pk>/adicionar-estoque/', views.adicionar_estoque, name='adicionar_estoque'),
+    path('estoque/<int:pk>/excluir/', views.excluir_item, name='excluir_item'),
+    path('recebimento/registrar/', views.registrar_recebimento, name='registrar_recebimento'),
 ]
