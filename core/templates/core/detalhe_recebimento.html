@@ -1,0 +1,65 @@
+{% extends 'core/base.html' %}
+    
+{% block content %}
+<div class="container mx-auto">
+    <div class="bg-white p-8 rounded-lg shadow-md max-w-4xl mx-auto">
+        
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">Detalhes do Recebimento</h1>
+            <div>
+                <a href="{% url 'editar_recebimento' recebimento.pk %}" class="bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors">
+                    Editar
+                </a>
+                <a href="{% url 'lista_recebimentos' %}" class="text-indigo-600 hover:underline ml-4">Voltar para a Lista</a>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 border-t pt-6">
+            <div class="space-y-4">
+                <div>
+                    <p class="text-sm font-semibold text-gray-500">Número da Nota Fiscal</p>
+                    <p class="text-lg text-gray-800">{{ recebimento.numero_nota_fiscal|default:"Não informado" }}</p>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-500">Fornecedor</p>
+                    <p class="text-lg text-gray-800">{{ recebimento.fornecedor|default:"Não informado" }}</p>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-500">Recebido por</p>
+                    <p class="text-lg text-gray-800">{{ recebimento.usuario.username|default:"Sistema" }}</p>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-500">Data</p>
+                    <p class="text-lg text-gray-800">{{ recebimento.data_recebimento|date:"d/m/Y H:i" }}</p>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-500">Setor de Destino</p>
+                    <p class="text-lg text-gray-800">{{ recebimento.setor.nome }}</p>
+                </div>
+                <div class="mt-4">
+                    <p class="text-sm font-semibold text-gray-500">Observações</p>
+                    <p class="text-lg text-gray-800 break-words">{{ recebimento.observacoes|default:"Nenhuma." }}</p>
+                </div>
+            </div>
+            <div class="space-y-6">
+                {% if recebimento.foto_documento %}
+                <div>
+                    <p class="text-sm font-semibold text-gray-500 mb-2">Foto do Documento</p>
+                    <a href="{{ recebimento.foto_documento.url }}" target="_blank">
+                        <img src="{{ recebimento.foto_documento.url }}" alt="Foto do Documento" class="rounded-lg shadow-sm w-full h-auto object-cover">
+                    </a>
+                </div>
+                {% endif %}
+                {% if recebimento.foto_embalagem %}
+                <div>
+                    <p class="text-sm font-semibold text-gray-500 mb-2">Foto da Embalagem</p>
+                    <a href="{{ recebimento.foto_embalagem.url }}" target="_blank">
+                        <img src="{{ recebimento.foto_embalagem.url }}" alt="Foto da Embalagem" class="rounded-lg shadow-sm w-full h-auto object-cover">
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

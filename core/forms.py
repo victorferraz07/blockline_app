@@ -2,7 +2,6 @@
 from django import forms
 from .models import ItemEstoque, Recebimento
 
-# Formulário para CRIAR e EDITAR um Item de Estoque
 class ItemEstoqueForm(forms.ModelForm):
     class Meta:
         model = ItemEstoque
@@ -16,29 +15,28 @@ class ItemEstoqueForm(forms.ModelForm):
             'foto_principal': forms.FileInput(attrs={'class': 'mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100'}),
         }
 
-# Formulário para a AÇÃO de RETIRADA
 class RetiradaItemForm(forms.Form):
-    quantidade = forms.IntegerField(
-        min_value=1,
-        label="Quantidade a ser Retirada",
-        widget=forms.NumberInput(attrs={'class': 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm', 'placeholder': 'Ex: 10'})
-    )
+    quantidade = forms.IntegerField(min_value=1, label="Quantidade a ser Retirada", widget=forms.NumberInput(attrs={'class': 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm ...', 'placeholder': 'Ex: 10'}))
 
-# Formulário para a AÇÃO de ADIÇÃO
 class AdicaoItemForm(forms.Form):
-    quantidade = forms.IntegerField(
-        min_value=1,
-        label="Quantidade a ser Adicionada",
-        widget=forms.NumberInput(attrs={'class': 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm', 'placeholder': 'Ex: 25'})
-    )
+    quantidade = forms.IntegerField(min_value=1, label="Quantidade a ser Adicionada", widget=forms.NumberInput(attrs={'class': 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm ...', 'placeholder': 'Ex: 25'}))
 
-# Formulário para registrar um novo RECEBIMENTO
+
 class RecebimentoForm(forms.ModelForm):
     class Meta:
         model = Recebimento
-        fields = ['descricao_pacote', 'setor', 'foto_documento', 'foto_embalagem', 'observacoes']
+        # ADICIONAMOS 'status' À LISTA DE CAMPOS
+        fields = ['numero_nota_fiscal', 'fornecedor', 'setor', 'status', 'foto_documento', 'foto_embalagem', 'observacoes']
+        
         widgets = {
-            'descricao_pacote': forms.Textarea(attrs={'class': 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm', 'rows': 3}),
+            'numero_nota_fiscal': forms.TextInput(attrs={'class': 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
+            'fornecedor': forms.TextInput(attrs={'class': 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
             'setor': forms.Select(attrs={'class': 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
+            
+            # ADICIONAMOS O WIDGET PARA O CAMPO DE STATUS
+            'status': forms.Select(attrs={'class': 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
+
             'observacoes': forms.Textarea(attrs={'class': 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm', 'rows': 3}),
+            'foto_documento': forms.FileInput(attrs={'class': 'mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100'}),
+            'foto_embalagem': forms.FileInput(attrs={'class': 'mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100'}),
         }
