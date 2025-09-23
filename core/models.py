@@ -7,6 +7,13 @@ class Setor(models.Model):
     def __str__(self): return self.nome
 
 class ItemEstoque(models.Model):
+    TIPO_ITEM_CHOICES = [
+        ('componente', 'Componente / Matéria-Prima'),
+        ('produto_acabado', 'Produto Acabado'),
+    ]
+    # NOVO CAMPO para diferenciar os itens
+    tipo = models.CharField(max_length=20, choices=TIPO_ITEM_CHOICES, default='componente')
+
     nome = models.CharField(max_length=200, unique=True, verbose_name="Nome do Item")
     descricao = models.TextField(blank=True, null=True, verbose_name="Descrição")
     quantidade = models.PositiveIntegerField(default=0, verbose_name="Quantidade em Estoque")
@@ -15,6 +22,10 @@ class ItemEstoque(models.Model):
     foto_principal = models.ImageField(upload_to='fotos_itens/', blank=True, null=True, verbose_name="Foto Principal")
     data_criacao = models.DateTimeField(auto_now_add=True, verbose_name="Data de Criação")
     data_atualizacao = models.DateTimeField(auto_now=True, verbose_name="Última Atualização")
+
+    # Este campo será True se o item for controlado por uma receita de ProdutoFabricado
+    is_produto_fabricado = models.BooleanField(default=False)
+
     def __str__(self): return f"{self.nome} ({self.quantidade} em estoque)"
 
 class ImagemItemEstoque(models.Model):
@@ -23,9 +34,15 @@ class ImagemItemEstoque(models.Model):
     def __str__(self): return f"Imagem de {self.item.nome}"
 
 class ProdutoFabricado(models.Model):
+    # OneToOneField cria um link único e direto para o ItemEstoque correspondente.
+    # Este é o elo que une a "receita" ao "item de estoque".
+    item_associado = models.OneToOneField(ItemEstoque, on_delete=models.CASCADE, related_name='receita')
+
     nome = models.CharField(max_length=200, unique=True, verbose_name="Nome do Produto")
     descricao = models.TextField(blank=True, null=True, verbose_name="Descrição do Produto")
+    foto_principal = models.ImageField(upload_to='fotos_produtos/', blank=True, null=True, verbose_name="Foto Principal")
     componentes = models.ManyToManyField(ItemEstoque, through='Componente', related_name='produtos_fabricados', verbose_name="Lista de Componentes")
+
     def __str__(self): return self.nome
 
 class DocumentoProdutoFabricado(models.Model):
@@ -76,3 +93,4 @@ class SaidaProduto(models.Model):
     foto_saida = models.ImageField(upload_to='fotos_saidas/', blank=True, null=True, verbose_name="Foto da Saída")
     data_saida = models.DateTimeField(auto_now_add=True, verbose_name="Data da Saída")
     def __str__(self): return f"Saída de {self.quantidade}x {self.produto.nome} para {self.cliente}"
+

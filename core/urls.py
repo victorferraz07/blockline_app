@@ -17,4 +17,10 @@ urlpatterns = [
     path('recebimento/registrar/', views.registrar_recebimento, name='registrar_recebimento'),
     path('recebimento/<int:pk>/', views.detalhe_recebimento, name='detalhe_recebimento'),
     path('recebimento/<int:pk>/editar/', views.editar_recebimento, name='editar_recebimento'),
+
+    # --- Rotas de Produto ---
+    path('produtos/', views.lista_produtos, name='lista_produtos'),
+    path('produtos/adicionar/', views.adicionar_produto, name='adicionar_produto'),
+    path('produtos/<int:pk>/', views.detalhe_produto, name='detalhe_produto'),
+    path('produtos/<int:pk>/editar/', views.editar_produto, name='editar_produto'),
 ]

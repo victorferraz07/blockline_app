@@ -1,0 +1,63 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+    <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+        
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">Produtos Fabricados</h1>
+            <p class="text-gray-600">Gerencie os produtos, veja documentações e simule produções</p>
+        </div>
+
+        <div class="flex items-center space-x-4">
+            
+            <form action="{% url 'lista_produtos' %}" method="GET" class="flex items-center space-x-2">
+                <input type="text" name="q" value="{{ query|default:'' }}" placeholder="Buscar produtos..." class="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <button type="submit" class="bg-gray-800 text-white py-2 px-4 rounded-lg hover:bg-gray-700 whitespace-nowrap">
+                    Buscar
+                </button>
+            </form>
+
+            <a href="{% url 'adicionar_produto' %}" class="bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap">
+                + Novo Produto
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+       
+        {% for produto in produtos %}
+        <div class="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 flex flex-col">
+            <div class="aspect-square bg-gray-100">
+                {% if produto.foto_principal %}
+                    <img src="{{ produto.foto_principal.url }}" alt="{{ produto.nome }}" class="w-full h-full object-cover">
+                {% else %}
+                    <div class="w-full h-full flex items-center justify-center">
+                        <svg class="h-16 w-16 text-gray-400" ...></svg>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="p-4 flex flex-col flex-grow">
+                <div class="flex-grow">
+                    <h3 class="text-lg font-bold text-gray-800">{{ produto.nome }}</h3>
+                    <p class="text-gray-600 text-sm mt-1 h-10">{{ produto.descricao|default:""|truncatechars:80 }}</p>
+                </div>
+                <div class="mt-4 text-center">
+                    <p class="text-xs text-gray-500">Prontos em Estoque</p>
+                    <p class="text-3xl font-black text-gray-900">{{ produto.item_associado.quantidade }}</p>
+                </div>
+                <a href="{% url 'detalhe_produto' produto.pk %}" class="block text-center mt-4 w-full bg-gray-800 text-white py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                    Mais Detalhes
+                </a>
+            </div>
+        </div>
+        {% empty %}
+            <div class="col-span-full bg-white rounded-lg shadow-md p-8 text-center">
+                <h3 class="text-xl font-semibold text-gray-800">Nenhum produto cadastrado</h3>
+                <p class="text-gray-500 mt-2">Clique em "+ Novo Produto" para cadastrar o primeiro.</p>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="container mx-auto">
+    <div x-data="{ formCount: {{ formset.initial_form_count }} }" class="bg-white p-8 rounded-lg shadow-md max-w-2xl mx-auto">
+        <h1 class="text-2xl font-semibold text-gray-800 mb-6 text-center">{{ titulo }}</h1>
+        
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <div class="space-y-6">
+                {% for field in form %}
+                    <div>
+                        {{ field.label_tag }}
+                        {{ field }}
+                        {{ field.errors }}
+                    </div>
+                {% endfor %}
+            </div>
+
+            <hr class="my-8">
+
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">Documentos</h2>
+            <p class="text-sm text-gray-500 mb-4">Anexe os documentos do produto.</p>
+            
+            {{ formset.management_form }}
+            
+            <div id="document-formset" class="space-y-6">
+                {% for doc_form in formset %}
+                    <div class="p-4 border rounded-md">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>{{ doc_form.documento.label_tag }}{{ doc_form.documento }}</div>
+                            <div>{{ doc_form.tipo.label_tag }}{{ doc_form.tipo }}</div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <button type="button" @click="
+                let template = document.getElementById('empty-form-template').innerHTML;
+                let newForm = template.replace(/__prefix__/g, formCount);
+                document.getElementById('document-formset').insertAdjacentHTML('beforeend', newForm);
+                formCount++;
+                document.getElementById('id_documento-TOTAL_FORMS').value = formCount;
+            " class="mt-4 text-sm text-indigo-600 hover:text-indigo-800">+ Adicionar outro documento</button>
+
+            <template id="empty-form-template">
+                <div class="p-4 border rounded-md">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>{{ formset.empty_form.documento.label_tag }}{{ formset.empty_form.documento }}</div>
+                        <div>{{ formset.empty_form.tipo.label_tag }}{{ formset.empty_form.tipo }}</div>
+                    </div>
+                </div>
+            </template>
+
+            <div class="mt-8">
+                <button type="submit" class="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg hover:bg-indigo-700">
+                    Salvar Produto e Documentos
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
