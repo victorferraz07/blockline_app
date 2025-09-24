@@ -206,30 +206,42 @@ def detalhe_produto(request, pk):
 
 def adicionar_produto(request):
     DocumentoFormSet = modelformset_factory(DocumentoProdutoFabricado, form=DocumentoProdutoForm, extra=1, can_delete=False)
+    
     if request.method == 'POST':
         form = ProdutoFabricadoForm(request.POST, request.FILES)
         formset = DocumentoFormSet(request.POST, request.FILES, queryset=DocumentoProdutoFabricado.objects.none())
+
         if form.is_valid() and formset.is_valid():
             produto_base = form.save(commit=False)
-            # Precisamos criar o item de estoque associado antes de salvar o produto
+            
+            # Criamos o item de estoque associado
             item_estoque_associado = ItemEstoque.objects.create(
                 nome=produto_base.nome,
                 descricao=f"Produto acabado: {produto_base.descricao}",
                 tipo='produto_acabado',
-                is_produto_fabricado=True
+                is_produto_fabricado=True,
+                # A LINHA DA CORREÇÃO ESTÁ AQUI:
+                # Copiamos a foto do formulário do produto para o novo item de estoque.
+                foto_principal=produto_base.foto_principal 
             )
+            
+            # Agora, linkamos os dois e salvamos o produto
             produto_base.item_associado = item_estoque_associado
             produto_base.save()
+            
+            # ... (resto da lógica para salvar os documentos)
             for doc_form in formset:
                 if doc_form.cleaned_data and doc_form.cleaned_data.get('documento'):
                     documento = doc_form.save(commit=False)
                     documento.produto = produto_base
                     documento.save()
+
             messages.success(request, f'Produto "{produto_base.nome}" e seus documentos foram criados com sucesso!')
             return redirect('lista_produtos')
     else:
         form = ProdutoFabricadoForm()
         formset = DocumentoFormSet(queryset=DocumentoProdutoFabricado.objects.none())
+        
     contexto = {'form': form, 'formset': formset, 'titulo': 'Criar Novo Produto'}
     return render(request, 'core/form_produto.html', contexto)
 

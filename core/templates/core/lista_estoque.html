@@ -3,18 +3,15 @@
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-    <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-        
+    <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
         <div>
             <h1 class="text-3xl font-bold text-gray-800">Estoque</h1>
             <p class="text-gray-600">Gerencie os itens em estoque.</p>
         </div>
-
         <div class="flex items-center space-x-4">
             <a href="{% url 'adicionar_item' %}" class="bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap font-semibold">
                 + Adicionar Item
             </a>
-            
             <form action="{% url 'lista_estoque' %}" method="GET" class="flex items-center space-x-2">
                 <input type="text" name="q" value="{{ query|default:'' }}" placeholder="Buscar itens..." class="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 <button type="submit" class="bg-gray-800 text-white py-2 px-4 rounded-lg hover:bg-gray-700 font-semibold">
@@ -30,37 +27,53 @@
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+
         {% for item in itens %}
         <div class="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 flex flex-col">
-            <div class="aspect-square bg-gray-100">
+            
+            <div class="aspect-square bg-gray-100 relative">
+                <div class="absolute top-2 right-2 z-10">
+                    {% if item.tipo == 'produto_acabado' %}
+                        <span class="px-2 py-1 text-xs font-semibold text-emerald-800 bg-emerald-50 rounded-full shadow">Produto</span>
+                    {% else %}
+                        <span class="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-200 rounded-full shadow">Componente</span>
+                    {% endif %}
+                </div>
+
                 {% if item.foto_principal %}
                     <img src="{{ item.foto_principal.url }}" alt="{{ item.nome }}" class="w-full h-full object-cover">
                 {% else %}
                     <div class="w-full h-full flex items-center justify-center">
-                        <svg class="h-12 w-12 text-gray-400" ...></svg>
+                        <svg class="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                     </div>
                 {% endif %}
             </div>
+            
             <div class="p-4 flex flex-col flex-grow">
                 <div class="flex-grow">
-                    <h3 class="text-4xl font-bold text-gray-800">{{ item.nome }}</h3>
-                    <p class="text-gray-600 text-sm mt-1 h-10">{{ item.descricao|default:""|truncatechars:80 }}</p>
+                    <h3 class="text-xl font-bold text-gray-800 truncate" title="{{ item.nome }}">{{ item.nome }}</h3>
+                    <p class="text-gray-500 text-sm mt-1 h-10">{{ item.descricao|default:""|truncatechars:70 }}</p>
                 </div>
-                <div class="mt-4 text-center">
+                
+                <div class="mt-4">
                     <p class="text-xs text-gray-500">Em Estoque</p>
-                    <p class="text-3xl font-black text-gray-900">{{ item.quantidade }}</p>
+                    <p class="text-2xl font-semibold text-gray-700">{{ item.quantidade }}</p>
                 </div>
+
                 <a href="{% url 'gerenciar_item' item.pk %}" class="block text-center mt-4 w-full bg-gray-800 text-white py-2 rounded-lg hover:bg-gray-700 transition-colors">
                     Gerenciar
                 </a>
             </div>
         </div>
-        {% empty %}
-            <div class="col-span-full bg-white rounded-lg shadow-md p-8 text-center">
-                <h3 class="text-xl font-semibold text-gray-800">Nenhum item em estoque</h3>
-                <p class="text-gray-500 mt-2">Clique em "Adicionar Item" para cadastrar o primeiro.</p>
-            </div>
         {% endfor %}
+
     </div>
+    
+    {% if not itens %}
+        <div class="col-span-full bg-white rounded-lg shadow-md p-8 text-center mt-6">
+            <h3 class="text-xl font-semibold text-gray-800">Nenhum item em estoque</h3>
+            <p class="text-gray-500 mt-2">Clique em "Adicionar Item" para cadastrar o primeiro.</p>
+        </div>
+    {% endif %}
 </div>
 {% endblock %}

@@ -29,10 +29,7 @@
                         {% for item_fornecedor in item.itemfornecedor_set.all %}
                             <li class="flex justify-between items-center text-sm p-2 hover:bg-gray-100 rounded">
                                 <span class="font-semibold text-gray-800">{{ item_fornecedor.fornecedor.nome }}</span>
-                                <div class="text-right">
-                                    <span class="font-bold text-gray-900">R$ {{ item_fornecedor.valor_pago }}</span>
-                                    <span class="block text-xs text-gray-500">Cotação: {{ item_fornecedor.data_cotacao|date:"d/m/Y" }}</span>
-                                </div>
+                                <div class="text-right"><span class="font-bold text-gray-900">R$ {{ item_fornecedor.valor_pago }}</span><span class="block text-xs text-gray-500">Cotação: {{ item_fornecedor.data_cotacao|date:"d/m/Y" }}</span></div>
                             </li>
                         {% empty %}
                             <p class="text-sm text-gray-500">Nenhum fornecedor associado a este item.</p>
@@ -42,7 +39,7 @@
             </div>
             <hr class="my-6">
             <div class="flex justify-between items-center">
-                <div class="flex space-x-2"><button @click="showAdicaoModal = true" class="bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600 transition-colors font-semibold">+ Adicionar Estoque</button><button @click="showRetiradaModal = true" class="bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 transition-colors font-semibold">- Retirar Material</button></div>
+                <div class="flex space-x-2"><button @click="showAdicaoModal = true" class="bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors font-semibold">+ Adicionar Estoque</button><button @click="showRetiradaModal = true" class="bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors font-semibold">- Retirar Material</button></div>
                 <button @click="showExcluirModal = true" class="text-sm font-semibold text-red-600 hover:text-red-800 hover:underline transition-colors">Excluir Item</button>
             </div>
         </div>
@@ -50,44 +47,19 @@
         <div x-show="editMode" style="display: none;">
             <form method="post" enctype="multipart/form-data">
                 {% csrf_token %}
-                <div class="flex justify-between items-center mb-6">
-                    <h1 class="text-2xl font-semibold text-gray-800">Editando: {{ item.nome }}</h1>
-                    <button type="button" @click="editMode = false" class="text-gray-500 hover:text-gray-700">Cancelar</button>
-                </div>
-                
-                <div class="space-y-4 border-b pb-8 mb-8">
-                    {% for field in form %}<div class="mb-2">{{ field.label_tag }}{{ field }}{% if field.errors %}<div class="text-red-500 text-sm mt-1">{{ field.errors }}</div>{% endif %}</div>{% endfor %}
-                </div>
-
+                <div class="flex justify-between items-center mb-6"><h1 class="text-2xl font-semibold text-gray-800">Editando: {{ item.nome }}</h1><button type="button" @click="editMode = false" class="text-gray-500 hover:text-gray-700">Cancelar</button></div>
+                <div class="space-y-4 border-b pb-8 mb-8">{% for field in form %}<div class="mb-2">{{ field.label_tag }}{{ field }}{% if field.errors %}<div class="text-red-500 text-sm mt-1">{{ field.errors }}</div>{% endif %}</div>{% endfor %}</div>
                 <h2 class="text-xl font-semibold text-gray-700 mb-4">Fornecedores e Preços de Custo</h2>
                 {{ formset_fornecedores.management_form }}
                 <div id="fornecedor-formset" class="space-y-4">
                     {% for f_form in formset_fornecedores %}
                     <div class="grid grid-cols-[1fr,auto,auto,auto] gap-x-4 p-2 border rounded-md items-center">
                         {{ f_form.id }}
-                        <div>{{ f_form.fornecedor.label_tag }}{{ f_form.fornecedor }}</div>
-                        <div>{{ f_form.valor_pago.label_tag }}{{ f_form.valor_pago }}</div>
-                        <div>{{ f_form.data_cotacao.label_tag }}{{ f_form.data_cotacao }}</div>
+                        <div>{{ f_form.fornecedor.label_tag }}{{ f_form.fornecedor }}</div><div>{{ f_form.valor_pago.label_tag }}{{ f_form.valor_pago }}</div><div>{{ f_form.data_cotacao.label_tag }}{{ f_form.data_cotacao }}</div>
                         <div class="flex items-center justify-center pt-5">{% if f_form.instance.pk %}<label for="{{ f_form.DELETE.id_for_label }}" class="flex items-center cursor-pointer text-sm text-gray-500 hover:text-red-600 transition-colors"><span class="ml-2 font-semibold">Remover</span>{{ f_form.DELETE }}</label>{% endif %}</div>
                     </div>
                     {% endfor %}
                 </div>
-                 <button type="button" @click="
-                    let template = document.getElementById('empty-fornecedor-form-template').innerHTML;
-                    let newForm = template.replace(/__prefix__/g, fornecedorFormCount);
-                    document.getElementById('fornecedor-formset').insertAdjacentHTML('beforeend', newForm);
-                    document.getElementById('id_fornecedores-TOTAL_FORMS').value = fornecedorFormCount + 1;
-                    fornecedorFormCount++;
-                " class="mt-4 text-sm text-indigo-600 hover:text-indigo-800 font-semibold">+ Adicionar fornecedor</button>
-                <template id="empty-fornecedor-form-template">
-                    <div class="grid grid-cols-[1fr,auto,auto,auto] gap-x-4 p-2 border rounded-md items-center">
-                        {{ formset_fornecedores.empty_form.id }}
-                        <div>{{ formset_fornecedores.empty_form.fornecedor.label_tag }}{{ formset_fornecedores.empty_form.fornecedor }}</div>
-                        <div>{{ formset_fornecedores.empty_form.valor_pago.label_tag }}{{ formset_fornecedores.empty_form.valor_pago }}</div>
-                        <div>{{ formset_fornecedores.empty_form.data_cotacao.label_tag }}{{ formset_fornecedores.empty_form.data_cotacao }}</div>
-                    </div>
-                </template>
-                
                 <div class="flex justify-end mt-8 border-t pt-6">
                     <button type="button" @click="editMode = false" class="bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 mr-4 font-semibold">Cancelar</button>
                     <button type="submit" class="bg-indigo-600 text-white py-2 px-6 rounded-lg hover:bg-indigo-700 font-semibold">Salvar Alterações</button>
@@ -97,10 +69,42 @@
     </div>
 
     <div x-show="showAdicaoModal" style="display: none;" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div @click.away="showAdicaoModal = false" class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
+            <h2 class="text-2xl font-bold mb-4">Adicionar ao Estoque: {{ item.nome }}</h2><p class="mb-4">Estoque atual: <span class="font-bold">{{ item.quantidade }}</span></p>
+            <form action="{% url 'adicionar_estoque' item.pk %}" method="post">
+                {% csrf_token %}
+                {% for field in adicao_form %}<div class="mb-4">{{ field.label_tag }}{{ field }}</div>{% endfor %}
+                <div class="flex justify-end space-x-4 mt-6">
+                    <button type="button" @click="showAdicaoModal = false" class="bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 font-semibold">Cancelar</button>
+                    <button type="submit" class="bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 font-semibold">Confirmar Adição</button>
+                </div>
+            </form>
         </div>
+    </div>
     <div x-show="showRetiradaModal" style="display: none;" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div @click.away="showRetiradaModal = false" class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
+            <h2 class="text-2xl font-bold mb-4">Retirar: {{ item.nome }}</h2><p class="mb-4">Estoque atual: <span class="font-bold">{{ item.quantidade }}</span></p>
+            <form action="{% url 'retirar_item' item.pk %}" method="post">
+                {% csrf_token %}
+                {% for field in retirada_form %}<div class="mb-4">{{ field.label_tag }}{{ field }}</div>{% endfor %}
+                <div class="flex justify-end space-x-4 mt-6">
+                    <button type="button" @click="showRetiradaModal = false" class="bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 font-semibold">Cancelar</button>
+                    <button type="submit" class="bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 font-semibold">Confirmar Retirada</button>
+                </div>
+            </form>
+        </div>
     </div>
     <div x-show="showExcluirModal" style="display: none;" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div @click.away="showExcluirModal = false" class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md text-center">
+            <h2 class="text-2xl font-bold mt-4">Confirmar Exclusão</h2><p class="mb-6 mt-2 text-gray-600">Você tem certeza que deseja excluir o item <strong class="text-red-700 font-semibold">{{ item.nome }}</strong>? Esta ação é irreversível.</p>
+            <form action="{% url 'excluir_item' item.pk %}" method="post">
+                {% csrf_token %}
+                <div class="flex justify-center space-x-4">
+                    <button type="button" @click="showExcluirModal = false" class="bg-gray-200 text-gray-800 py-2 px-6 rounded-lg hover:bg-gray-300 font-semibold">Cancelar</button>
+                    <button type="submit" class="bg-red-600 text-white py-2 px-6 rounded-lg hover:bg-red-700 font-semibold">Sim, Excluir</button>
+                </div>
+            </form>
         </div>
+    </div>
 </div>
 {% endblock %}

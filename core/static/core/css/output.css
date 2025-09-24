@@ -1,10 +1,22 @@
 /*! tailwindcss v4.1.13 | MIT License | https://tailwindcss.com */
 @layer properties;
+.absolute {
+  position: absolute;
+}
 .fixed {
   position: fixed;
 }
+.relative {
+  position: relative;
+}
 .static {
   position: static;
+}
+.z-10 {
+  z-index: 10;
+}
+.z-40 {
+  z-index: 40;
 }
 .z-50 {
   z-index: 50;
@@ -152,6 +164,12 @@
 .underline {
   text-decoration-line: underline;
 }
+.opacity-0 {
+  opacity: 0%;
+}
+.opacity-100 {
+  opacity: 100%;
+}
 .transition-all {
   transition-property: all;
   transition-timing-function: var(--tw-ease, ease);
@@ -166,6 +184,10 @@
   transition-property: box-shadow;
   transition-timing-function: var(--tw-ease, ease);
   transition-duration: var(--tw-duration, 0s);
+}
+.duration-200 {
+  --tw-duration: 200ms;
+  transition-duration: 200ms;
 }
 .duration-300 {
   --tw-duration: 300ms;
