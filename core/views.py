@@ -5,11 +5,13 @@ from django.db.models import Q
 from django.forms import modelformset_factory, inlineformset_factory
 from .models import (
     ItemEstoque, ProdutoFabricado, Recebimento, SaidaProduto, 
-    DocumentoProdutoFabricado, Componente, Setor, ImagemProdutoFabricado
+    DocumentoProdutoFabricado, Componente, Setor, Fornecedor,
+    ImagemProdutoFabricado, ImagemItemEstoque, ItemFornecedor
 )
 from .forms import (
     ItemEstoqueForm, RetiradaItemForm, AdicaoItemForm, RecebimentoForm, 
-    ProdutoFabricadoForm, DocumentoProdutoForm, ComponenteForm, ProducaoForm, ImagemProdutoForm
+    ProdutoFabricadoForm, DocumentoProdutoForm, ComponenteForm, ProducaoForm,
+    ImagemProdutoForm, ItemFornecedorForm
 )
 
 
@@ -59,15 +61,37 @@ def adicionar_item(request):
 
 def gerenciar_item(request, pk):
     item = get_object_or_404(ItemEstoque, pk=pk)
+    FornecedorItemFormSet = inlineformset_factory(ItemEstoque, ItemFornecedor, form=ItemFornecedorForm, extra=1, can_delete=True)
+
     if request.method == 'POST':
+        post_data = request.POST.copy()
+        total_forms = int(post_data.get('fornecedores-TOTAL_FORMS', 0))
+        for i in range(total_forms):
+            field_name = f'fornecedores-{i}-fornecedor'
+            fornecedor_val = post_data.get(field_name)
+            if fornecedor_val and not fornecedor_val.isnumeric():
+                novo_fornecedor, created = Fornecedor.objects.get_or_create(nome=fornecedor_val)
+                post_data[field_name] = novo_fornecedor.pk
+
         form = ItemEstoqueForm(request.POST, request.FILES, instance=item)
-        if form.is_valid():
+        formset_fornecedores = FornecedorItemFormSet(post_data, instance=item, prefix='fornecedores')
+        
+        if form.is_valid() and formset_fornecedores.is_valid():
             form.save()
-            messages.success(request, f'Item "{item.nome}" atualizado com sucesso.')
+            formset_fornecedores.save()
+            messages.success(request, 'Item atualizado com sucesso!')
             return redirect('gerenciar_item', pk=item.pk)
     else:
         form = ItemEstoqueForm(instance=item)
-    contexto = {'form': form, 'item': item, 'retirada_form': RetiradaItemForm(), 'adicao_form': AdicaoItemForm()}
+        formset_fornecedores = FornecedorItemFormSet(instance=item, prefix='fornecedores')
+
+    contexto = {
+        'form': form,
+        'item': item,
+        'formset_fornecedores': formset_fornecedores,
+        'retirada_form': RetiradaItemForm(),
+        'adicao_form': AdicaoItemForm(),
+    }
     return render(request, 'core/gerenciar_item.html', contexto)
 
 def retirar_item(request, pk):

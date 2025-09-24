@@ -2,42 +2,65 @@
 from django.db import models
 from django.contrib.auth.models import User
 
+class Fornecedor(models.Model):
+    nome = models.CharField(max_length=200, unique=True)
+    telefone = models.CharField(max_length=20, blank=True, null=True)
+    email = models.EmailField(blank=True, null=True)
+    link_site = models.URLField(blank=True, null=True, verbose_name="Website")
+    def __str__(self): return self.nome
+
 class Setor(models.Model):
     nome = models.CharField(max_length=100, unique=True, help_text="Nome do setor")
     def __str__(self): return self.nome
 
-class ItemEstoque(models.Model):
-    TIPO_ITEM_CHOICES = [
-        ('componente', 'Componente / Matéria-Prima'),
-        ('produto_acabado', 'Produto Acabado'),
-    ]
-    # NOVO CAMPO para diferenciar os itens
-    tipo = models.CharField(max_length=20, choices=TIPO_ITEM_CHOICES, default='componente')
+class ItemFornecedor(models.Model):
+    item_estoque = models.ForeignKey('ItemEstoque', on_delete=models.CASCADE)
+    fornecedor = models.ForeignKey(Fornecedor, on_delete=models.CASCADE)
+    valor_pago = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Valor de Custo/Cotação")
+    data_cotacao = models.DateField(verbose_name="Data da Cotação")
+    def __str__(self): return f"{self.item_estoque.nome} - {self.fornecedor.nome}: R$ {self.valor_pago}"
 
+class ItemEstoque(models.Model):
+    TIPO_ITEM_CHOICES = [('componente', 'Componente / Matéria-Prima'), ('produto_acabado', 'Produto Acabado'),]
+    tipo = models.CharField(max_length=20, choices=TIPO_ITEM_CHOICES, default='componente')
     nome = models.CharField(max_length=200, unique=True, verbose_name="Nome do Item")
     descricao = models.TextField(blank=True, null=True, verbose_name="Descrição")
     quantidade = models.PositiveIntegerField(default=0, verbose_name="Quantidade em Estoque")
     local_armazenamento = models.CharField(max_length=100, blank=True, null=True, verbose_name="Local de Armazenamento")
     documentacao = models.FileField(upload_to='documentos_itens/', blank=True, null=True, verbose_name="Documentação")
     foto_principal = models.ImageField(upload_to='fotos_itens/', blank=True, null=True, verbose_name="Foto Principal")
+    fornecedores = models.ManyToManyField(Fornecedor, through=ItemFornecedor, blank=True)
+    is_produto_fabricado = models.BooleanField(default=False)
     data_criacao = models.DateTimeField(auto_now_add=True, verbose_name="Data de Criação")
     data_atualizacao = models.DateTimeField(auto_now=True, verbose_name="Última Atualização")
-
-    # Este campo será True se o item for controlado por uma receita de ProdutoFabricado
-    is_produto_fabricado = models.BooleanField(default=False)
-
     def __str__(self): return f"{self.nome} ({self.quantidade} em estoque)"
+
+class Recebimento(models.Model):
+    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Usuário Responsável")
+    setor = models.ForeignKey(Setor, on_delete=models.PROTECT, verbose_name="Setor de Destino")
+    foto_documento = models.ImageField(upload_to='fotos_documentos/', blank=True, null=True, verbose_name="Foto da Nota Fiscal/Documento")
+    foto_embalagem = models.ImageField(upload_to='fotos_embalagens/', blank=True, null=True, verbose_name="Foto da Embalagem")
+    data_recebimento = models.DateTimeField(auto_now_add=True, verbose_name="Data do Recebimento")
+    numero_nota_fiscal = models.CharField(max_length=100, verbose_name="Número da Nota Fiscal", blank=True, null=True)
+    # O CAMPO CORRETO QUE ESTAVA FALTANDO
+    fornecedor = models.ForeignKey(Fornecedor, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Fornecedor")
+    valor_total = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="Valor Total da Nota")
+    data_cotacao = models.DateField(null=True, blank=True, verbose_name="Data da Cotação")
+    observacoes = models.TextField(blank=True, null=True, verbose_name="Observações Gerais")
+    STATUS_CHOICES = [('aguardando', 'Aguardando'), ('entregue', 'Entregue'),]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='aguardando')
+    def __str__(self): return f"Nota Fiscal {self.numero_nota_fiscal or 'N/A'}"
 
 class ImagemItemEstoque(models.Model):
     item = models.ForeignKey(ItemEstoque, related_name='imagens', on_delete=models.CASCADE)
     imagem = models.ImageField(upload_to='imagens_itens/')
+
     def __str__(self): return f"Imagem de {self.item.nome}"
 
 class ProdutoFabricado(models.Model):
     # OneToOneField cria um link único e direto para o ItemEstoque correspondente.
     # Este é o elo que une a "receita" ao "item de estoque".
     item_associado = models.OneToOneField(ItemEstoque, on_delete=models.CASCADE, related_name='receita')
-
     nome = models.CharField(max_length=200, unique=True, verbose_name="Nome do Produto")
     descricao = models.TextField(blank=True, null=True, verbose_name="Descrição do Produto")
     foto_principal = models.ImageField(upload_to='fotos_produtos/', blank=True, null=True, verbose_name="Foto Principal")
@@ -63,26 +86,6 @@ class Componente(models.Model):
     quantidade_necessaria = models.PositiveIntegerField(verbose_name="Quantidade Necessária")
     def __str__(self): return f"{self.quantidade_necessaria}x {self.item_estoque.nome} para {self.produto.nome}"
 
-# --- CLASSE RECEBIMENTO ATUALIZADA ---
-class Recebimento(models.Model):
-    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Usuário Responsável")
-    setor = models.ForeignKey(Setor, on_delete=models.PROTECT, verbose_name="Setor de Destino")
-    foto_documento = models.ImageField(upload_to='fotos_documentos/', blank=True, null=True, verbose_name="Foto da Nota Fiscal/Documento")
-    foto_embalagem = models.ImageField(upload_to='fotos_embalagens/', blank=True, null=True, verbose_name="Foto da Embalagem")
-    data_recebimento = models.DateTimeField(auto_now_add=True, verbose_name="Data do Recebimento")
-    numero_nota_fiscal = models.CharField(max_length=100, verbose_name="Número da Nota Fiscal", blank=True, null=True)
-    fornecedor = models.CharField(max_length=100, verbose_name="Fornecedor/Empresa que Entregou", blank=True, null=True)
-    observacoes = models.TextField(blank=True, null=True, verbose_name="Observações Gerais")
-    
-    # --- A ALTERAÇÃO ESTÁ AQUI ---
-    STATUS_CHOICES = [
-        ('aguardando', 'Aguardando'),
-        ('entregue', 'Entregue'),
-    ]
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='aguardando')
-    
-    def __str__(self): return f"Nota Fiscal {self.numero_nota_fiscal or 'N/A'} recebida em {self.data_recebimento.strftime('%d/%m/%Y')}"
-
 
 class SaidaProduto(models.Model):
     produto = models.ForeignKey(ProdutoFabricado, on_delete=models.PROTECT, verbose_name="Produto Enviado")
@@ -93,4 +96,6 @@ class SaidaProduto(models.Model):
     foto_saida = models.ImageField(upload_to='fotos_saidas/', blank=True, null=True, verbose_name="Foto da Saída")
     data_saida = models.DateTimeField(auto_now_add=True, verbose_name="Data da Saída")
     def __str__(self): return f"Saída de {self.quantidade}x {self.produto.nome} para {self.cliente}"
+
+
 

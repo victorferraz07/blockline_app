@@ -6,11 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+
     <title>Blockline - Gestão Empresarial</title>
 </head>
 <body class="bg-gray-50 text-gray-800">
 
-    <header class="bg-white shadow-md h-16 flex items-center justify-between px-8">
+    <header class="bg-white shadow-md h-16 flex items-center justify-between px-4 sm:px-8">
         <div class="logo">
             <a href="{% url 'dashboard' %}" class="text-2xl font-bold text-indigo-600">Blockline</a>
         </div>
@@ -19,7 +23,7 @@
             <a href="{% url 'lista_recebimentos' %}" class="text-gray-600 hover:text-indigo-600">Recebimento</a>
             <a href="{% url 'lista_estoque' %}" class="text-gray-600 hover:text-indigo-600">Estoque</a>
             <a href="{% url 'lista_produtos' %}" class="text-gray-600 hover:text-indigo-600">Produtos</a>
-            <a href="#" class="text-gray-600 hover:text-indigo-600">Saída</a>
+            <a href="#" class="text-gray-600 hover:text-indigo-600">Expedição</a>
         </nav>
         <div class="perfil">
             <a href="#" class="text-gray-600">{{ user.username|default:'Usuário' }}</a>
@@ -27,19 +31,20 @@
     </header>
 
     {% if messages %}
-        <div class="container mx-auto mt-4 px-8">
+        <div class="container mx-auto mt-4 px-4 sm:px-8">
             {% for message in messages %}
-                <div class="p-4 mb-4 text-sm rounded-lg {% if message.tags == 'success' %} bg-green-100 text-green-800 {% else %} bg-red-100 text-red-800 {% endif %}" role="alert">
+                <div class="p-4 mb-4 text-sm rounded-lg {% if message.tags == 'success' %} bg-green-100 text-green-800 {% elif message.tags == 'error' %} bg-red-100 text-red-800 {% else %} bg-blue-100 text-blue-800 {% endif %}" role="alert">
                     {{ message }}
                 </div>
             {% endfor %}
         </div>
     {% endif %}
 
-    <main class="p-8">
+    <main class="p-4 sm:p-8">
         {% block content %}
         {% endblock %}
     </main>
 
+    {% block javascript %}{% endblock %}
 </body>
 </html>
