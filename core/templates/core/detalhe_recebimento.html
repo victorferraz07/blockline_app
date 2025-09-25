@@ -1,64 +1,64 @@
 {% extends 'core/base.html' %}
-    
+
 {% block content %}
-<div class="container mx-auto">
+<div x-data="{ showExcluirModal: false }" class="container mx-auto">
     <div class="bg-white p-8 rounded-lg shadow-md max-w-4xl mx-auto">
         
-        <div class="flex justify-between items-center mb-6">
-            <h1 class="text-3xl font-bold text-gray-800">Detalhes do Recebimento</h1>
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-6 border-b pb-6">
             <div>
-                <a href="{% url 'editar_recebimento' recebimento.pk %}" class="bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors">
+                <h1 class="text-3xl font-bold text-gray-800">Detalhes do Recebimento #{{ recebimento.pk }}</h1>
+                <p class="text-gray-600 mt-1">Registrado em {{ recebimento.data_recebimento|date:"d/m/Y \à\s H:i" }} por {{ recebimento.usuario.username|default:'Sistema' }}</p>
+            </div>
+            <div class="flex-shrink-0 mt-4 sm:mt-0 flex items-center">
+                <a href="{% url 'editar_recebimento' recebimento.pk %}" class="bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 font-semibold transition-colors">
                     Editar
                 </a>
-                <a href="{% url 'lista_recebimentos' %}" class="text-indigo-600 hover:underline ml-4">Voltar para a Lista</a>
+                <button @click="showExcluirModal = true" class="ml-4 text-sm font-semibold text-red-600 hover:underline">
+                    Excluir
+                </button>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 border-t pt-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div class="space-y-4">
-                <div>
-                    <p class="text-sm font-semibold text-gray-500">Número da Nota Fiscal</p>
-                    <p class="text-lg text-gray-800">{{ recebimento.numero_nota_fiscal|default:"Não informado" }}</p>
-                </div>
-                <div>
-                    <p class="text-sm font-semibold text-gray-500">Fornecedor</p>
-                    <p class="text-lg text-gray-800">{{ recebimento.fornecedor|default:"Não informado" }}</p>
-                </div>
-                <div>
-                    <p class="text-sm font-semibold text-gray-500">Recebido por</p>
-                    <p class="text-lg text-gray-800">{{ recebimento.usuario.username|default:"Sistema" }}</p>
-                </div>
-                <div>
-                    <p class="text-sm font-semibold text-gray-500">Data</p>
-                    <p class="text-lg text-gray-800">{{ recebimento.data_recebimento|date:"d/m/Y H:i" }}</p>
-                </div>
-                <div>
-                    <p class="text-sm font-semibold text-gray-500">Setor de Destino</p>
-                    <p class="text-lg text-gray-800">{{ recebimento.setor.nome }}</p>
-                </div>
-                <div class="mt-4">
-                    <p class="text-sm font-semibold text-gray-500">Observações</p>
-                    <p class="text-lg text-gray-800 break-words">{{ recebimento.observacoes|default:"Nenhuma." }}</p>
-                </div>
+                <div><p class="text-sm font-semibold text-gray-500">Número da Nota Fiscal</p><p class="text-lg text-gray-900 font-medium">{{ recebimento.numero_nota_fiscal|default:"Não informado" }}</p></div>
+                <div><p class="text-sm font-semibold text-gray-500">Fornecedor</p><p class="text-lg text-gray-900 font-medium">{{ recebimento.fornecedor.nome|default:"Não informado" }}</p></div>
+                <div><p class="text-sm font-semibold text-gray-500">Setor de Destino</p><p class="text-lg text-gray-900 font-medium">{{ recebimento.setor.nome }}</p></div>
+                <div><p class="text-sm font-semibold text-gray-500">Status</p><p class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold {{ recebimento.get_status_display|lower|slugify|default:'bg-gray-100 text-gray-800' }}"> {{ recebimento.get_status_display }}</p></div>
+                <div class="mt-4"><p class="text-sm font-semibold text-gray-500">Observações</p><p class="text-lg text-gray-800 break-words">{{ recebimento.observacoes|default:"Nenhuma." }}</p></div>
             </div>
             <div class="space-y-6">
                 {% if recebimento.foto_documento %}
                 <div>
                     <p class="text-sm font-semibold text-gray-500 mb-2">Foto do Documento</p>
-                    <a href="{{ recebimento.foto_documento.url }}" target="_blank">
-                        <img src="{{ recebimento.foto_documento.url }}" alt="Foto do Documento" class="rounded-lg shadow-sm w-full h-auto object-cover">
-                    </a>
+                    <a href="{{ recebimento.foto_documento.url }}" target="_blank"><img src="{{ recebimento.foto_documento.url }}" alt="Foto do Documento" class="rounded-lg shadow-sm w-full h-auto object-cover"></a>
                 </div>
                 {% endif %}
                 {% if recebimento.foto_embalagem %}
                 <div>
                     <p class="text-sm font-semibold text-gray-500 mb-2">Foto da Embalagem</p>
-                    <a href="{{ recebimento.foto_embalagem.url }}" target="_blank">
-                        <img src="{{ recebimento.foto_embalagem.url }}" alt="Foto da Embalagem" class="rounded-lg shadow-sm w-full h-auto object-cover">
-                    </a>
+                    <a href="{{ recebimento.foto_embalagem.url }}" target="_blank"><img src="{{ recebimento.foto_embalagem.url }}" alt="Foto da Embalagem" class="rounded-lg shadow-sm w-full h-auto object-cover"></a>
                 </div>
                 {% endif %}
             </div>
+        </div>
+    </div>
+
+    <div x-show="showExcluirModal" style="display: none;" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div @click.away="showExcluirModal = false" class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md text-center">
+            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+            </div>
+            <h2 class="text-2xl font-bold mt-4">Confirmar Exclusão</h2>
+            <p class="mb-6 mt-2 text-gray-600">Você tem certeza que deseja excluir o registro da nota fiscal <strong class="text-red-700 font-semibold">{{ recebimento.numero_nota_fiscal }}</strong>? Esta ação é irreversível.</p>
+
+            <form action="{% url 'excluir_recebimento' recebimento.pk %}" method="post">
+                {% csrf_token %}
+                <div class="flex justify-center space-x-4">
+                    <button type="button" @click="showExcluirModal = false" class="bg-gray-200 text-gray-800 py-2 px-6 rounded-lg hover:bg-gray-300 font-semibold">Cancelar</button>
+                    <button type="submit" class="bg-red-600 text-white py-2 px-6 rounded-lg hover:bg-red-700 font-semibold">Sim, Excluir</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

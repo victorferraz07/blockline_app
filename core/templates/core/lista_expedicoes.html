@@ -1,0 +1,58 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="container mx-auto">
+
+    <div class="flex flex-col md:flex-row justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">Histórico de Expedições</h1>
+            <p class="text-gray-600">Consulte todas as saídas de produtos registrados.</p>
+        </div>
+        <div>
+            <a href="{% url 'registrar_expedicao' %}" class="bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap font-semibold">
+                + Registrar Nova Expedição
+            </a>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <table class="w-full">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="p-3 text-left text-sm font-semibold text-gray-600">ID</th>
+                    <th class="p-3 text-left text-sm font-semibold text-gray-600">Data</th>
+                    <th class="p-3 text-left text-sm font-semibold text-gray-600">Cliente / Destino</th>
+                    <th class="p-3 text-left text-sm font-semibold text-gray-600">Itens Enviados</th>
+                    <th class="p-3 text-left text-sm font-semibold text-gray-600">Responsável</th>
+                    <th class="p-3 text-left text-sm font-semibold text-gray-600">Ação</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for expedicao in expedicoes %}
+                    <tr class="border-b border-gray-200 hover:bg-gray-50">
+                        <td class="p-3 text-sm font-bold text-gray-600">#{{ expedicao.pk }}</td>
+                        <td class="p-3 text-sm text-gray-700">{{ expedicao.data_expedicao|date:"d/m/Y H:i" }}</td>
+                        <td class="p-3 text-gray-800 font-semibold">{{ expedicao.cliente }}</td>
+                        <td class="p-3 text-sm text-gray-700">
+                            <ul class="list-disc list-inside">
+                                {% for item in expedicao.itens.all %}
+                                    <li>{{ item.quantidade }}x {{ item.produto.nome }}</li>
+                                {% endfor %}
+                            </ul>
+                        </td>
+                        <td class="p-3 text-sm text-gray-700">{{ expedicao.usuario.username|default:"-" }}</td>
+                        <td class="p-3">
+                            <a href="{% url 'detalhe_expedicao' expedicao.pk %}" class="text-indigo-600 hover:underline">Ver Detalhes</a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" class="p-8 text-center text-gray-500">Nenhuma expedição registrada ainda.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+{% endblock %}

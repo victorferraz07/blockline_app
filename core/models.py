@@ -33,6 +33,7 @@ class ItemEstoque(models.Model):
     is_produto_fabricado = models.BooleanField(default=False)
     data_criacao = models.DateTimeField(auto_now_add=True, verbose_name="Data de Criação")
     data_atualizacao = models.DateTimeField(auto_now=True, verbose_name="Última Atualização")
+
     def __str__(self): return f"{self.nome} ({self.quantidade} em estoque)"
 
 class Recebimento(models.Model):
@@ -42,10 +43,8 @@ class Recebimento(models.Model):
     foto_embalagem = models.ImageField(upload_to='fotos_embalagens/', blank=True, null=True, verbose_name="Foto da Embalagem")
     data_recebimento = models.DateTimeField(auto_now_add=True, verbose_name="Data do Recebimento")
     numero_nota_fiscal = models.CharField(max_length=100, verbose_name="Número da Nota Fiscal", blank=True, null=True)
-    # O CAMPO CORRETO QUE ESTAVA FALTANDO
     fornecedor = models.ForeignKey(Fornecedor, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Fornecedor")
     valor_total = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="Valor Total da Nota")
-    data_cotacao = models.DateField(null=True, blank=True, verbose_name="Data da Cotação")
     observacoes = models.TextField(blank=True, null=True, verbose_name="Observações Gerais")
     STATUS_CHOICES = [('aguardando', 'Aguardando'), ('entregue', 'Entregue'),]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='aguardando')
@@ -58,9 +57,7 @@ class ImagemItemEstoque(models.Model):
     def __str__(self): return f"Imagem de {self.item.nome}"
 
 class ProdutoFabricado(models.Model):
-    # OneToOneField cria um link único e direto para o ItemEstoque correspondente.
-    # Este é o elo que une a "receita" ao "item de estoque".
-    item_associado = models.OneToOneField(ItemEstoque, on_delete=models.CASCADE, related_name='receita')
+    item_associado = models.OneToOneField(ItemEstoque, on_delete=models.CASCADE, related_name='receita', null=True, blank=True)
     nome = models.CharField(max_length=200, unique=True, verbose_name="Nome do Produto")
     descricao = models.TextField(blank=True, null=True, verbose_name="Descrição do Produto")
     foto_principal = models.ImageField(upload_to='fotos_produtos/', blank=True, null=True, verbose_name="Foto Principal")
@@ -84,6 +81,7 @@ class Componente(models.Model):
     produto = models.ForeignKey(ProdutoFabricado, on_delete=models.CASCADE)
     item_estoque = models.ForeignKey(ItemEstoque, on_delete=models.PROTECT, verbose_name="Componente")
     quantidade_necessaria = models.PositiveIntegerField(verbose_name="Quantidade Necessária")
+    
     def __str__(self): return f"{self.quantidade_necessaria}x {self.item_estoque.nome} para {self.produto.nome}"
 
 
@@ -97,5 +95,41 @@ class SaidaProduto(models.Model):
     data_saida = models.DateTimeField(auto_now_add=True, verbose_name="Data da Saída")
     def __str__(self): return f"Saída de {self.quantidade}x {self.produto.nome} para {self.cliente}"
 
+class Expedicao(models.Model):
+    cliente = models.CharField(max_length=200, verbose_name="Cliente/Destino")
+    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Responsável pela Expedição")
+    data_expedicao = models.DateTimeField(auto_now_add=True, verbose_name="Data da Expedição")
+    nota_fiscal = models.CharField(max_length=100, blank=True, null=True, verbose_name="Número da Nota Fiscal")
+    observacoes = models.TextField(blank=True, null=True, verbose_name="Observações")
 
+    def __str__(self):
+        return f"Expedição #{self.pk} para {self.cliente}"
 
+class ItemExpedido(models.Model):
+    expedicao = models.ForeignKey(Expedicao, on_delete=models.CASCADE, related_name='itens')
+    produto = models.ForeignKey(ProdutoFabricado, on_delete=models.PROTECT)
+    quantidade = models.PositiveIntegerField()
+
+    def __str__(self):
+        return f"{self.quantidade}x {self.produto.nome} na Expedição #{self.expedicao.pk}"
+
+class DocumentoExpedicao(models.Model):
+    expedicao = models.ForeignKey(Expedicao, on_delete=models.CASCADE, related_name='documentos')
+    documento = models.FileField(upload_to='documentos_expedicao/')
+    TIPO_DOCUMENTO_CHOICES = [
+        ('nota_fiscal', 'Nota Fiscal'),
+        ('comprovante', 'Comprovante de Entrega'),
+        ('ordem_envio', 'Ordem de Envio'),
+        ('outro', 'Outro'),
+    ]
+    tipo = models.CharField(max_length=20, choices=TIPO_DOCUMENTO_CHOICES, default='outro')
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} para a Expedição #{self.expedicao.pk}"
+
+class ImagemExpedicao(models.Model):
+    expedicao = models.ForeignKey(Expedicao, on_delete=models.CASCADE, related_name='imagens')
+    imagem = models.ImageField(upload_to='imagens_expedicao/')
+
+    def __str__(self):
+        return f"Imagem para a Expedição #{self.expedicao.pk}"

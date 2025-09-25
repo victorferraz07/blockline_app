@@ -1,0 +1,109 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div x-data="{ 
+    itemCount: {{ item_formset.total_form_count|default:1 }}, 
+    docCount: {{ documento_formset.total_form_count|default:1 }},
+    imgCount: {{ imagem_formset.total_form_count|default:1 }} 
+}" class="container mx-auto">
+    <div class="bg-white p-8 rounded-lg shadow-md max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">{{ titulo }}</h1>
+        
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <div class="space-y-4 border-b pb-8 mb-8">
+                <h2 class="text-xl font-semibold text-gray-700">Detalhes da Expedição</h2>
+                <div>{{ form.cliente.label_tag }}{{ form.cliente }}</div>
+                <div>{{ form.nota_fiscal.label_tag }}{{ form.nota_fiscal }}</div>
+                <div>{{ form.observacoes.label_tag }}{{ form.observacoes }}</div>
+            </div>
+
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Itens da Expedição</h2>
+            {{ item_formset.management_form }}
+            <div class="grid grid-cols-[1fr,auto,auto] gap-x-4 mb-2 px-2 text-sm font-medium text-gray-500">
+                <span>Produto</span><span>Quantidade</span><span class="text-center">Remover</span>
+            </div>
+            <div id="item-formset" class="space-y-2">
+                {% for item_form in item_formset %}
+                <div class="grid grid-cols-[1fr,120px,80px] items-start gap-4 p-2 border rounded">
+                    <div>{{ item_form.produto }}</div><div>{{ item_form.quantidade }}</div><div class="text-center pt-2">{% if item_form.instance.pk %}{{ item_form.DELETE }}{% endif %}</div>
+                </div>
+                {% endfor %}
+            </div>
+            <button type="button" @click="
+                let itemTemplate = document.getElementById('empty-item-form-template').innerHTML;
+                let newItemForm = itemTemplate.replace(/__prefix__/g, itemCount);
+                document.getElementById('item-formset').insertAdjacentHTML('beforeend', newItemForm);
+                document.getElementById('id_itens-TOTAL_FORMS').value = itemCount + 1;
+                itemCount++;
+            " class="mt-2 text-sm text-indigo-600 font-semibold hover:text-indigo-800">+ Adicionar Outro Item</button>
+            <template id="empty-item-form-template">
+                <div class="grid grid-cols-[1fr,120px,80px] items-start gap-4 p-2 border rounded mt-2">
+                    <div>{{ item_formset.empty_form.produto }}</div><div>{{ item_formset.empty_form.quantidade }}</div>
+                </div>
+            </template>
+
+            <hr class="my-8">
+
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Galeria de Fotos</h2>
+            {{ imagem_formset.management_form }}
+            <div class="grid grid-cols-[80px,1fr,auto] gap-x-4 mb-2 px-2 text-sm font-medium text-gray-500">
+                <span class="text-center">Foto Atual</span>
+                <span>Substituir Arquivo</span>
+                <span class="text-center">Remover</span>
+            </div>
+            <div id="image-formset" class="space-y-4">
+                {% for img_form in imagem_formset %}
+                <div class="grid grid-cols-[80px,1fr,80px] items-center gap-x-4 p-2 border rounded-md bg-gray-50">
+                    {{ img_form.id }}
+                    <div class="h-16 w-16 bg-gray-200 rounded flex items-center justify-center">
+                        {% if img_form.instance.pk and img_form.instance.imagem %}
+                            <img src="{{ img_form.instance.imagem.url }}" class="h-full w-full object-cover rounded">
+                        {% endif %}
+                    </div>
+                    <div class="flex-grow">{{ img_form.imagem }}</div>
+                    <div class="text-center">{% if img_form.instance.pk %}<label for="{{ img_form.DELETE.id_for_label }}" class="flex items-center justify-center cursor-pointer">{{ img_form.DELETE }}</label>{% endif %}</div>
+                </div>
+                {% endfor %}
+            </div>
+            <button type="button" @click="
+                let imgTemplate = document.getElementById('empty-image-form-template').innerHTML;
+                let newImgForm = imgTemplate.replace(/__prefix__/g, imgCount);
+                document.getElementById('image-formset').insertAdjacentHTML('beforeend', newImgForm);
+                document.getElementById('id_imagens-TOTAL_FORMS').value = imgCount + 1;
+                imgCount++;
+            " class="mt-4 text-sm text-indigo-600 font-semibold hover:text-indigo-800">+ Adicionar outra foto</button>
+            <template id="empty-image-form-template">
+                <div class="grid grid-cols-[80px,1fr,80px] items-center gap-x-4 p-2 border rounded-md bg-gray-50 mt-2">
+                    <div class="h-16 w-16"></div>
+                    <div class="flex-grow">{{ imagem_formset.empty_form.imagem }}</div>
+                </div>
+            </template>
+
+            <hr class="my-8">
+
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Documentos da Expedição</h2>
+            {{ documento_formset.management_form }}
+            <div class="grid grid-cols-[1fr,1fr,auto] gap-x-4 mb-2 px-2 text-sm font-medium text-gray-500">
+                <span>Arquivo</span><span>Tipo</span><span class="text-center">Remover</span>
+            </div>
+            <div id="document-formset" class="space-y-2">
+                {% for doc_form in documento_formset %}
+                <div class="grid grid-cols-[1fr,1fr,80px] items-center gap-4 p-2 border rounded">
+                    <div>{{ doc_form.documento }}</div>
+                    <div>{{ doc_form.tipo }}</div>
+                    <div class="text-center">{% if doc_form.instance.pk %}{{ doc_form.DELETE }}{% endif %}</div>
+                </div>
+                {% endfor %}
+            </div>
+            <button type="button" @click="..." class="mt-2 text-sm text-indigo-600 font-semibold hover:text-indigo-800">+ Adicionar Outro Documento</button>
+            <template id="empty-document-form-template">...</template>
+
+            <div class="flex justify-end mt-8 border-t pt-6">
+                <a href="{% url 'detalhe_expedicao' expedicao.pk %}" class="bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 mr-4 font-semibold">Cancelar</a>
+                <button type="submit" class="bg-indigo-600 text-white py-2 px-6 rounded-lg hover:bg-indigo-700 font-semibold">Salvar Alterações</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -6,10 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
-
     <title>Blockline - Gestão Empresarial</title>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -23,7 +21,7 @@
             <a href="{% url 'lista_recebimentos' %}" class="text-gray-600 hover:text-indigo-600">Recebimento</a>
             <a href="{% url 'lista_estoque' %}" class="text-gray-600 hover:text-indigo-600">Estoque</a>
             <a href="{% url 'lista_produtos' %}" class="text-gray-600 hover:text-indigo-600">Produtos</a>
-            <a href="#" class="text-gray-600 hover:text-indigo-600">Expedição</a>
+            <a href="{% url 'lista_expedicoes' %}" class="text-gray-600 hover:text-indigo-600">Expedição</a>
         </nav>
         <div class="perfil">
             <a href="#" class="text-gray-600">{{ user.username|default:'Usuário' }}</a>

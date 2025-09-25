@@ -1,82 +1,104 @@
 {% extends 'core/base.html' %}
 {% block content %}
-<div class="container mx-auto">
-    <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-8 gap-4">
-        <div>
-            <h1 class="text-3xl font-bold text-gray-800">{{ produto.nome }}</h1>
-            <p class="text-gray-600 mt-1">{{ produto.descricao|default:"Sem descrição." }}</p>
+<div x-data="{ showExcluirModal: false }" class="container mx-auto">
+    
+    <div class="bg-white p-8 rounded-lg shadow-md max-w-7xl mx-auto">
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-8 gap-4 border-b pb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">{{ produto.nome }}</h1>
+                <p class="text-gray-600 mt-1">{{ produto.descricao|default:"Sem descrição." }}</p>
+            </div>
+            <div class="flex-shrink-0 flex items-center">
+                <a href="{% url 'editar_produto' produto.pk %}" class="bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors font-semibold">Editar Receita</a>
+                <a href="{% url 'lista_produtos' %}" class="text-indigo-600 hover:underline ml-4">Voltar para a Lista</a>
+            </div>
         </div>
-        <div class="flex-shrink-0">
-            <a href="{% url 'editar_produto' produto.pk %}" class="bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors font-semibold">Editar Receita</a>
-            <a href="{% url 'lista_produtos' %}" class="text-indigo-600 hover:underline ml-4">Voltar</a>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <div class="lg:col-span-1 space-y-6">
+                <div class="bg-white rounded-lg border p-4">
+                    <h3 class="font-semibold text-gray-700 mb-2">Foto Principal</h3>
+                    {% if produto.foto_principal %}
+                        <img src="{{ produto.foto_principal.url }}" alt="{{ produto.nome }}" class="w-full rounded-md object-cover aspect-square">
+                    {% else %}
+                        <div class="w-full aspect-square bg-gray-200 flex items-center justify-center rounded-md"><p class="text-gray-500">Sem foto</p></div>
+                    {% endif %}
+                </div>
+                <div class="bg-white rounded-lg border p-4">
+                    <h3 class="font-semibold text-gray-700 mb-4">Galeria</h3>
+                    <div class="grid grid-cols-3 gap-2">
+                        {% for imagem in produto.imagens.all %}
+                            <a href="{{ imagem.imagem.url }}" target="_blank"><img src="{{ imagem.imagem.url }}" alt="Imagem da galeria" class="aspect-square w-full rounded object-cover hover:opacity-80"></a>
+                        {% empty %}
+                            <p class="col-span-3 text-sm text-gray-500">Nenhuma imagem na galeria.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2 space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-lg shadow-inner p-6 text-center h-full flex flex-col justify-center border">
+                        <p class="text-gray-500 text-sm">Produtos Prontos em Estoque</p>
+                        <p class="text-6xl font-black text-gray-900">{{ produto.item_associado.quantidade }}</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-inner p-6 border h-full">
+                        <h3 class="font-semibold text-lg text-gray-800 mb-4">Simulador de Produção</h3>
+                        <form method="GET" class="flex flex-col h-full">
+                            <div class="flex-grow">
+                                {{ producao_form.quantidade_a_produzir.label_tag }}
+                                {{ producao_form.quantidade_a_produzir }}
+                            </div>
+                            <button type="submit" class="mt-auto w-full bg-indigo-600 text-white py-2 px-6 rounded-lg hover:bg-indigo-700 font-semibold">Simular</button>
+                        </form>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-md overflow-hidden border">
+                    <div class="p-4 border-b"><h3 class="font-semibold text-gray-700">Receita para produzir {{ qtd_a_produzir|default:1 }} unidade(s)</h3></div>
+                    <table class="w-full">
+                        <thead class="bg-gray-50"><tr><th class="p-3 text-left ...">Componente</th><th class="p-3 text-center ...">Qtd. Necessária</th><th class="p-3 text-center ...">Qtd. em Estoque</th></tr></thead>
+                        <tbody>
+                            {% for componente in componentes %}
+                            <tr class="border-b"><td class="p-3">{{ componente.item_estoque.nome }}</td><td class="p-3 text-center font-bold">{{ componente.total_necessario }}</td><td class="p-3 text-center font-bold {% if componente.estoque_suficiente %} text-green-600 {% else %} text-red-500 {% endif %}">{{ componente.item_estoque.quantidade }}{% if not componente.estoque_suficiente %}<span class="block text-xs font-normal text-red-500">(Insuficiente)</span>{% endif %}</td></tr>
+                            {% empty %}<tr><td colspan="3" class="p-4 text-center text-gray-500">Nenhum componente na receita.</td></tr>{% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-md p-6 border">
+                    <h3 class="font-semibold text-lg text-gray-700 mb-4">Documentos Técnicos</h3>
+                    <ul class="space-y-2">
+                        {% for doc in produto.documentos.all %}
+                            <li class="p-2 hover:bg-gray-50 rounded-md"><a href="{{ doc.documento.url }}" target="_blank" class="text-indigo-600 hover:underline font-medium">{{ doc.get_tipo_display }}</a></li>
+                        {% empty %}
+                            <p class="text-sm text-gray-500">Nenhum documento anexado.</p>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="border-t mt-8 pt-6 flex justify-end">
+            <button @click="showExcluirModal = true" class="text-sm font-semibold text-red-600 hover:text-red-800 hover:underline transition-colors">
+                Excluir Produto 
+            </button>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        <div class="lg:col-span-1 space-y-6">
-            <div class="bg-white rounded-lg shadow-md p-4">
-                <h3 class="font-semibold text-gray-700 mb-2">Foto Principal</h3>
-                {% if produto.foto_principal %}
-                    <img src="{{ produto.foto_principal.url }}" alt="{{ produto.nome }}" class="w-full rounded-md object-cover aspect-square">
-                {% else %}
-                    <div class="w-full aspect-square bg-gray-200 flex items-center justify-center rounded-md"><p class="text-gray-500">Sem foto</p></div>
-                {% endif %}
+    <div x-show="showExcluirModal" style="display: none;" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div @click.away="showExcluirModal = false" class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md text-center">
+            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100"><svg class="h-6 w-6 text-red-600" ...><path ... /></svg></div>
+            <h2 class="text-2xl font-bold mt-4">Confirmar Exclusão de Produto</h2>
+            <p class="mb-6 mt-2 text-gray-600">...tem certeza...?</p>
+            <form action="{% url 'excluir_produto' produto.pk %}" method="post">
+            {% csrf_token %}
+            <div class="flex justify-center space-x-4">
+                <button type="button" @click="showExcluirModal = false" class="bg-gray-200 text-gray-800 py-2 px-6 rounded-lg hover:bg-gray-300 font-semibold">Cancelar</button>
+                <button type="submit" class="bg-red-600 text-white py-2 px-6 rounded-lg hover:bg-red-700 font-semibold">Sim, Excluir</button>
             </div>
-            <div class="bg-white rounded-lg shadow-md p-4">
-                <h3 class="font-semibold text-gray-700 mb-4">Galeria</h3>
-                <div class="grid grid-cols-3 gap-2">
-                    {% for imagem in produto.imagens.all %}
-                        <a href="{{ imagem.imagem.url }}" target="_blank"><img src="{{ imagem.imagem.url }}" alt="Imagem da galeria" class="aspect-square w-full rounded object-cover hover:opacity-80"></a>
-                    {% empty %}
-                        <p class="col-span-3 text-sm text-gray-500">Nenhuma imagem na galeria.</p>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-
-        <div class="lg:col-span-2 space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="bg-white rounded-lg shadow-md p-6 text-center h-full flex flex-col justify-center">
-                    <p class="text-gray-500 text-sm">Produtos Prontos em Estoque</p>
-                    <p class="text-6xl font-black text-gray-900">{{ produto.item_associado.quantidade }}</p>
-                </div>
-                <div class="bg-white rounded-lg shadow-md p-6 border border-indigo-200 h-full">
-                    <h3 class="font-semibold text-lg text-gray-800 mb-4">Simulador de Produção</h3>
-                    <form method="GET" class="flex flex-col h-full">
-                        <div class="flex-grow">
-                            <label for="id_qtd_a_produzir" class="block text-sm font-medium text-gray-700">Quantidade a Produzir</label>
-                            <input id="id_qtd_a_produzir" type="number" name="qtd_a_produzir" value="{{ qtd_a_produzir|default:1 }}" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm ...">
-                        </div>
-                        <button type="submit" class="mt-auto w-full bg-indigo-600 text-white py-2 px-6 rounded-lg hover:bg-indigo-700 font-semibold">
-                            Simular
-                        </button>
-                    </form>
-                </div>
-            </div>
-            
-            <div class="bg-white rounded-lg shadow-md overflow-hidden">
-                <div class="p-4 border-b"><h3 class="font-semibold text-gray-700">Receita para produzir {{ qtd_a_produzir|default:1 }} unidade(s)</h3></div>
-                <table class="w-full">
-                    <thead class="bg-gray-50"><tr><th class="p-3 text-left ...">Componente</th><th class="p-3 text-center ...">Qtd. Necessária</th><th class="p-3 text-center ...">Qtd. em Estoque</th></tr></thead>
-                    <tbody>
-                        {% for componente in componentes %}
-                        <tr class="border-b"><td class="p-3">{{ componente.item_estoque.nome }}</td><td class="p-3 text-center font-bold">{{ componente.total_necessario }}</td><td class="p-3 text-center font-bold {% if componente.estoque_suficiente %} text-green-600 {% else %} text-red-500 {% endif %}">{{ componente.item_estoque.quantidade }}{% if not componente.estoque_suficiente %}<span class="block text-xs font-normal text-red-500">(Insuficiente)</span>{% endif %}</td></tr>
-                        {% empty %}<tr><td colspan="3" class="p-4 text-center text-gray-500">Nenhum componente na receita.</td></tr>{% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h3 class="font-semibold text-lg text-gray-700 mb-4">Documentos Técnicos</h3>
-                <ul class="space-y-2">
-                    {% for doc in produto.documentos.all %}
-                        <li class="p-2 hover:bg-gray-50 rounded-md"><a href="{{ doc.documento.url }}" target="_blank" class="text-indigo-600 hover:underline font-medium">{{ doc.get_tipo_display }}</a></li>
-                    {% empty %}
-                        <p class="text-sm text-gray-500">Nenhum documento anexado.</p>
-                    {% endfor %}
-                </ul>
-            </div>
+        </form>
         </div>
     </div>
 </div>

@@ -6,25 +6,28 @@ from django.forms import modelformset_factory, inlineformset_factory
 from .models import (
     ItemEstoque, ProdutoFabricado, Recebimento, SaidaProduto, 
     DocumentoProdutoFabricado, Componente, Setor, Fornecedor,
-    ImagemProdutoFabricado, ImagemItemEstoque, ItemFornecedor
+    ImagemProdutoFabricado, ImagemItemEstoque, ItemFornecedor, Expedicao, ItemExpedido, DocumentoExpedicao, ImagemExpedicao 
 )
 from .forms import (
     ItemEstoqueForm, RetiradaItemForm, AdicaoItemForm, RecebimentoForm, 
     ProdutoFabricadoForm, DocumentoProdutoForm, ComponenteForm, ProducaoForm,
-    ImagemProdutoForm, ItemFornecedorForm
+    ImagemProdutoForm, ItemFornecedorForm, ExpedicaoForm, ItemExpedidoForm, DocumentoExpedicaoForm, ImagemExpedicaoForm
 )
 
 
+# core/views.py
 def dashboard(request):
     total_itens_estoque = ItemEstoque.objects.count()
     total_produtos_fabricados = ProdutoFabricado.objects.count()
+    
     ultimos_recebimentos = Recebimento.objects.order_by('-data_recebimento')[:5]
-    ultimas_saidas = SaidaProduto.objects.order_by('-data_saida')[:5]
+    ultimas_expedicoes = Expedicao.objects.order_by('-data_expedicao')[:5]
+
     contexto = {
         'total_itens_estoque': total_itens_estoque,
         'total_produtos_fabricados': total_produtos_fabricados,
         'ultimos_recebimentos': ultimos_recebimentos,
-        'ultimas_saidas': ultimas_saidas,
+        'ultimas_expedicoes': ultimas_expedicoes,
     }
     return render(request, 'core/dashboard.html', contexto)
 
@@ -140,7 +143,20 @@ def lista_recebimentos(request):
 
 def registrar_recebimento(request):
     if request.method == 'POST':
-        form = RecebimentoForm(request.POST, request.FILES)
+        # Criamos uma cópia mutável dos dados do POST
+        post_data = request.POST.copy()
+        fornecedor_val = post_data.get('fornecedor')
+
+        # Se o valor do fornecedor não for um número (ID), é um nome novo
+        if fornecedor_val and not fornecedor_val.isnumeric():
+            # Usamos get_or_create para buscar ou criar o fornecedor
+            novo_fornecedor, created = Fornecedor.objects.get_or_create(nome=fornecedor_val)
+            # Substituímos o texto pelo ID do novo fornecedor nos dados
+            post_data['fornecedor'] = novo_fornecedor.pk
+
+        # Agora, inicializamos o formulário com os dados modificados
+        form = RecebimentoForm(post_data, request.FILES)
+
         if form.is_valid():
             recebimento = form.save(commit=False)
             recebimento.usuario = request.user
@@ -149,8 +165,13 @@ def registrar_recebimento(request):
             return redirect('lista_recebimentos')
     else:
         form = RecebimentoForm()
+
     ultimos_recebimentos = Recebimento.objects.order_by('-data_recebimento')[:5]
-    contexto = {'form': form, 'titulo': 'Registrar Novo Recebimento', 'ultimos_recebimentos': ultimos_recebimentos}
+    contexto = {
+        'form': form,
+        'titulo': 'Registrar Novo Recebimento',
+        'ultimos_recebimentos': ultimos_recebimentos,
+    }
     return render(request, 'core/registrar_recebimento.html', contexto)
 
 def detalhe_recebimento(request, pk):
@@ -161,14 +182,25 @@ def detalhe_recebimento(request, pk):
 def editar_recebimento(request, pk):
     recebimento = get_object_or_404(Recebimento, pk=pk)
     if request.method == 'POST':
-        form = RecebimentoForm(request.POST, request.FILES, instance=recebimento)
+        post_data = request.POST.copy()
+        fornecedor_val = post_data.get('fornecedor')
+        if fornecedor_val and not fornecedor_val.isnumeric():
+            novo_fornecedor, created = Fornecedor.objects.get_or_create(nome=fornecedor_val)
+            post_data['fornecedor'] = novo_fornecedor.pk
+        form = RecebimentoForm(post_data, request.FILES, instance=recebimento)
         if form.is_valid():
             form.save()
             messages.success(request, 'Recebimento atualizado com sucesso!')
             return redirect('lista_recebimentos')
     else:
         form = RecebimentoForm(instance=recebimento)
-    contexto = {'form': form, 'titulo': f'Editar Recebimento (NF: {recebimento.numero_nota_fiscal})', 'is_editing': True}
+        
+    contexto = {
+        'form': form,
+        'titulo': f'Editar Recebimento (NF: {recebimento.numero_nota_fiscal})',
+        'is_editing': True,
+        'recebimento': recebimento # Garante que o objeto está disponível
+    }
     return render(request, 'core/registrar_recebimento.html', contexto)
 
 # --- Views de Produtos Fabricados ---
@@ -309,3 +341,152 @@ def finalizar_producao(request, pk):
             messages.success(request, f'{qtd_a_produzir} unidade(s) de "{produto.nome}" foram produzidas e adicionadas ao estoque!')
             return redirect('detalhe_produto', pk=pk)
     return redirect('detalhe_produto', pk=pk)
+
+# --- Views da Expedição ---
+
+def lista_expedicoes(request):
+    expedicoes = Expedicao.objects.all().order_by('-data_expedicao')
+    return render(request, 'core/lista_expedicoes.html', {'expedicoes': expedicoes})
+
+def detalhe_expedicao(request, pk):
+    expedicao = get_object_or_404(Expedicao, pk=pk)
+    return render(request, 'core/detalhe_expedicao.html', {'expedicao': expedicao})
+
+@transaction.atomic
+def registrar_expedicao(request):
+    ItemExpedidoFormSet = inlineformset_factory(Expedicao, ItemExpedido, form=ItemExpedidoForm, extra=1, can_delete=False)
+    DocumentoExpedicaoFormSet = inlineformset_factory(Expedicao, DocumentoExpedicao, form=DocumentoExpedicaoForm, extra=1, can_delete=False)
+    ImagemExpedicaoFormSet = inlineformset_factory(Expedicao, ImagemExpedicao, form=ImagemExpedicaoForm, extra=1, can_delete=False)
+
+    if request.method == 'POST':
+        form = ExpedicaoForm(request.POST)
+        item_formset = ItemExpedidoFormSet(request.POST, prefix='itens')
+        documento_formset = DocumentoExpedicaoFormSet(request.POST, request.FILES, prefix='documentos')
+        imagem_formset = ImagemExpedicaoFormSet(request.POST, request.FILES, prefix='imagens')
+
+        if form.is_valid() and item_formset.is_valid() and documento_formset.is_valid() and imagem_formset.is_valid():
+            
+            # --- Verificação de Estoque ---
+            pode_prosseguir = True
+            for form_item in item_formset:
+                if form_item.cleaned_data and form_item.cleaned_data.get('produto'):
+                    produto = form_item.cleaned_data['produto']
+                    quantidade = form_item.cleaned_data['quantidade']
+                    if quantidade > produto.item_associado.quantidade:
+                        messages.error(request, f"Estoque insuficiente para {produto.nome}. Disponível: {produto.item_associado.quantidade}")
+                        pode_prosseguir = False
+            
+            if not pode_prosseguir:
+                return redirect('registrar_expedicao')
+            
+            # --- Se tudo estiver OK, salva e dá baixa no estoque ---
+            expedicao = form.save(commit=False)
+            expedicao.usuario = request.user
+            expedicao.save()
+
+            item_formset.instance = expedicao
+            item_formset.save()
+
+            documento_formset.instance = expedicao
+            documento_formset.save()
+            
+            imagem_formset.instance = expedicao
+            imagem_formset.save()
+            
+            # Baixa no estoque
+            for form_item in item_formset:
+                if form_item.cleaned_data and form_item.cleaned_data.get('produto'):
+                    produto = form_item.cleaned_data['produto']
+                    quantidade = form_item.cleaned_data['quantidade']
+                    produto.item_associado.quantidade -= quantidade
+                    produto.item_associado.save()
+
+            # AGORA a variável 'expedicao' existe com certeza
+            messages.success(request, f"Expedicao #{expedicao.pk} registrada com sucesso!")
+            return redirect('lista_expedicoes')
+    else:
+        # Lógica para quando os formulários são inválidos
+        # (podemos adicionar mensagens de erro aqui no futuro)
+        pass # Apenas renderiza o template novamente com os erros do formulário
+
+    form = ExpedicaoForm()
+    item_formset = ItemExpedidoFormSet(prefix='itens')
+    documento_formset = DocumentoExpedicaoFormSet(prefix='documentos')
+    imagem_formset = ImagemExpedicaoFormSet(prefix='imagens')
+
+    contexto = {
+        'form': form,
+        'item_formset': item_formset,
+        'documento_formset': documento_formset,
+        'imagem_formset': imagem_formset,
+    }
+    return render(request, 'core/registrar_expedicao.html', contexto)
+
+def editar_expedicao(request, pk):
+    expedicao = get_object_or_404(Expedicao, pk=pk)
+    
+    ItemExpedidoFormSet = inlineformset_factory(Expedicao, ItemExpedido, form=ItemExpedidoForm, extra=1, can_delete=True)
+    DocumentoExpedicaoFormSet = inlineformset_factory(Expedicao, DocumentoExpedicao, form=DocumentoExpedicaoForm, extra=1, can_delete=True)
+    ImagemExpedicaoFormSet = inlineformset_factory(Expedicao, ImagemExpedicao, form=ImagemExpedicaoForm, extra=1, can_delete=True)
+
+    if request.method == 'POST':
+        form = ExpedicaoForm(request.POST, instance=expedicao)
+        item_formset = ItemExpedidoFormSet(request.POST, instance=expedicao, prefix='itens')
+        documento_formset = DocumentoExpedicaoFormSet(request.POST, request.FILES, instance=expedicao, prefix='documentos')
+        imagem_formset = ImagemExpedicaoFormSet(request.POST, request.FILES, instance=expedicao, prefix='imagens')
+
+        if form.is_valid() and item_formset.is_valid() and documento_formset.is_valid() and imagem_formset.is_valid():
+            form.save()
+            item_formset.save()
+            documento_formset.save()
+            imagem_formset.save()
+            
+            messages.success(request, f"Expedição #{expedicao.pk} atualizada com sucesso!")
+            return redirect('detalhe_expedicao', pk=expedicao.pk)
+    else:
+        form = ExpedicaoForm(instance=expedicao)
+        item_formset = ItemExpedidoFormSet(instance=expedicao, prefix='itens')
+        documento_formset = DocumentoExpedicaoFormSet(instance=expedicao, prefix='documentos')
+        imagem_formset = ImagemExpedicaoFormSet(instance=expedicao, prefix='imagens')
+
+    contexto = {
+        'titulo': f'Editando Expedição #{expedicao.pk}',
+        'expedicao': expedicao,
+        'form': form,
+        'item_formset': item_formset,
+        'documento_formset': documento_formset,
+        'imagem_formset': imagem_formset
+    }
+    return render(request, 'core/editar_expedicao.html', contexto)
+
+def excluir_recebimento(request, pk):
+    recebimento = get_object_or_404(Recebimento, pk=pk)
+    if request.method == 'POST':
+        recebimento.delete()
+        messages.success(request, f"Registro de recebimento #{pk} foi excluído com sucesso.")
+        return redirect('lista_recebimentos')
+    # Se não for POST, apenas redireciona de volta para os detalhes
+    return redirect('detalhe_recebimento', pk=pk)
+
+def excluir_produto(request, pk):
+    produto = get_object_or_404(ProdutoFabricado, pk=pk)
+    if request.method == 'POST':
+        # Antes de deletar o produto, deletamos o item de estoque associado
+        if produto.item_associado:
+            produto.item_associado.delete()
+
+        nome_produto = produto.nome
+        produto.delete()
+        messages.success(request, f'Produto "{nome_produto}" foi excluído com sucesso.')
+        return redirect('lista_produtos')
+
+    return redirect('detalhe_produto', pk=pk)
+
+def excluir_expedicao(request, pk):
+    expedicao = get_object_or_404(Expedicao, pk=pk)
+    if request.method == 'POST':
+        expedicao.delete()
+        messages.success(request, f"Expedição #{pk} foi excluída com sucesso.")
+        return redirect('lista_expedicoes')
+    
+    return redirect('detalhe_expedicao', pk=pk)
