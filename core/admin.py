@@ -1,15 +1,10 @@
 # core/admin.py
 from django.contrib import admin
 from .models import (
-    Setor, 
-    ItemEstoque, 
-    ProdutoFabricado, 
-    Componente, 
-    Recebimento, 
-    SaidaProduto,
-    ImagemItemEstoque,
-    ImagemProdutoFabricado,
-    DocumentoProdutoFabricado
+    ItemEstoque, ProdutoFabricado, Recebimento, 
+    DocumentoProdutoFabricado, Componente, Setor, Fornecedor,
+    ImagemProdutoFabricado, ImagemItemEstoque, ItemFornecedor,
+    Expedicao, ItemExpedido, DocumentoExpedicao, ImagemExpedicao, Empresa, PerfilUsuario
 )
 
 @admin.register(ItemEstoque)
@@ -19,11 +14,18 @@ class ItemEstoqueAdmin(admin.ModelAdmin):
     list_filter = ('data_atualizacao', 'data_criacao')
 
 # Registrando todos os outros
+admin.site.register(Empresa)
+admin.site.register(PerfilUsuario)
 admin.site.register(Setor)
-admin.site.register(ProdutoFabricado)
-admin.site.register(Componente)
+admin.site.register(Fornecedor)
+admin.site.register(ItemFornecedor)
 admin.site.register(Recebimento)
-admin.site.register(SaidaProduto)
 admin.site.register(ImagemItemEstoque)
-admin.site.register(ImagemProdutoFabricado)
+admin.site.register(ProdutoFabricado)
 admin.site.register(DocumentoProdutoFabricado)
+admin.site.register(ImagemProdutoFabricado)
+admin.site.register(Componente)
+admin.site.register(Expedicao)
+admin.site.register(ItemExpedido)
+admin.site.register(DocumentoExpedicao)
+admin.site.register(ImagemExpedicao)

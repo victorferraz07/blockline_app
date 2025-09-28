@@ -3,8 +3,10 @@ from django.contrib import messages
 from django.db import transaction
 from django.db.models import Q
 from django.forms import modelformset_factory, inlineformset_factory
+from django.contrib.auth.decorators import login_required, permission_required
+
 from .models import (
-    ItemEstoque, ProdutoFabricado, Recebimento, SaidaProduto, 
+    ItemEstoque, ProdutoFabricado, Recebimento, 
     DocumentoProdutoFabricado, Componente, Setor, Fornecedor,
     ImagemProdutoFabricado, ImagemItemEstoque, ItemFornecedor, Expedicao, ItemExpedido, DocumentoExpedicao, ImagemExpedicao 
 )
@@ -14,8 +16,19 @@ from .forms import (
     ImagemProdutoForm, ItemFornecedorForm, ExpedicaoForm, ItemExpedidoForm, DocumentoExpedicaoForm, ImagemExpedicaoForm
 )
 
+def get_empresas_do_usuario(user):
+    if user.is_superuser:
+        return Empresa.objects.all()
+    try:
+        # Garante que o perfil exista
+        if hasattr(user, 'perfil'):
+            return user.perfil.empresas_permitidas.filter(acesso_liberado=True)
+    except PerfilUsuario.DoesNotExist:
+        pass
+    return Empresa.objects.none()
 
 # core/views.py
+@login_required
 def dashboard(request):
     total_itens_estoque = ItemEstoque.objects.count()
     total_produtos_fabricados = ProdutoFabricado.objects.count()
@@ -32,7 +45,7 @@ def dashboard(request):
     return render(request, 'core/dashboard.html', contexto)
 
 # --- Views de Estoque ---
-
+@login_required
 def lista_estoque(request):
     query = request.GET.get('q')
     itens = ItemEstoque.objects.all().order_by('nome')
@@ -50,6 +63,7 @@ def lista_estoque(request):
     }
     return render(request, 'core/lista_estoque.html', contexto)
 
+@login_required
 def adicionar_item(request):
     if request.method == 'POST':
         form = ItemEstoqueForm(request.POST, request.FILES)
@@ -62,6 +76,7 @@ def adicionar_item(request):
     contexto = {'form': form, 'titulo': 'Adicionar Novo Item ao Estoque'}
     return render(request, 'core/adicionar_item.html', contexto)
 
+@login_required
 def gerenciar_item(request, pk):
     item = get_object_or_404(ItemEstoque, pk=pk)
     FornecedorItemFormSet = inlineformset_factory(ItemEstoque, ItemFornecedor, form=ItemFornecedorForm, extra=1, can_delete=True)
@@ -97,6 +112,7 @@ def gerenciar_item(request, pk):
     }
     return render(request, 'core/gerenciar_item.html', contexto)
 
+@login_required
 def retirar_item(request, pk):
     item = get_object_or_404(ItemEstoque, pk=pk)
     if request.method == 'POST':
@@ -111,6 +127,7 @@ def retirar_item(request, pk):
                 messages.success(request, f'{quantidade_a_retirar} unidade(s) de {item.nome} retiradas com sucesso.')
     return redirect('gerenciar_item', pk=item.pk)
 
+@login_required
 def adicionar_estoque(request, pk):
     item = get_object_or_404(ItemEstoque, pk=pk)
     if request.method == 'POST':
@@ -122,6 +139,7 @@ def adicionar_estoque(request, pk):
             messages.success(request, f'{quantidade_a_adicionar} unidade(s) de {item.nome} adicionadas com sucesso.')
     return redirect('gerenciar_item', pk=item.pk)
 
+@login_required
 def excluir_item(request, pk):
     item = get_object_or_404(ItemEstoque, pk=pk)
     if request.method == 'POST':
@@ -133,6 +151,7 @@ def excluir_item(request, pk):
 
 # --- Views de Recebimento ---
 
+@login_required
 def lista_recebimentos(request):
     query = request.GET.get('q')
     recebimentos = Recebimento.objects.all().order_by('-data_recebimento')
@@ -141,6 +160,7 @@ def lista_recebimentos(request):
     contexto = {'recebimentos': recebimentos, 'query': query}
     return render(request, 'core/lista_recebimentos.html', contexto)
 
+@login_required
 def registrar_recebimento(request):
     if request.method == 'POST':
         # Criamos uma cópia mutável dos dados do POST
@@ -174,11 +194,13 @@ def registrar_recebimento(request):
     }
     return render(request, 'core/registrar_recebimento.html', contexto)
 
+@login_required
 def detalhe_recebimento(request, pk):
     recebimento = get_object_or_404(Recebimento, pk=pk)
     contexto = {'recebimento': recebimento}
     return render(request, 'core/detalhe_recebimento.html', contexto)
 
+@login_required
 def editar_recebimento(request, pk):
     recebimento = get_object_or_404(Recebimento, pk=pk)
     if request.method == 'POST':
@@ -205,6 +227,7 @@ def editar_recebimento(request, pk):
 
 # --- Views de Produtos Fabricados ---
 
+@login_required
 def lista_produtos(request):
     produtos = ProdutoFabricado.objects.select_related('item_associado').all().order_by('nome')
 
@@ -213,6 +236,7 @@ def lista_produtos(request):
     }
     return render(request, 'core/lista_produtos.html', contexto)
 
+@login_required
 def detalhe_produto(request, pk):
     produto = get_object_or_404(ProdutoFabricado, pk=pk)
     componentes = produto.componente_set.all()
@@ -236,6 +260,7 @@ def detalhe_produto(request, pk):
     }
     return render(request, 'core/detalhe_produto.html', contexto)
 
+@login_required
 def adicionar_produto(request):
     DocumentoFormSet = modelformset_factory(DocumentoProdutoFabricado, form=DocumentoProdutoForm, extra=1, can_delete=False)
     
@@ -277,6 +302,7 @@ def adicionar_produto(request):
     contexto = {'form': form, 'formset': formset, 'titulo': 'Criar Novo Produto'}
     return render(request, 'core/form_produto.html', contexto)
 
+@login_required
 def editar_produto(request, pk):
     produto = get_object_or_404(ProdutoFabricado, pk=pk)
     
@@ -313,6 +339,7 @@ def editar_produto(request, pk):
     }
     return render(request, 'core/editar_produto.html', contexto)
 
+@login_required
 @transaction.atomic
 def finalizar_producao(request, pk):
     produto = get_object_or_404(ProdutoFabricado, pk=pk)
@@ -344,14 +371,17 @@ def finalizar_producao(request, pk):
 
 # --- Views da Expedição ---
 
+@login_required
 def lista_expedicoes(request):
     expedicoes = Expedicao.objects.all().order_by('-data_expedicao')
     return render(request, 'core/lista_expedicoes.html', {'expedicoes': expedicoes})
 
+@login_required
 def detalhe_expedicao(request, pk):
     expedicao = get_object_or_404(Expedicao, pk=pk)
     return render(request, 'core/detalhe_expedicao.html', {'expedicao': expedicao})
 
+@login_required
 @transaction.atomic
 def registrar_expedicao(request):
     ItemExpedidoFormSet = inlineformset_factory(Expedicao, ItemExpedido, form=ItemExpedidoForm, extra=1, can_delete=False)
@@ -422,6 +452,7 @@ def registrar_expedicao(request):
     }
     return render(request, 'core/registrar_expedicao.html', contexto)
 
+@login_required
 def editar_expedicao(request, pk):
     expedicao = get_object_or_404(Expedicao, pk=pk)
     
@@ -459,6 +490,7 @@ def editar_expedicao(request, pk):
     }
     return render(request, 'core/editar_expedicao.html', contexto)
 
+@login_required
 def excluir_recebimento(request, pk):
     recebimento = get_object_or_404(Recebimento, pk=pk)
     if request.method == 'POST':
@@ -468,6 +500,7 @@ def excluir_recebimento(request, pk):
     # Se não for POST, apenas redireciona de volta para os detalhes
     return redirect('detalhe_recebimento', pk=pk)
 
+@login_required
 def excluir_produto(request, pk):
     produto = get_object_or_404(ProdutoFabricado, pk=pk)
     if request.method == 'POST':
@@ -482,6 +515,7 @@ def excluir_produto(request, pk):
 
     return redirect('detalhe_produto', pk=pk)
 
+@login_required
 def excluir_expedicao(request, pk):
     expedicao = get_object_or_404(Expedicao, pk=pk)
     if request.method == 'POST':

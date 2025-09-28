@@ -4,17 +4,22 @@ from django.contrib.auth.models import User
 
 class Empresa(models.Model):
     nome = models.CharField(max_length=100, unique=True, verbose_name="Nome da Empresa")
-    # Este é o "interruptor" que o superusuário poderá usar
     acesso_liberado = models.BooleanField(default=True, verbose_name="Acesso Liberado para Usuários")
+
+    class Meta:
+        verbose_name = "Empresa / Mercado"
+        verbose_name_plural = "Empresas / Mercados"
     
     def __str__(self):
         return self.nome
 
 class PerfilUsuario(models.Model):
-    # OneToOneField cria um link direto e único com o modelo de usuário do Django
     usuario = models.OneToOneField(User, on_delete=models.CASCADE)
-    # ManyToManyField permite que um usuário tenha acesso a várias empresas
     empresas_permitidas = models.ManyToManyField(Empresa, blank=True)
+    
+    class Meta:
+        verbose_name = "Perfil de Usuário"
+        verbose_name_plural = "Perfis de Usuário"
 
     def __str__(self):
         return f"Perfil de {self.usuario.username}"
@@ -74,8 +79,10 @@ class Recebimento(models.Model):
     fornecedor = models.ForeignKey(Fornecedor, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Fornecedor")
     valor_total = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="Valor Total da Nota")
     observacoes = models.TextField(blank=True, null=True, verbose_name="Observações Gerais")
+
     STATUS_CHOICES = [('aguardando', 'Aguardando'), ('entregue', 'Entregue'),]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='aguardando')
+    
     def __str__(self): return f"Nota Fiscal {self.numero_nota_fiscal or 'N/A'}"
 
 class ImagemItemEstoque(models.Model):
@@ -111,17 +118,6 @@ class Componente(models.Model):
     quantidade_necessaria = models.PositiveIntegerField(verbose_name="Quantidade Necessária")
     
     def __str__(self): return f"{self.quantidade_necessaria}x {self.item_estoque.nome} para {self.produto.nome}"
-
-
-class SaidaProduto(models.Model):
-    produto = models.ForeignKey(ProdutoFabricado, on_delete=models.PROTECT, verbose_name="Produto Enviado")
-    quantidade = models.PositiveIntegerField(verbose_name="Quantidade Enviada")
-    cliente = models.CharField(max_length=200, verbose_name="Cliente")
-    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Usuário Responsável pela Saída")
-    nota_fiscal = models.FileField(upload_to='notas_fiscais/', blank=True, null=True, verbose_name="Nota Fiscal")
-    foto_saida = models.ImageField(upload_to='fotos_saidas/', blank=True, null=True, verbose_name="Foto da Saída")
-    data_saida = models.DateTimeField(auto_now_add=True, verbose_name="Data da Saída")
-    def __str__(self): return f"Saída de {self.quantidade}x {self.produto.nome} para {self.cliente}"
 
 class Expedicao(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
