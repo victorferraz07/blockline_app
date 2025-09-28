@@ -2,15 +2,42 @@
 from django.db import models
 from django.contrib.auth.models import User
 
+class Empresa(models.Model):
+    nome = models.CharField(max_length=100, unique=True, verbose_name="Nome da Empresa")
+    # Este é o "interruptor" que o superusuário poderá usar
+    acesso_liberado = models.BooleanField(default=True, verbose_name="Acesso Liberado para Usuários")
+    
+    def __str__(self):
+        return self.nome
+
+class PerfilUsuario(models.Model):
+    # OneToOneField cria um link direto e único com o modelo de usuário do Django
+    usuario = models.OneToOneField(User, on_delete=models.CASCADE)
+    # ManyToManyField permite que um usuário tenha acesso a várias empresas
+    empresas_permitidas = models.ManyToManyField(Empresa, blank=True)
+
+    def __str__(self):
+        return f"Perfil de {self.usuario.username}"
+
 class Fornecedor(models.Model):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
     nome = models.CharField(max_length=200, unique=True)
     telefone = models.CharField(max_length=20, blank=True, null=True)
     email = models.EmailField(blank=True, null=True)
     link_site = models.URLField(blank=True, null=True, verbose_name="Website")
+
+    class Meta:
+        unique_together = ('empresa', 'nome')
+
     def __str__(self): return self.nome
 
 class Setor(models.Model):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
     nome = models.CharField(max_length=100, unique=True, help_text="Nome do setor")
+
+    class Meta:
+        unique_together = ('empresa', 'nome')
+
     def __str__(self): return self.nome
 
 class ItemFornecedor(models.Model):
@@ -37,6 +64,7 @@ class ItemEstoque(models.Model):
     def __str__(self): return f"{self.nome} ({self.quantidade} em estoque)"
 
 class Recebimento(models.Model):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
     usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Usuário Responsável")
     setor = models.ForeignKey(Setor, on_delete=models.PROTECT, verbose_name="Setor de Destino")
     foto_documento = models.ImageField(upload_to='fotos_documentos/', blank=True, null=True, verbose_name="Foto da Nota Fiscal/Documento")
@@ -96,6 +124,7 @@ class SaidaProduto(models.Model):
     def __str__(self): return f"Saída de {self.quantidade}x {self.produto.nome} para {self.cliente}"
 
 class Expedicao(models.Model):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
     cliente = models.CharField(max_length=200, verbose_name="Cliente/Destino")
     usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Responsável pela Expedição")
     data_expedicao = models.DateTimeField(auto_now_add=True, verbose_name="Data da Expedição")
