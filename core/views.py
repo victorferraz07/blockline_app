@@ -7,13 +7,14 @@ from django.forms import modelformset_factory, inlineformset_factory
 from django.contrib.auth.decorators import login_required, permission_required
 from django.views.decorators.http import require_POST
 from django.http import JsonResponse
+from django.utils import timezone
 
 from .models import (
-    ItemEstoque, ProdutoFabricado, Recebimento, 
+    ItemEstoque, ProdutoFabricado, Recebimento,
     DocumentoProdutoFabricado, Componente, Setor, Fornecedor,
     ImagemProdutoFabricado, ImagemItemEstoque, ItemFornecedor, Expedicao, ItemExpedido, DocumentoExpedicao, ImagemExpedicao,
     Empresa, PerfilUsuario,
-    KanbanColumn, Task, TaskQuantidadeFeita,
+    KanbanColumn, Task, TaskQuantidadeFeita, TaskHistorico,
 )
 from .forms import (
     ItemEstoqueForm, RetiradaItemForm, AdicaoItemForm, RecebimentoForm, 
@@ -575,6 +576,52 @@ def kanban_board(request):
     return render(request, 'core/kanban_board.html', contexto)
 
 @login_required
+def detalhe_tarefa(request, task_id):
+    task = get_object_or_404(Task, id=task_id)
+    historico = task.historico.all()
+    quantidades = task.quantidades_feitas.all()
+
+    # Usuários que trabalharam neste card
+    usuarios_trabalharam = User.objects.filter(
+        Q(taskhistorico__task=task) | Q(taskquantidadefeita__task=task)
+    ).distinct()
+
+    contexto = {
+        'task': task,
+        'historico': historico,
+        'quantidades': quantidades,
+        'usuarios_trabalharam': usuarios_trabalharam,
+    }
+    return render(request, 'core/detalhe_tarefa.html', contexto)
+
+@login_required
+def metricas_kanban(request):
+    from django.db.models import Count, Sum
+
+    # Cards finalizados por usuário
+    cards_por_usuario = User.objects.annotate(
+        total_finalizados=Count('taskhistorico', filter=Q(taskhistorico__tipo_acao='finalizado')),
+        total_quantidade_produzida=Sum('taskquantidadefeita__quantidade')
+    ).filter(total_finalizados__gt=0).order_by('-total_finalizados')
+
+    # Total de cards finalizados
+    total_cards_finalizados = Task.objects.filter(finalizado=True).count()
+
+    # Total de cards em andamento
+    total_cards_andamento = Task.objects.filter(em_andamento=True, finalizado=False).count()
+
+    # Total de quantidade produzida
+    total_produzido = TaskQuantidadeFeita.objects.aggregate(total=Sum('quantidade'))['total'] or 0
+
+    contexto = {
+        'cards_por_usuario': cards_por_usuario,
+        'total_cards_finalizados': total_cards_finalizados,
+        'total_cards_andamento': total_cards_andamento,
+        'total_produzido': total_produzido,
+    }
+    return render(request, 'core/metricas_kanban.html', contexto)
+
+@login_required
 def criar_coluna(request):
     if request.method == 'POST':
         nome = request.POST.get('nome')
@@ -608,12 +655,20 @@ def criar_tarefa(request, coluna_id=None):
         coluna = get_object_or_404(KanbanColumn, id=request.POST.get('coluna_id', coluna_id))
         titulo = request.POST.get('titulo')
         descricao = request.POST.get('descricao', '')
-        quantidade = int(request.POST.get('quantidade', 0))
+        quantidade_meta = int(request.POST.get('quantidade', 0))
         ordem = coluna.tasks.count()
-        task = Task.objects.create(coluna=coluna, titulo=titulo, descricao=descricao, quantidade=quantidade, ordem=ordem)
+        task = Task.objects.create(coluna=coluna, titulo=titulo, descricao=descricao, quantidade_meta=quantidade_meta, ordem=ordem)
         responsaveis_ids = request.POST.getlist('responsaveis')
         if responsaveis_ids:
             task.responsaveis.set(responsaveis_ids)
+
+        # Registra histórico
+        TaskHistorico.objects.create(
+            task=task,
+            usuario=request.user,
+            tipo_acao='criado',
+            descricao=f'Card criado na coluna "{coluna.nome}" com meta de {quantidade_meta} unidades'
+        )
         return redirect('kanban_board')
     colunas = KanbanColumn.objects.all()
     users = User.objects.all()
@@ -623,13 +678,48 @@ def criar_tarefa(request, coluna_id=None):
 def editar_tarefa(request, task_id):
     task = get_object_or_404(Task, id=task_id)
     if request.method == 'POST':
+        old_titulo = task.titulo
+        old_responsaveis = set(task.responsaveis.all())
+
         task.titulo = request.POST.get('titulo')
         task.descricao = request.POST.get('descricao', '')
-        task.quantidade = int(request.POST.get('quantidade', 0))
+        task.quantidade_meta = int(request.POST.get('quantidade', 0))
         task.coluna_id = request.POST.get('coluna_id', task.coluna_id)
         responsaveis_ids = request.POST.getlist('responsaveis')
         task.responsaveis.set(responsaveis_ids)
         task.save()
+
+        new_responsaveis = set(task.responsaveis.all())
+
+        # Registra histórico de edição
+        if old_titulo != task.titulo:
+            TaskHistorico.objects.create(
+                task=task,
+                usuario=request.user,
+                tipo_acao='editado',
+                descricao=f'Título alterado de "{old_titulo}" para "{task.titulo}"'
+            )
+
+        # Verifica mudanças nos responsáveis
+        adicionados = new_responsaveis - old_responsaveis
+        removidos = old_responsaveis - new_responsaveis
+
+        for user in adicionados:
+            TaskHistorico.objects.create(
+                task=task,
+                usuario=request.user,
+                tipo_acao='responsavel_adicionado',
+                descricao=f'{user.get_full_name() or user.username} adicionado como responsável'
+            )
+
+        for user in removidos:
+            TaskHistorico.objects.create(
+                task=task,
+                usuario=request.user,
+                tipo_acao='responsavel_removido',
+                descricao=f'{user.get_full_name() or user.username} removido dos responsáveis'
+            )
+
         return redirect('kanban_board')
     colunas = KanbanColumn.objects.all()
     users = User.objects.all()
@@ -649,8 +739,21 @@ def mover_tarefa(request, task_id):
     task = get_object_or_404(Task, id=task_id)
     nova_coluna_id = request.POST.get('nova_coluna_id')
     nova_ordem = int(request.POST.get('nova_ordem', 0))
+
     if nova_coluna_id:
-        task.coluna_id = nova_coluna_id
+        coluna_antiga = task.coluna
+        nova_coluna = get_object_or_404(KanbanColumn, id=nova_coluna_id)
+
+        if coluna_antiga.id != nova_coluna.id:
+            task.coluna = nova_coluna
+            # Registra histórico
+            TaskHistorico.objects.create(
+                task=task,
+                usuario=request.user,
+                tipo_acao='movido',
+                descricao=f'Movido de "{coluna_antiga.nome}" para "{nova_coluna.nome}"'
+            )
+
     task.ordem = nova_ordem
     task.save()
     return JsonResponse({'success': True})
@@ -670,6 +773,14 @@ def marcar_andamento(request, task_id):
     task = get_object_or_404(Task, id=task_id)
     task.em_andamento = True
     task.save()
+
+    # Registra histórico
+    TaskHistorico.objects.create(
+        task=task,
+        usuario=request.user,
+        tipo_acao='iniciado',
+        descricao=f'Card iniciado por {request.user.get_full_name() or request.user.username}'
+    )
     return redirect('kanban_board')
 
 @login_required
@@ -677,7 +788,34 @@ def marcar_andamento(request, task_id):
 def finalizar(request, task_id):
     task = get_object_or_404(Task, id=task_id)
     task.em_andamento = False
+    task.finalizado = True
+    task.data_finalizacao = timezone.now()
     task.save()
+
+    # Registra histórico
+    TaskHistorico.objects.create(
+        task=task,
+        usuario=request.user,
+        tipo_acao='finalizado',
+        descricao=f'Card finalizado por {request.user.get_full_name() or request.user.username}'
+    )
+    return redirect('kanban_board')
+
+@login_required
+@require_POST
+def desfinalizar(request, task_id):
+    task = get_object_or_404(Task, id=task_id)
+    task.finalizado = False
+    task.data_finalizacao = None
+    task.save()
+
+    # Registra histórico
+    TaskHistorico.objects.create(
+        task=task,
+        usuario=request.user,
+        tipo_acao='editado',
+        descricao=f'Card desfinalizadopor {request.user.get_full_name() or request.user.username}'
+    )
     return redirect('kanban_board')
 
 @login_required
@@ -687,6 +825,12 @@ def registrar_quantidade(request, task_id):
     quantidade = int(request.POST.get('quantidade', 0))
     if quantidade > 0:
         TaskQuantidadeFeita.objects.create(task=task, usuario=request.user, quantidade=quantidade)
-        task.quantidade += quantidade
-        task.save()
+
+        # Registra histórico
+        TaskHistorico.objects.create(
+            task=task,
+            usuario=request.user,
+            tipo_acao='quantidade_adicionada',
+            descricao=f'{request.user.get_full_name() or request.user.username} produziu {quantidade} unidade(s). Total: {task.quantidade_produzida}/{task.quantidade_meta}'
+        )
     return redirect('kanban_board')

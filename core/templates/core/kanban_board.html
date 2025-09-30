@@ -9,10 +9,15 @@
 <div class="mb-6" x-data="{ showHistory: false }">
     <div class="flex items-center justify-between">
         <h1 class="text-3xl font-bold text-gray-900">Quadro Kanban</h1>
-        <button @click="showHistory = !showHistory" class="px-4 py-2 rounded-lg bg-white shadow-sm hover:shadow-md transition-all duration-200 text-sm font-medium text-gray-700 hover:text-gray-900">
-            <span x-show="!showHistory">📊 Ver Histórico</span>
-            <span x-show="showHistory">✕ Fechar Histórico</span>
-        </button>
+        <div class="flex gap-2">
+            <a href="{% url 'metricas_kanban' %}" class="px-4 py-2 rounded-lg bg-white shadow-sm hover:shadow-md transition-all duration-200 text-sm font-medium text-gray-700 hover:text-gray-900">
+                📈 Métricas
+            </a>
+            <button @click="showHistory = !showHistory" class="px-4 py-2 rounded-lg bg-white shadow-sm hover:shadow-md transition-all duration-200 text-sm font-medium text-gray-700 hover:text-gray-900">
+                <span x-show="!showHistory">📊 Ver Histórico</span>
+                <span x-show="showHistory">✕ Fechar Histórico</span>
+            </button>
+        </div>
     </div>
 
     <!-- Histórico Slide Down -->
@@ -37,26 +42,40 @@
     {% for coluna in colunas %}
     <div class="kanban-column flex-shrink-0 w-80" data-column-id="{{ coluna.id }}">
         <!-- Column Header -->
-        <div class="bg-white/90 backdrop-blur-md rounded-t-xl border border-gray-200 shadow-sm">
-            <div class="flex items-center justify-between p-4" x-data="{ menuOpen: false }">
+        <div class="bg-white rounded-t-xl border border-gray-200 shadow-sm relative overflow-visible">
+            <div class="flex items-center justify-between p-4 overflow-visible">
                 <div class="flex items-center gap-2">
                     <div class="w-3 h-3 rounded-full" style="background: {{ coluna.cor }};"></div>
                     <h2 class="font-semibold text-gray-900">{{ coluna.nome }}</h2>
                     <span class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{{ coluna.tasks.count }}</span>
                 </div>
-                <div class="relative">
-                    <button @click="menuOpen = !menuOpen" class="p-1 hover:bg-gray-100 rounded transition-colors">
+                <div class="relative" x-data="{ open: false }">
+                    <button @click="open = !open" class="p-1 hover:bg-gray-100 rounded transition-colors">
                         <svg class="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 16 16">
                             <circle cx="8" cy="3" r="1.5"/>
                             <circle cx="8" cy="8" r="1.5"/>
                             <circle cx="8" cy="13" r="1.5"/>
                         </svg>
                     </button>
-                    <div x-show="menuOpen" @click.away="menuOpen = false" x-transition class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-10">
-                        <a href="{% url 'editar_coluna' coluna_id=coluna.id %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">✏️ Editar coluna</a>
+
+                    <!-- Dropdown inline mas com z-index alto -->
+                    <div x-show="open"
+                         @click.away="open = false"
+                         x-transition
+                         class="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-2xl border-2 border-gray-800 py-2 overflow-visible"
+                         style="z-index: 999999;">
+                        <a href="{% url 'editar_coluna' coluna_id=coluna.id %}"
+                           class="flex items-center gap-3 px-4 py-3 text-base font-semibold text-gray-900 hover:bg-blue-50 transition-colors border-b border-gray-200">
+                            <span class="text-xl">✏️</span>
+                            <span>Editar coluna</span>
+                        </a>
                         <form method="post" action="{% url 'excluir_coluna' coluna_id=coluna.id %}" onsubmit="return confirm('Deseja excluir esta coluna?')">
                             {% csrf_token %}
-                            <button type="submit" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">🗑️ Excluir coluna</button>
+                            <button type="submit"
+                                    class="flex items-center gap-3 w-full text-left px-4 py-3 text-base font-semibold text-red-600 hover:bg-red-50 transition-colors">
+                                <span class="text-xl">🗑️</span>
+                                <span>Excluir coluna</span>
+                            </button>
                         </form>
                     </div>
                 </div>
@@ -64,17 +83,22 @@
         </div>
 
         <!-- Cards Container -->
-        <div class="bg-white/50 backdrop-blur-sm rounded-b-xl border-x border-b border-gray-200 shadow-sm p-3 min-h-[200px] space-y-3">
+        <div class="backdrop-blur-sm rounded-b-xl border-x border-b border-gray-200 shadow-sm p-3 min-h-[200px] space-y-3"
+             style="background: linear-gradient(to bottom, {{ coluna.cor }}50, {{ coluna.cor }}10);">
             {% for task in coluna.tasks.all %}
-                <div class="kanban-card group bg-white rounded-lg shadow-sm hover:shadow-md border border-gray-200 p-4 cursor-grab active:cursor-grabbing transition-all duration-200 hover:-translate-y-0.5"
+                <div class="kanban-card group bg-white rounded-lg shadow-sm hover:shadow-md border border-gray-200 p-4 cursor-grab active:cursor-grabbing transition-all duration-200 hover:-translate-y-0.5 {% if task.finalizado %}ring-2 ring-green-400 bg-green-50{% endif %}"
                      data-task-id="{{ task.id }}">
 
                     <!-- Card Header -->
                     <div class="flex items-start justify-between gap-2 mb-2">
                         <h3 class="font-medium text-gray-900 flex-1 leading-snug">{{ task.titulo }}</h3>
-                        {% if task.em_andamento %}
-                        <span class="flex-shrink-0 text-xs px-2 py-1 bg-amber-100 text-amber-700 rounded-full font-medium">⚡ Ativo</span>
-                        {% endif %}
+                        <div class="flex flex-col gap-1">
+                            {% if task.finalizado %}
+                            <span class="flex-shrink-0 text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium">✓ Finalizado</span>
+                            {% elif task.em_andamento %}
+                            <span class="flex-shrink-0 text-xs px-2 py-1 bg-amber-100 text-amber-700 rounded-full font-medium">⚡ Ativo</span>
+                            {% endif %}
+                        </div>
                     </div>
 
                     <!-- Card Description -->
@@ -82,41 +106,73 @@
                     <p class="text-sm text-gray-600 mb-3 line-clamp-2">{{ task.descricao }}</p>
                     {% endif %}
 
-                    <!-- Quantidade Badge -->
-                    <div class="flex items-center gap-2 mb-3">
-                        <div class="flex items-center gap-1 bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-md text-sm font-semibold">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/>
-                            </svg>
-                            <span>{{ task.quantidade }}</span>
+                    <!-- Quantidade Badge com Progresso -->
+                    <div class="mb-3 space-y-2">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-gray-600 font-medium">Progresso:</span>
+                            <span class="font-bold text-indigo-700">{{ task.quantidade_produzida }}/{{ task.quantidade_meta }}</span>
+                        </div>
+                        <!-- Barra de Progresso -->
+                        <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                            <div class="bg-gradient-to-r from-indigo-500 to-purple-600 h-2.5 rounded-full transition-all duration-300"
+                                 style="width: {{ task.percentual_completo }}%"></div>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs">
+                            <span class="text-emerald-600 font-semibold">✓ {{ task.quantidade_produzida }} feitas</span>
+                            {% if task.quantidade_restante > 0 %}
+                            <span class="text-orange-600 font-semibold">• {{ task.quantidade_restante }} restantes</span>
+                            {% endif %}
                         </div>
                     </div>
 
-                    <!-- Responsáveis -->
-                    {% if task.responsaveis.all %}
-                    <div class="flex flex-wrap gap-1.5 mb-3">
-                        {% for user in task.responsaveis.all %}
-                        <div class="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-1 rounded-md text-xs font-medium">
-                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
-                            </svg>
-                            {{ user.get_full_name|default:user.username }}
+                    <!-- Responsáveis & Usuários que trabalharam -->
+                    <div class="mb-3">
+                        {% if task.responsaveis.all %}
+                        <div class="flex flex-wrap gap-1.5 mb-2">
+                            {% for user in task.responsaveis.all %}
+                            <div class="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-1 rounded-md text-xs font-medium">
+                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
+                                </svg>
+                                {{ user.get_full_name|default:user.username }}
+                            </div>
+                            {% endfor %}
                         </div>
-                        {% endfor %}
+                        {% endif %}
+
+                        <!-- Avatares dos usuários que trabalharam neste card -->
+                        {% regroup task.quantidades_feitas.all by usuario as usuarios_trabalharam %}
+                        {% if usuarios_trabalharam %}
+                        <div class="flex items-center gap-1">
+                            <span class="text-xs text-gray-500">Trabalharam:</span>
+                            <div class="flex -space-x-2">
+                                {% for grupo in usuarios_trabalharam %}
+                                {% if grupo.grouper %}
+                                <div class="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold border-2 border-white" title="{{ grupo.grouper.get_full_name|default:grupo.grouper.username }}">
+                                    {{ grupo.grouper.username|slice:":1"|upper }}
+                                </div>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
-                    {% endif %}
 
                     <!-- Actions e Form de Quantidade (Alpine.js) -->
                     <div x-data="{ editQty: false }">
                         <!-- Actions (aparecem no hover) -->
                         <div class="no-drag opacity-0 group-hover:opacity-100 transition-opacity pt-2 border-t border-gray-100 flex flex-wrap gap-2">
+                            <a href="{% url 'detalhe_tarefa' task_id=task.id %}" class="no-drag text-xs px-3 py-1.5 rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-medium transition-colors">
+                                📋 Detalhes
+                            </a>
+                            {% if not task.finalizado %}
                             <form method="post" action="{% url 'marcar_andamento' task_id=task.id %}" class="inline no-drag">
                                 {% csrf_token %}
                                 <button type="submit" class="no-drag text-xs px-3 py-1.5 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium transition-colors">
                                     ▶️ Iniciar
                                 </button>
                             </form>
-                            <form method="post" action="{% url 'finalizar' task_id=task.id %}" class="inline no-drag">
+                            <form method="post" action="{% url 'finalizar' task_id=task.id %}" class="inline no-drag" onsubmit="return confirm('Tem certeza que deseja finalizar este card? Esta ação marcará o card como concluído.')">
                                 {% csrf_token %}
                                 <button type="submit" class="no-drag text-xs px-3 py-1.5 rounded-md bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-medium transition-colors">
                                     ✓ Finalizar
@@ -128,6 +184,17 @@
                             <a href="{% url 'editar_tarefa' task_id=task.id %}" class="no-drag text-xs px-3 py-1.5 rounded-md bg-gray-50 text-gray-700 hover:bg-gray-100 font-medium transition-colors">
                                 ✏️
                             </a>
+                            {% else %}
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-green-600 font-medium">Finalizado em {{ task.data_finalizacao|date:'d/m/Y H:i' }}</span>
+                                <form method="post" action="{% url 'desfinalizar' task_id=task.id %}" class="inline no-drag" onsubmit="return confirm('Deseja reabrir este card?')">
+                                    {% csrf_token %}
+                                    <button type="submit" class="no-drag text-xs px-3 py-1.5 rounded-md bg-yellow-50 text-yellow-700 hover:bg-yellow-100 font-medium transition-colors">
+                                        ↩️ Reabrir
+                                    </button>
+                                </form>
+                            </div>
+                            {% endif %}
                         </div>
 
                         <!-- Quick Add Quantity Form -->
@@ -204,6 +271,9 @@
 </div>
 
 <style>
+/* Hide elements with x-cloak before Alpine loads */
+[x-cloak] { display: none !important; }
+
 /* Scrollbar personalizado estilo Apple */
 .scrollbar-hide::-webkit-scrollbar {
     height: 8px;

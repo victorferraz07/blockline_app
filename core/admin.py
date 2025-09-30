@@ -2,11 +2,12 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import User
 from .models import (
-    Empresa, PerfilUsuario, Setor, Fornecedor, 
-    ItemFornecedor, ItemEstoque, Recebimento, 
-    ImagemItemEstoque, ProdutoFabricado, DocumentoProdutoFabricado, 
-    ImagemProdutoFabricado, Componente, Expedicao, 
-    ItemExpedido, DocumentoExpedicao, ImagemExpedicao
+    Empresa, PerfilUsuario, Setor, Fornecedor,
+    ItemFornecedor, ItemEstoque, Recebimento,
+    ImagemItemEstoque, ProdutoFabricado, DocumentoProdutoFabricado,
+    ImagemProdutoFabricado, Componente, Expedicao,
+    ItemExpedido, DocumentoExpedicao, ImagemExpedicao,
+    KanbanColumn, Task, TaskQuantidadeFeita, TaskHistorico
 )
 
 # --- Configurações de Administração Customizadas ---
@@ -58,3 +59,31 @@ admin.site.register(Expedicao)
 admin.site.register(ItemExpedido)
 admin.site.register(DocumentoExpedicao)
 admin.site.register(ImagemExpedicao)
+
+# --- Registros Kanban ---
+@admin.register(KanbanColumn)
+class KanbanColumnAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'cor', 'ordem')
+    list_editable = ('ordem',)
+    ordering = ('ordem',)
+
+@admin.register(Task)
+class TaskAdmin(admin.ModelAdmin):
+    list_display = ('titulo', 'coluna', 'quantidade_meta', 'get_quantidade_produzida', 'em_andamento', 'finalizado', 'criado_em')
+    list_filter = ('coluna', 'em_andamento', 'finalizado', 'criado_em')
+    search_fields = ('titulo', 'descricao')
+    filter_horizontal = ('responsaveis',)
+    readonly_fields = ('criado_em', 'atualizado_em')
+
+    def get_quantidade_produzida(self, obj):
+        return obj.quantidade_produzida
+    get_quantidade_produzida.short_description = 'Produzida'
+
+@admin.register(TaskHistorico)
+class TaskHistoricoAdmin(admin.ModelAdmin):
+    list_display = ('task', 'tipo_acao', 'usuario', 'data')
+    list_filter = ('tipo_acao', 'data')
+    search_fields = ('task__titulo', 'descricao')
+    readonly_fields = ('task', 'usuario', 'tipo_acao', 'descricao', 'data')
+
+admin.site.register(TaskQuantidadeFeita)

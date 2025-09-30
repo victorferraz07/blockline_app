@@ -1,5 +1,6 @@
 # core/models.py
 from django.db import models
+from django.db.models import Sum
 from django.contrib.auth.models import User
 from django.utils import timezone
 
@@ -176,8 +177,10 @@ class Task(models.Model):
     coluna = models.ForeignKey(KanbanColumn, on_delete=models.CASCADE, related_name='tasks')
     titulo = models.CharField(max_length=200)
     descricao = models.TextField(blank=True)
-    quantidade = models.PositiveIntegerField(default=0)
+    quantidade_meta = models.PositiveIntegerField(default=0, verbose_name="Quantidade Meta")
     em_andamento = models.BooleanField(default=False)
+    finalizado = models.BooleanField(default=False)
+    data_finalizacao = models.DateTimeField(null=True, blank=True)
     responsaveis = models.ManyToManyField(User, blank=True, related_name='tasks_responsaveis')
     ordem = models.PositiveIntegerField(default=0)
     criado_em = models.DateTimeField(auto_now_add=True)
@@ -185,8 +188,26 @@ class Task(models.Model):
 
     class Meta:
         ordering = ['ordem']
+
     def __str__(self):
         return self.titulo
+
+    @property
+    def quantidade_produzida(self):
+        """Soma total de quantidade produzida por todos os usuários"""
+        return self.quantidades_feitas.aggregate(total=Sum('quantidade'))['total'] or 0
+
+    @property
+    def quantidade_restante(self):
+        """Quantidade que ainda falta produzir"""
+        return max(0, self.quantidade_meta - self.quantidade_produzida)
+
+    @property
+    def percentual_completo(self):
+        """Percentual de conclusão da tarefa"""
+        if self.quantidade_meta == 0:
+            return 0
+        return min(100, int((self.quantidade_produzida / self.quantidade_meta) * 100))
 
 class TaskQuantidadeFeita(models.Model):
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='quantidades_feitas')
@@ -198,3 +219,28 @@ class TaskQuantidadeFeita(models.Model):
         ordering = ['-data']
     def __str__(self):
         return f"{self.quantidade} feita por {self.usuario} em {self.data.strftime('%d/%m/%Y %H:%M')}"
+
+class TaskHistorico(models.Model):
+    TIPO_ACAO_CHOICES = [
+        ('criado', 'Criado'),
+        ('movido', 'Movido'),
+        ('editado', 'Editado'),
+        ('iniciado', 'Iniciado'),
+        ('finalizado', 'Finalizado'),
+        ('quantidade_adicionada', 'Quantidade Adicionada'),
+        ('responsavel_adicionado', 'Responsável Adicionado'),
+        ('responsavel_removido', 'Responsável Removido'),
+    ]
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='historico')
+    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    tipo_acao = models.CharField(max_length=30, choices=TIPO_ACAO_CHOICES)
+    descricao = models.TextField()
+    data = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['-data']
+        verbose_name = "Histórico da Tarefa"
+        verbose_name_plural = "Históricos das Tarefas"
+
+    def __str__(self):
+        return f"{self.get_tipo_acao_display()} - {self.task.titulo} ({self.data.strftime('%d/%m/%Y %H:%M')})"

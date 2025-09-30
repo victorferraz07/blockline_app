@@ -35,16 +35,19 @@ urlpatterns = [
 
     # --- Rotas Kanban ---
     path('kanban/', views.kanban_board, name='kanban_board'),
+    path('kanban/metricas/', views.metricas_kanban, name='metricas_kanban'),
     path('kanban/coluna/nova/', views.criar_coluna, name='criar_coluna'),
     path('kanban/coluna/<int:coluna_id>/editar/', views.editar_coluna, name='editar_coluna'),
     path('kanban/coluna/<int:coluna_id>/excluir/', views.excluir_coluna, name='excluir_coluna'),
     path('kanban/tarefa/nova/', views.criar_tarefa, name='criar_tarefa'),
     path('kanban/tarefa/nova/<int:coluna_id>/', views.criar_tarefa, name='criar_tarefa_coluna'),
+    path('kanban/tarefa/<int:task_id>/', views.detalhe_tarefa, name='detalhe_tarefa'),
     path('kanban/tarefa/<int:task_id>/editar/', views.editar_tarefa, name='editar_tarefa'),
     path('kanban/tarefa/<int:task_id>/excluir/', views.excluir_tarefa, name='excluir_tarefa'),
     path('kanban/tarefa/mover/<int:task_id>/', views.mover_tarefa, name='mover_tarefa'),
     path('kanban/coluna/mover/<int:coluna_id>/', views.mover_coluna, name='mover_coluna'),
     path('kanban/marcar_andamento/<int:task_id>/', views.marcar_andamento, name='marcar_andamento'),
     path('kanban/finalizar/<int:task_id>/', views.finalizar, name='finalizar'),
+    path('kanban/desfinalizar/<int:task_id>/', views.desfinalizar, name='desfinalizar'),
     path('kanban/registrar_quantidade/<int:task_id>/', views.registrar_quantidade, name='registrar_quantidade'),
 ]
