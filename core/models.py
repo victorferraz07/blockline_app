@@ -244,3 +244,74 @@ class TaskHistorico(models.Model):
 
     def __str__(self):
         return f"{self.get_tipo_acao_display()} - {self.task.titulo} ({self.data.strftime('%d/%m/%Y %H:%M')})"
+
+# --- MODELOS DE CONTROLE DE PONTO ---
+
+class JornadaTrabalho(models.Model):
+    usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='jornada')
+    horas_diarias = models.DecimalField(max_digits=4, decimal_places=2, default=8.0, verbose_name="Horas Diárias")
+    dias_semana = models.CharField(max_length=50, default="1,2,3,4,5", verbose_name="Dias da Semana",
+                                   help_text="0=Dom, 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sáb")
+
+    class Meta:
+        verbose_name = "Jornada de Trabalho"
+        verbose_name_plural = "Jornadas de Trabalho"
+
+    def __str__(self):
+        return f"{self.usuario.username} - {self.horas_diarias}h/dia"
+
+    @property
+    def horas_mensais(self):
+        """Calcula horas mensais baseado nos dias úteis"""
+        import calendar
+        from datetime import datetime
+        now = datetime.now()
+        dias_no_mes = calendar.monthrange(now.year, now.month)[1]
+        dias_uteis = 0
+        dias_trabalho = [int(d) for d in self.dias_semana.split(',')]
+
+        for dia in range(1, dias_no_mes + 1):
+            data = datetime(now.year, now.month, dia)
+            if data.weekday() in dias_trabalho:
+                dias_uteis += 1
+
+        return float(self.horas_diarias) * dias_uteis
+
+class RegistroPonto(models.Model):
+    TIPO_CHOICES = [
+        ('entrada', 'Entrada'),
+        ('saida', 'Saída'),
+    ]
+
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='pontos')
+    tipo = models.CharField(max_length=10, choices=TIPO_CHOICES)
+    data_hora = models.DateTimeField(default=timezone.now)
+    localizacao = models.CharField(max_length=200, blank=True, null=True, verbose_name="Localização")
+    observacao = models.TextField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['-data_hora']
+        verbose_name = "Registro de Ponto"
+        verbose_name_plural = "Registros de Ponto"
+
+    def __str__(self):
+        return f"{self.usuario.username} - {self.get_tipo_display()} em {self.data_hora.strftime('%d/%m/%Y %H:%M')}"
+
+class ResumoMensal(models.Model):
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='resumos_mensais')
+    mes = models.IntegerField()
+    ano = models.IntegerField()
+    horas_trabalhadas = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+    horas_esperadas = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+    saldo_horas = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+    dias_presentes = models.IntegerField(default=0)
+    dias_ausentes = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['-ano', '-mes']
+        unique_together = ['usuario', 'mes', 'ano']
+        verbose_name = "Resumo Mensal"
+        verbose_name_plural = "Resumos Mensais"
+
+    def __str__(self):
+        return f"{self.usuario.username} - {self.mes}/{self.ano}"

@@ -159,6 +159,9 @@
 .grid-cols-3 {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
+.grid-cols-10 {
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+}
 .grid-cols-\[1fr\,1fr\,80px\] {
   grid-template-columns: 1fr,1fr,80px;
 }

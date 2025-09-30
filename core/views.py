@@ -15,6 +15,7 @@ from .models import (
     ImagemProdutoFabricado, ImagemItemEstoque, ItemFornecedor, Expedicao, ItemExpedido, DocumentoExpedicao, ImagemExpedicao,
     Empresa, PerfilUsuario,
     KanbanColumn, Task, TaskQuantidadeFeita, TaskHistorico,
+    JornadaTrabalho, RegistroPonto, ResumoMensal,
 )
 from .forms import (
     ItemEstoqueForm, RetiradaItemForm, AdicaoItemForm, RecebimentoForm, 
@@ -834,3 +835,142 @@ def registrar_quantidade(request, task_id):
             descricao=f'{request.user.get_full_name() or request.user.username} produziu {quantidade} unidade(s). Total: {task.quantidade_produzida}/{task.quantidade_meta}'
         )
     return redirect('kanban_board')
+
+# --- Views de Controle de Ponto ---
+
+@login_required
+def controle_ponto(request):
+    """View principal do controle de ponto"""
+    from datetime import datetime, timedelta
+    from django.db.models import Sum, Count
+    import calendar
+
+    # Verifica se é superusuário ou o próprio usuário
+    usuario_id = request.GET.get('usuario_id')
+    if usuario_id and request.user.is_superuser:
+        usuario = get_object_or_404(User, id=usuario_id)
+    else:
+        usuario = request.user
+
+    # Criar jornada se não existir
+    jornada, created = JornadaTrabalho.objects.get_or_create(
+        usuario=usuario,
+        defaults={'horas_diarias': 8.0}
+    )
+
+    # Dados do mês atual
+    now = datetime.now()
+    primeiro_dia = datetime(now.year, now.month, 1)
+    ultimo_dia = datetime(now.year, now.month, calendar.monthrange(now.year, now.month)[1], 23, 59, 59)
+
+    # Registros de ponto do mês
+    pontos_mes = RegistroPonto.objects.filter(
+        usuario=usuario,
+        data_hora__gte=primeiro_dia,
+        data_hora__lte=ultimo_dia
+    ).order_by('-data_hora')
+
+    # Calcular horas trabalhadas no mês
+    horas_trabalhadas = 0
+    dias_trabalhados = {}
+
+    for ponto in pontos_mes:
+        dia = ponto.data_hora.date()
+        if dia not in dias_trabalhados:
+            dias_trabalhados[dia] = {'entrada': None, 'saida': None}
+
+        if ponto.tipo == 'entrada':
+            dias_trabalhados[dia]['entrada'] = ponto.data_hora
+        else:
+            dias_trabalhados[dia]['saida'] = ponto.data_hora
+
+    # Calcular horas de cada dia
+    for dia, registros in dias_trabalhados.items():
+        if registros['entrada'] and registros['saida']:
+            delta = registros['saida'] - registros['entrada']
+            horas_trabalhadas += delta.total_seconds() / 3600
+
+    # Último ponto do dia
+    hoje = now.date()
+    ultimo_ponto_hoje = RegistroPonto.objects.filter(
+        usuario=usuario,
+        data_hora__date=hoje
+    ).order_by('-data_hora').first()
+
+    # Horas esperadas no mês
+    horas_esperadas = jornada.horas_mensais
+
+    # Saldo de horas
+    saldo_horas = horas_trabalhadas - horas_esperadas
+
+    # Últimos 30 dias para gráfico
+    trinta_dias_atras = now - timedelta(days=30)
+    presenca_ultimos_30 = []
+    for i in range(30):
+        dia = (now - timedelta(days=29-i)).date()
+        tem_ponto = RegistroPonto.objects.filter(
+            usuario=usuario,
+            data_hora__date=dia
+        ).exists()
+        presenca_ultimos_30.append({
+            'dia': dia.strftime('%d/%m'),
+            'presente': tem_ponto
+        })
+
+    # Lista de usuários (apenas para superusuário)
+    usuarios = User.objects.filter(is_active=True) if request.user.is_superuser else []
+
+    contexto = {
+        'usuario_selecionado': usuario,
+        'jornada': jornada,
+        'pontos_mes': pontos_mes[:10],  # Últimos 10 registros
+        'horas_trabalhadas': round(horas_trabalhadas, 2),
+        'horas_esperadas': round(horas_esperadas, 2),
+        'saldo_horas': round(saldo_horas, 2),
+        'dias_trabalhados': len([d for d, r in dias_trabalhados.items() if r['entrada'] and r['saida']]),
+        'ultimo_ponto_hoje': ultimo_ponto_hoje,
+        'presenca_ultimos_30': presenca_ultimos_30,
+        'usuarios': usuarios,
+    }
+
+    return render(request, 'core/controle_ponto.html', contexto)
+
+@login_required
+@require_POST
+def bater_ponto(request):
+    """Registra entrada ou saída"""
+    tipo = request.POST.get('tipo')
+    observacao = request.POST.get('observacao', '')
+
+    if tipo not in ['entrada', 'saida']:
+        messages.error(request, 'Tipo de ponto inválido.')
+        return redirect('controle_ponto')
+
+    # Verifica o último ponto do dia
+    hoje = timezone.now().date()
+    ultimo_ponto = RegistroPonto.objects.filter(
+        usuario=request.user,
+        data_hora__date=hoje
+    ).order_by('-data_hora').first()
+
+    # Validação: não pode bater entrada se já tem entrada sem saída
+    if tipo == 'entrada' and ultimo_ponto and ultimo_ponto.tipo == 'entrada':
+        messages.error(request, 'Você já registrou uma entrada. Registre a saída primeiro.')
+        return redirect('controle_ponto')
+
+    # Validação: não pode bater saída sem entrada
+    if tipo == 'saida' and (not ultimo_ponto or ultimo_ponto.tipo == 'saida'):
+        messages.error(request, 'Você precisa registrar uma entrada primeiro.')
+        return redirect('controle_ponto')
+
+    # Registra o ponto
+    RegistroPonto.objects.create(
+        usuario=request.user,
+        tipo=tipo,
+        observacao=observacao
+    )
+
+    tipo_texto = 'Entrada' if tipo == 'entrada' else 'Saída'
+    messages.success(request, f'{tipo_texto} registrada com sucesso às {timezone.now().strftime("%H:%M")}!')
+
+    return redirect('controle_ponto')

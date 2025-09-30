@@ -7,7 +7,8 @@ from .models import (
     ImagemItemEstoque, ProdutoFabricado, DocumentoProdutoFabricado,
     ImagemProdutoFabricado, Componente, Expedicao,
     ItemExpedido, DocumentoExpedicao, ImagemExpedicao,
-    KanbanColumn, Task, TaskQuantidadeFeita, TaskHistorico
+    KanbanColumn, Task, TaskQuantidadeFeita, TaskHistorico,
+    JornadaTrabalho, RegistroPonto, ResumoMensal
 )
 
 # --- Configurações de Administração Customizadas ---
@@ -87,3 +88,22 @@ class TaskHistoricoAdmin(admin.ModelAdmin):
     readonly_fields = ('task', 'usuario', 'tipo_acao', 'descricao', 'data')
 
 admin.site.register(TaskQuantidadeFeita)
+
+# --- Registros de Ponto ---
+@admin.register(JornadaTrabalho)
+class JornadaTrabalhoAdmin(admin.ModelAdmin):
+    list_display = ('usuario', 'horas_diarias', 'dias_semana')
+    search_fields = ('usuario__username',)
+
+@admin.register(RegistroPonto)
+class RegistroPontoAdmin(admin.ModelAdmin):
+    list_display = ('usuario', 'tipo', 'data_hora', 'localizacao')
+    list_filter = ('tipo', 'data_hora')
+    search_fields = ('usuario__username',)
+    readonly_fields = ('data_hora',)
+
+@admin.register(ResumoMensal)
+class ResumoMensalAdmin(admin.ModelAdmin):
+    list_display = ('usuario', 'mes', 'ano', 'horas_trabalhadas', 'horas_esperadas', 'saldo_horas')
+    list_filter = ('mes', 'ano')
+    search_fields = ('usuario__username',)

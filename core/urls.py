@@ -50,4 +50,8 @@ urlpatterns = [
     path('kanban/finalizar/<int:task_id>/', views.finalizar, name='finalizar'),
     path('kanban/desfinalizar/<int:task_id>/', views.desfinalizar, name='desfinalizar'),
     path('kanban/registrar_quantidade/<int:task_id>/', views.registrar_quantidade, name='registrar_quantidade'),
+
+    # --- Rotas de Controle de Ponto ---
+    path('ponto/', views.controle_ponto, name='controle_ponto'),
+    path('ponto/bater/', views.bater_ponto, name='bater_ponto'),
 ]
