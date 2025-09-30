@@ -11,21 +11,24 @@
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
             
-            <div class="space-y-4 border-b pb-8 mb-8">
-                <h2 class="text-xl font-semibold text-gray-700">Detalhes da Expedição</h2>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">{{ form.cliente.label }}</label>
-                    {{ form.cliente }}
+            {% if user.is_superuser %}
+                <div class="mb-4">
+                    {{ form.empresa.label_tag }}
+                    {{ form.empresa }}
+                    {{ form.empresa.errors }}
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">{{ form.nota_fiscal.label }}</label>
-                    {{ form.nota_fiscal }}
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">{{ form.observacoes.label }}</label>
-                    {{ form.observacoes }}
-                </div>
-            </div>
+            {% endif %}
+
+            {% for field in form %}
+                {% if field.name != 'empresa' %}
+                    <div class="mb-4">
+                        {{ field.label_tag }}
+                        {{ field }}
+                        {{ field.errors }}
+                    </div>
+                {% endif %}
+            {% endfor %}
+
 
             <h2 class="text-2xl font-semibold text-gray-700 mb-4">Itens a Enviar</h2>
             {{ item_formset.management_form }}

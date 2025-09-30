@@ -1,0 +1,36 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="max-w-md mx-auto mt-10">
+    <div class="bg-white p-8 rounded-lg shadow-md border border-gray-200">
+        <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Acessar o Sistema</h2>
+        
+        {% if form.errors %}
+            <p class="bg-red-100 text-red-700 p-3 rounded mb-4 text-sm">Seu nome de usuário ou senha estão incorretos. Por favor, tente novamente.</p>
+        {% endif %}
+        
+        {% if next %}
+            <p class="bg-yellow-100 text-yellow-800 p-3 rounded mb-4 text-sm">Por favor, faça login para ver esta página.</p>
+        {% endif %}
+
+        <form method="post" action="{% url 'login' %}">
+            {% csrf_token %}
+            <div class="space-y-4">
+                <div>
+                    <label for="id_username" class="block text-sm font-medium text-gray-700">Nome de Usuário</label>
+                    <input type="text" name="username" autofocus autocapitalize="none" autocomplete="username" maxlength="150" required id="id_username"
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                    <label for="id_password" class="block text-sm font-medium text-gray-700">Senha</label>
+                    <input type="password" name="password" autocomplete="current-password" required id="id_password"
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+            </div>
+            <div class="mt-6">
+                <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 font-semibold transition-colors">Entrar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

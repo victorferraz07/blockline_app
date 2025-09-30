@@ -8,7 +8,8 @@ from django.contrib.auth.decorators import login_required, permission_required
 from .models import (
     ItemEstoque, ProdutoFabricado, Recebimento, 
     DocumentoProdutoFabricado, Componente, Setor, Fornecedor,
-    ImagemProdutoFabricado, ImagemItemEstoque, ItemFornecedor, Expedicao, ItemExpedido, DocumentoExpedicao, ImagemExpedicao 
+    ImagemProdutoFabricado, ImagemItemEstoque, ItemFornecedor, Expedicao, ItemExpedido, DocumentoExpedicao, ImagemExpedicao,
+    Empresa, PerfilUsuario 
 )
 from .forms import (
     ItemEstoqueForm, RetiradaItemForm, AdicaoItemForm, RecebimentoForm, 
@@ -16,13 +17,12 @@ from .forms import (
     ImagemProdutoForm, ItemFornecedorForm, ExpedicaoForm, ItemExpedidoForm, DocumentoExpedicaoForm, ImagemExpedicaoForm
 )
 
-def get_empresas_do_usuario(user):
+def get_empresas_permitidas(user):
     if user.is_superuser:
         return Empresa.objects.all()
     try:
-        # Garante que o perfil exista
         if hasattr(user, 'perfil'):
-            return user.perfil.empresas_permitidas.filter(acesso_liberado=True)
+            return user.perfil.empresas_permitidas.all()
     except PerfilUsuario.DoesNotExist:
         pass
     return Empresa.objects.none()
@@ -30,11 +30,16 @@ def get_empresas_do_usuario(user):
 # core/views.py
 @login_required
 def dashboard(request):
+    # A LINHA QUE ESTAVA FALTANDO:
+    # Primeiro, nós chamamos nossa função auxiliar para obter a lista de empresas permitidas.
+    empresas_permitidas = get_empresas_permitidas(request.user)
+    
     total_itens_estoque = ItemEstoque.objects.count()
     total_produtos_fabricados = ProdutoFabricado.objects.count()
     
-    ultimos_recebimentos = Recebimento.objects.order_by('-data_recebimento')[:5]
-    ultimas_expedicoes = Expedicao.objects.order_by('-data_expedicao')[:5]
+    # Agora, a variável 'empresas_permitidas' existe e pode ser usada nos filtros.
+    ultimos_recebimentos = Recebimento.objects.filter(empresa__in=empresas_permitidas).order_by('-data_recebimento')[:5]
+    ultimas_expedicoes = Expedicao.objects.filter(empresa__in=empresas_permitidas).order_by('-data_expedicao')[:5]
 
     contexto = {
         'total_itens_estoque': total_itens_estoque,
@@ -140,6 +145,7 @@ def adicionar_estoque(request, pk):
     return redirect('gerenciar_item', pk=item.pk)
 
 @login_required
+@permission_required('core.delete_itemestoque', raise_exception=True)
 def excluir_item(request, pk):
     item = get_object_or_404(ItemEstoque, pk=pk)
     if request.method == 'POST':
@@ -152,6 +158,7 @@ def excluir_item(request, pk):
 # --- Views de Recebimento ---
 
 @login_required
+@permission_required('core.view_recebimento', raise_exception=True)
 def lista_recebimentos(request):
     query = request.GET.get('q')
     recebimentos = Recebimento.objects.all().order_by('-data_recebimento')
@@ -161,46 +168,71 @@ def lista_recebimentos(request):
     return render(request, 'core/lista_recebimentos.html', contexto)
 
 @login_required
+# @permission_required('core.add_recebimento', raise_exception=True)
 def registrar_recebimento(request):
+    empresas_permitidas = get_empresas_permitidas(request.user)
+    num_empresas = empresas_permitidas.count()
+
     if request.method == 'POST':
-        # Criamos uma cópia mutável dos dados do POST
-        post_data = request.POST.copy()
-        fornecedor_val = post_data.get('fornecedor')
-
-        # Se o valor do fornecedor não for um número (ID), é um nome novo
-        if fornecedor_val and not fornecedor_val.isnumeric():
-            # Usamos get_or_create para buscar ou criar o fornecedor
-            novo_fornecedor, created = Fornecedor.objects.get_or_create(nome=fornecedor_val)
-            # Substituímos o texto pelo ID do novo fornecedor nos dados
-            post_data['fornecedor'] = novo_fornecedor.pk
-
-        # Agora, inicializamos o formulário com os dados modificados
-        form = RecebimentoForm(post_data, request.FILES)
+        form = RecebimentoForm(request.POST, request.FILES)
+        # Se o usuário não for superusuário, a 'empresa' não será validada pelo form principal
+        if not request.user.is_superuser and 'empresa' in form.fields:
+            del form.fields['empresa']
 
         if form.is_valid():
             recebimento = form.save(commit=False)
+            
+            # LÓGICA DE ATRIBUIÇÃO FINAL:
+            if request.user.is_superuser:
+                # O superusuário escolheu no formulário, o form.save() já cuida disso.
+                pass
+            elif num_empresas == 1:
+                # Se o usuário tem apenas uma empresa, atribuímos ela automaticamente.
+                recebimento.empresa = empresas_permitidas.first()
+            elif num_empresas > 1:
+                # Se ele tem várias, o valor veio do formulário. Mas precisamos pegar o ID do POST.
+                empresa_id = request.POST.get('empresa')
+                if empresa_id:
+                    recebimento.empresa_id = empresa_id
+            else:
+                messages.error(request, "Você não está associado a nenhuma empresa.")
+                return redirect('dashboard')
+
             recebimento.usuario = request.user
             recebimento.save()
             messages.success(request, 'Recebimento registrado com sucesso!')
             return redirect('lista_recebimentos')
     else:
         form = RecebimentoForm()
+        
+        # LÓGICA DE EXIBIÇÃO FINAL:
+        if not request.user.is_superuser:
+            if num_empresas > 1:
+                # Se ele pode ver várias, filtramos o dropdown para mostrar APENAS as permitidas.
+                form.fields['empresa'].queryset = empresas_permitidas
+            else:
+                # Se ele pode ver 0 ou 1, não mostramos o campo.
+                if 'empresa' in form.fields:
+                    del form.fields['empresa']
 
-    ultimos_recebimentos = Recebimento.objects.order_by('-data_recebimento')[:5]
     contexto = {
         'form': form,
         'titulo': 'Registrar Novo Recebimento',
-        'ultimos_recebimentos': ultimos_recebimentos,
+        'ultimos_recebimentos': Recebimento.objects.filter(empresa__in=empresas_permitidas).order_by('-data_recebimento')[:5]
     }
     return render(request, 'core/registrar_recebimento.html', contexto)
 
 @login_required
+@permission_required('core.view_recebimento', raise_exception=True)
 def detalhe_recebimento(request, pk):
+    empresas_permitidas = get_empresas_permitidas(request.user)
     recebimento = get_object_or_404(Recebimento, pk=pk)
     contexto = {'recebimento': recebimento}
+
     return render(request, 'core/detalhe_recebimento.html', contexto)
 
 @login_required
+@permission_required('core.change_recebimento', raise_exception=True)
 def editar_recebimento(request, pk):
     recebimento = get_object_or_404(Recebimento, pk=pk)
     if request.method == 'POST':
@@ -389,7 +421,7 @@ def registrar_expedicao(request):
     ImagemExpedicaoFormSet = inlineformset_factory(Expedicao, ImagemExpedicao, form=ImagemExpedicaoForm, extra=1, can_delete=False)
 
     if request.method == 'POST':
-        form = ExpedicaoForm(request.POST)
+        form = ExpedicaoForm(request.POST, request.FILES)
         item_formset = ItemExpedidoFormSet(request.POST, prefix='itens')
         documento_formset = DocumentoExpedicaoFormSet(request.POST, request.FILES, prefix='documentos')
         imagem_formset = ImagemExpedicaoFormSet(request.POST, request.FILES, prefix='imagens')
@@ -407,7 +439,9 @@ def registrar_expedicao(request):
                         pode_prosseguir = False
             
             if not pode_prosseguir:
-                return redirect('registrar_expedicao')
+                # Se não puder prosseguir, renderiza a página de novo com os erros
+                contexto = {'form': form, 'item_formset': item_formset, 'documento_formset': documento_formset, 'imagem_formset': imagem_formset}
+                return render(request, 'core/registrar_expedicao.html', contexto)
             
             # --- Se tudo estiver OK, salva e dá baixa no estoque ---
             expedicao = form.save(commit=False)
@@ -431,24 +465,20 @@ def registrar_expedicao(request):
                     produto.item_associado.quantidade -= quantidade
                     produto.item_associado.save()
 
-            # AGORA a variável 'expedicao' existe com certeza
-            messages.success(request, f"Expedicao #{expedicao.pk} registrada com sucesso!")
+            messages.success(request, f"Expedição #{expedicao.pk} registrada com sucesso!")
             return redirect('lista_expedicoes')
     else:
-        # Lógica para quando os formulários são inválidos
-        # (podemos adicionar mensagens de erro aqui no futuro)
-        pass # Apenas renderiza o template novamente com os erros do formulário
-
-    form = ExpedicaoForm()
-    item_formset = ItemExpedidoFormSet(prefix='itens')
-    documento_formset = DocumentoExpedicaoFormSet(prefix='documentos')
-    imagem_formset = ImagemExpedicaoFormSet(prefix='imagens')
+        form = ExpedicaoForm()
+        item_formset = ItemExpedidoFormSet(prefix='itens')
+        documento_formset = DocumentoExpedicaoFormSet(prefix='documentos')
+        imagem_formset = ImagemExpedicaoFormSet(prefix='imagens')
 
     contexto = {
         'form': form,
         'item_formset': item_formset,
         'documento_formset': documento_formset,
         'imagem_formset': imagem_formset,
+        'titulo': 'Registrar Nova Expedição'
     }
     return render(request, 'core/registrar_expedicao.html', contexto)
 
@@ -491,6 +521,7 @@ def editar_expedicao(request, pk):
     return render(request, 'core/editar_expedicao.html', contexto)
 
 @login_required
+@permission_required('core.delete_recebimento', raise_exception=True)
 def excluir_recebimento(request, pk):
     recebimento = get_object_or_404(Recebimento, pk=pk)
     if request.method == 'POST':

@@ -45,9 +45,10 @@ class AdicaoItemForm(forms.Form):
 class RecebimentoForm(forms.ModelForm):
     class Meta:
         model = Recebimento
-        fields = ['numero_nota_fiscal', 'fornecedor', 'valor_total', 'setor', 'status', 
-                    'foto_documento', 'foto_embalagem', 'observacoes']
+        # O campo 'empresa' DEVE estar na lista para que a view possa acessá-lo
+        fields = ['empresa', 'numero_nota_fiscal', 'fornecedor', 'valor_total', 'setor', 'status', 'foto_documento', 'foto_embalagem', 'observacoes']
         labels = {
+            'empresa': 'Registrar para a Empresa',
             'numero_nota_fiscal': 'Número da Nota Fiscal',
             'fornecedor': 'Fornecedor',
             'valor_total': 'Valor Total da Nota',
@@ -58,16 +59,15 @@ class RecebimentoForm(forms.ModelForm):
             'observacoes': 'Observações Gerais',
         }
         widgets = {
+            'empresa': forms.Select(attrs={'class': 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md ...'}),
             'numero_nota_fiscal': forms.TextInput(attrs={'class': 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md ...'}),
             'fornecedor': forms.Select(attrs={'class': 'tom-select-criavel mt-1 block w-full ...'}),
             'valor_total': forms.NumberInput(attrs={'class': 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md ...'}),
             'setor': forms.Select(attrs={'class': 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md ...'}),
             'status': forms.Select(attrs={'class': 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md ...'}),
             'observacoes': forms.Textarea(attrs={'class': 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md ...', 'rows': 3}),
-            
-            # ESTILOS CORRIGIDOS PARA OS CAMPOS DE ARQUIVO
-            'foto_documento': forms.FileInput(attrs={'class': 'mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100'}),
-            'foto_embalagem': forms.FileInput(attrs={'class': 'mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100'}),
+            'foto_documento': forms.FileInput(attrs={'class': 'mt-1 block w-full text-sm text-gray-500 ...'}),
+            'foto_embalagem': forms.FileInput(attrs={'class': 'mt-1 block w-full text-sm text-gray-500 ...'}),
         }
 
 # --- Formulários de Produto ---
@@ -131,7 +131,7 @@ class ItemFornecedorForm(forms.ModelForm):
 class ExpedicaoForm(forms.ModelForm):
     class Meta:
         model = Expedicao
-        fields = ['cliente', 'nota_fiscal', 'observacoes']
+        fields = fields = ['empresa', 'cliente', 'nota_fiscal', 'observacoes']
         labels = {
             'cliente': 'Cliente / Destino',
             'nota_fiscal': 'Número da Nota Fiscal',

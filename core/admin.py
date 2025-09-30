@@ -1,21 +1,50 @@
-# core/admin.py
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.models import User
 from .models import (
-    ItemEstoque, ProdutoFabricado, Recebimento, 
-    DocumentoProdutoFabricado, Componente, Setor, Fornecedor,
-    ImagemProdutoFabricado, ImagemItemEstoque, ItemFornecedor,
-    Expedicao, ItemExpedido, DocumentoExpedicao, ImagemExpedicao, Empresa, PerfilUsuario
+    Empresa, PerfilUsuario, Setor, Fornecedor, 
+    ItemFornecedor, ItemEstoque, Recebimento, 
+    ImagemItemEstoque, ProdutoFabricado, DocumentoProdutoFabricado, 
+    ImagemProdutoFabricado, Componente, Expedicao, 
+    ItemExpedido, DocumentoExpedicao, ImagemExpedicao
 )
+
+# --- Configurações de Administração Customizadas ---
+
+# 1. Crie uma classe 'inline' para o Perfil
+class PerfilUsuarioInline(admin.StackedInline):
+    model = PerfilUsuario
+    can_delete = False
+    verbose_name_plural = 'Perfil do Usuário'
+    # 'filter_horizontal' melhora a seleção de ManyToManyField
+    filter_horizontal = ('empresas_permitidas',)
+
+# 2. Crie uma nova classe de Admin para o Usuário que usa o inline
+class CustomUserAdmin(UserAdmin):
+    inlines = (PerfilUsuarioInline,)
+
+# 3. Cancele o registro padrão do User e registre novamente com nossa versão customizada
+admin.site.unregister(User)
+admin.site.register(User, CustomUserAdmin)
 
 @admin.register(ItemEstoque)
 class ItemEstoqueAdmin(admin.ModelAdmin):
-    list_display = ('nome', 'quantidade', 'local_armazenamento', 'data_atualizacao')
+    # CORREÇÃO AQUI: Removemos o filtro inválido 'empresa__nome'
+    # e mantivemos os que funcionam.
+    list_display = ('nome', 'quantidade', 'local_armazenamento', 'data_atualizacao', 'tipo')
     search_fields = ('nome', 'descricao', 'local_armazenamento')
-    list_filter = ('data_atualizacao', 'data_criacao')
+    list_filter = ('tipo', 'data_atualizacao', 'data_criacao')
+    
+    # Função para mostrar a empresa de forma segura
+    def empresa_associada(self, obj):
+        if obj.is_produto_fabricado and hasattr(obj, 'receita'):
+            return obj.receita.empresa
+        return None
+    empresa_associada.short_description = 'Empresa (se Produto)'
 
-# Registrando todos os outros
+
+# --- Registros Simples ---
 admin.site.register(Empresa)
-admin.site.register(PerfilUsuario)
 admin.site.register(Setor)
 admin.site.register(Fornecedor)
 admin.site.register(ItemFornecedor)
