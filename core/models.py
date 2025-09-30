@@ -1,6 +1,7 @@
 # core/models.py
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 class Empresa(models.Model):
     nome = models.CharField(max_length=100, unique=True, verbose_name="Nome da Empresa")
@@ -158,3 +159,42 @@ class ImagemExpedicao(models.Model):
 
     def __str__(self):
         return f"Imagem para a Expedição #{self.expedicao.pk}"
+
+# --- MODELOS KANBAN ---
+
+class KanbanColumn(models.Model):
+    nome = models.CharField(max_length=100)
+    cor = models.CharField(max_length=20, default='#f3f4f6')  # cor de fundo
+    ordem = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['ordem']
+    def __str__(self):
+        return self.nome
+
+class Task(models.Model):
+    coluna = models.ForeignKey(KanbanColumn, on_delete=models.CASCADE, related_name='tasks')
+    titulo = models.CharField(max_length=200)
+    descricao = models.TextField(blank=True)
+    quantidade = models.PositiveIntegerField(default=0)
+    em_andamento = models.BooleanField(default=False)
+    responsaveis = models.ManyToManyField(User, blank=True, related_name='tasks_responsaveis')
+    ordem = models.PositiveIntegerField(default=0)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['ordem']
+    def __str__(self):
+        return self.titulo
+
+class TaskQuantidadeFeita(models.Model):
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='quantidades_feitas')
+    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    quantidade = models.PositiveIntegerField()
+    data = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['-data']
+    def __str__(self):
+        return f"{self.quantidade} feita por {self.usuario} em {self.data.strftime('%d/%m/%Y %H:%M')}"

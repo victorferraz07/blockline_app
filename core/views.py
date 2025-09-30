@@ -1,15 +1,19 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import Q
 from django.forms import modelformset_factory, inlineformset_factory
 from django.contrib.auth.decorators import login_required, permission_required
+from django.views.decorators.http import require_POST
+from django.http import JsonResponse
 
 from .models import (
     ItemEstoque, ProdutoFabricado, Recebimento, 
     DocumentoProdutoFabricado, Componente, Setor, Fornecedor,
     ImagemProdutoFabricado, ImagemItemEstoque, ItemFornecedor, Expedicao, ItemExpedido, DocumentoExpedicao, ImagemExpedicao,
-    Empresa, PerfilUsuario 
+    Empresa, PerfilUsuario,
+    KanbanColumn, Task, TaskQuantidadeFeita,
 )
 from .forms import (
     ItemEstoqueForm, RetiradaItemForm, AdicaoItemForm, RecebimentoForm, 
@@ -555,3 +559,134 @@ def excluir_expedicao(request, pk):
         return redirect('lista_expedicoes')
     
     return redirect('detalhe_expedicao', pk=pk)
+
+# --- Views do Kanban ---
+
+@login_required
+def kanban_board(request):
+    colunas = KanbanColumn.objects.all().order_by('ordem')
+    tarefas_por_coluna = {str(coluna.id): list(coluna.tasks.all().order_by('ordem')) for coluna in colunas}
+    historico = TaskQuantidadeFeita.objects.select_related('usuario', 'task').order_by('-data')[:30]
+    contexto = {
+        'colunas': colunas,
+        'tarefas_por_coluna': tarefas_por_coluna,
+        'historico': historico,
+    }
+    return render(request, 'core/kanban_board.html', contexto)
+
+@login_required
+def criar_coluna(request):
+    if request.method == 'POST':
+        nome = request.POST.get('nome')
+        cor = request.POST.get('cor', '#f3f4f6')
+        ordem = KanbanColumn.objects.count()
+        coluna = KanbanColumn.objects.create(nome=nome, cor=cor, ordem=ordem)
+        return redirect('kanban_board')
+    return render(request, 'core/form_coluna.html')
+
+@login_required
+def editar_coluna(request, coluna_id):
+    coluna = get_object_or_404(KanbanColumn, id=coluna_id)
+    if request.method == 'POST':
+        coluna.nome = request.POST.get('nome')
+        coluna.cor = request.POST.get('cor', coluna.cor)
+        coluna.save()
+        return redirect('kanban_board')
+    return render(request, 'core/form_coluna.html', {'coluna': coluna})
+
+@login_required
+def excluir_coluna(request, coluna_id):
+    coluna = get_object_or_404(KanbanColumn, id=coluna_id)
+    if request.method == 'POST':
+        coluna.delete()
+        return redirect('kanban_board')
+    return render(request, 'core/confirmar_exclusao.html', {'obj': coluna, 'tipo': 'coluna'})
+
+@login_required
+def criar_tarefa(request, coluna_id=None):
+    if request.method == 'POST':
+        coluna = get_object_or_404(KanbanColumn, id=request.POST.get('coluna_id', coluna_id))
+        titulo = request.POST.get('titulo')
+        descricao = request.POST.get('descricao', '')
+        quantidade = int(request.POST.get('quantidade', 0))
+        ordem = coluna.tasks.count()
+        task = Task.objects.create(coluna=coluna, titulo=titulo, descricao=descricao, quantidade=quantidade, ordem=ordem)
+        responsaveis_ids = request.POST.getlist('responsaveis')
+        if responsaveis_ids:
+            task.responsaveis.set(responsaveis_ids)
+        return redirect('kanban_board')
+    colunas = KanbanColumn.objects.all()
+    users = User.objects.all()
+    return render(request, 'core/form_tarefa.html', {'colunas': colunas, 'users': users, 'coluna_id': coluna_id})
+
+@login_required
+def editar_tarefa(request, task_id):
+    task = get_object_or_404(Task, id=task_id)
+    if request.method == 'POST':
+        task.titulo = request.POST.get('titulo')
+        task.descricao = request.POST.get('descricao', '')
+        task.quantidade = int(request.POST.get('quantidade', 0))
+        task.coluna_id = request.POST.get('coluna_id', task.coluna_id)
+        responsaveis_ids = request.POST.getlist('responsaveis')
+        task.responsaveis.set(responsaveis_ids)
+        task.save()
+        return redirect('kanban_board')
+    colunas = KanbanColumn.objects.all()
+    users = User.objects.all()
+    return render(request, 'core/form_tarefa.html', {'task': task, 'colunas': colunas, 'users': users})
+
+@login_required
+def excluir_tarefa(request, task_id):
+    task = get_object_or_404(Task, id=task_id)
+    if request.method == 'POST':
+        task.delete()
+        return redirect('kanban_board')
+    return render(request, 'core/confirmar_exclusao.html', {'obj': task, 'tipo': 'tarefa'})
+
+@login_required
+@require_POST
+def mover_tarefa(request, task_id):
+    task = get_object_or_404(Task, id=task_id)
+    nova_coluna_id = request.POST.get('nova_coluna_id')
+    nova_ordem = int(request.POST.get('nova_ordem', 0))
+    if nova_coluna_id:
+        task.coluna_id = nova_coluna_id
+    task.ordem = nova_ordem
+    task.save()
+    return JsonResponse({'success': True})
+
+@login_required
+@require_POST
+def mover_coluna(request, coluna_id):
+    coluna = get_object_or_404(KanbanColumn, id=coluna_id)
+    nova_ordem = int(request.POST.get('nova_ordem', 0))
+    coluna.ordem = nova_ordem
+    coluna.save()
+    return JsonResponse({'success': True})
+
+@login_required
+@require_POST
+def marcar_andamento(request, task_id):
+    task = get_object_or_404(Task, id=task_id)
+    task.em_andamento = True
+    task.save()
+    return redirect('kanban_board')
+
+@login_required
+@require_POST
+def finalizar(request, task_id):
+    task = get_object_or_404(Task, id=task_id)
+    task.em_andamento = False
+    task.save()
+    return redirect('kanban_board')
+
+@login_required
+@require_POST
+def registrar_quantidade(request, task_id):
+    task = get_object_or_404(Task, id=task_id)
+    quantidade = int(request.POST.get('quantidade', 0))
+    if quantidade > 0:
+        TaskQuantidadeFeita.objects.create(task=task, usuario=request.user, quantidade=quantidade)
+        task.quantidade += quantidade
+        task.save()
+    return redirect('kanban_board')

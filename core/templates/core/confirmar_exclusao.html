@@ -1,0 +1,11 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div class="max-w-lg mx-auto mt-10 bg-white/90 rounded-lg shadow p-6 text-center">
+  <h2 class="text-xl font-bold mb-4">Confirmar Exclusão</h2>
+  <p class="mb-6">Tem certeza que deseja excluir esta {{ tipo }}?</p>
+  <form method="post">{% csrf_token %}
+    <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Excluir</button>
+    <a href="/kanban/" class="ml-4 text-gray-500 hover:underline">Cancelar</a>
+  </form>
+</div>
+{% endblock %}
