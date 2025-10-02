@@ -25,6 +25,7 @@ from .forms import (
     ImagemProdutoForm, ItemFornecedorForm, ExpedicaoForm, ItemExpedidoForm, DocumentoExpedicaoForm, ImagemExpedicaoForm,
     ClienteForm, FornecedorForm
 )
+from .decorators import superuser_required, filter_by_empresa, get_user_empresa
 
 def get_empresas_permitidas(user):
     if user.is_superuser:
@@ -89,7 +90,10 @@ def dashboard(request):
 # --- Views de Estoque ---
 @login_required
 def lista_estoque(request):
+    # SEGURANÇA: Filtrar apenas itens da empresa do usuário
     itens = ItemEstoque.objects.all()
+    # Nota: ItemEstoque não tem campo empresa, então mostra todos
+    # Se precisar filtro por empresa, adicione campo empresa ao modelo
 
     # Busca funcional
     query = request.GET.get('q', '').strip()
@@ -1552,12 +1556,9 @@ def abonar_dia(request):
 
     return redirect('controle_ponto')
 
-@login_required
+@superuser_required
 def remover_abono_dia(request, abono_id):
     """Permite superuser remover um abono de dia"""
-    if not request.user.is_superuser:
-        messages.error(request, 'Você não tem permissão para remover abonos.')
-        return redirect('controle_ponto')
 
     try:
         abono = AbonoDia.objects.get(pk=abono_id)
@@ -1570,12 +1571,9 @@ def remover_abono_dia(request, abono_id):
 
     return redirect('controle_ponto')
 
-@login_required
+@superuser_required
 def configurar_periodo_mes(request):
     """Permite superuser configurar período de mês personalizado para funcionário"""
-    if not request.user.is_superuser:
-        messages.error(request, 'Você não tem permissão para configurar períodos.')
-        return redirect('controle_ponto')
 
     if request.method == 'POST':
         usuario_id = request.POST.get('usuario_id')
@@ -1625,7 +1623,11 @@ def configurar_periodo_mes(request):
 @login_required
 def lista_clientes(request):
     from django.db.models import Count
-    clientes = Cliente.objects.all().annotate(total_produtos=Count('produtos_fornecidos')).order_by('nome')
+
+    # SEGURANÇA: Filtrar apenas clientes da empresa do usuário
+    clientes = Cliente.objects.all()
+    clientes = filter_by_empresa(clientes, request.user)
+    clientes = clientes.annotate(total_produtos=Count('produtos_fornecidos')).order_by('nome')
 
     # Filtros
     query = request.GET.get('q', '')
@@ -1640,7 +1642,7 @@ def lista_clientes(request):
         'clientes': clientes,
         'query': query,
         'mercado_filtro': mercado,
-        'total_clientes': Cliente.objects.count(),
+        'total_clientes': clientes.count(),
     }
     return render(request, 'core/lista_clientes.html', contexto)
 
@@ -1664,7 +1666,10 @@ def adicionar_cliente(request):
 
 @login_required
 def editar_cliente(request, pk):
-    cliente = get_object_or_404(Cliente, pk=pk)
+    # SEGURANÇA: Garantir que o cliente pertence à empresa do usuário
+    empresas = get_user_empresa(request.user)
+    cliente = get_object_or_404(Cliente, pk=pk, empresa__in=empresas)
+
     if request.method == 'POST':
         form = ClienteForm(request.POST, instance=cliente)
         if form.is_valid():
@@ -1678,12 +1683,17 @@ def editar_cliente(request, pk):
 
 @login_required
 def detalhe_cliente(request, pk):
-    cliente = get_object_or_404(Cliente, pk=pk)
+    # SEGURANÇA: Garantir que o cliente pertence à empresa do usuário
+    empresas = get_user_empresa(request.user)
+    cliente = get_object_or_404(Cliente, pk=pk, empresa__in=empresas)
     return render(request, 'core/detalhe_cliente.html', {'cliente': cliente})
 
 @login_required
 def excluir_cliente(request, pk):
-    cliente = get_object_or_404(Cliente, pk=pk)
+    # SEGURANÇA: Garantir que o cliente pertence à empresa do usuário
+    empresas = get_user_empresa(request.user)
+    cliente = get_object_or_404(Cliente, pk=pk, empresa__in=empresas)
+
     if request.method == 'POST':
         nome = cliente.nome
         cliente.delete()
@@ -1695,7 +1705,10 @@ def excluir_cliente(request, pk):
 
 @login_required
 def lista_fornecedores(request):
-    fornecedores = Fornecedor.objects.all().order_by('nome')
+    # SEGURANÇA: Filtrar apenas fornecedores da empresa do usuário
+    fornecedores = Fornecedor.objects.all()
+    fornecedores = filter_by_empresa(fornecedores, request.user)
+    fornecedores = fornecedores.order_by('nome')
 
     # Filtros
     query = request.GET.get('q', '')
@@ -1710,7 +1723,7 @@ def lista_fornecedores(request):
         'fornecedores': fornecedores,
         'query': query,
         'mercado_filtro': mercado,
-        'total_fornecedores': Fornecedor.objects.count(),
+        'total_fornecedores': fornecedores.count(),
     }
     return render(request, 'core/lista_fornecedores.html', contexto)
 
@@ -1733,7 +1746,10 @@ def adicionar_fornecedor(request):
 
 @login_required
 def editar_fornecedor(request, pk):
-    fornecedor = get_object_or_404(Fornecedor, pk=pk)
+    # SEGURANÇA: Garantir que o fornecedor pertence à empresa do usuário
+    empresas = get_user_empresa(request.user)
+    fornecedor = get_object_or_404(Fornecedor, pk=pk, empresa__in=empresas)
+
     if request.method == 'POST':
         form = FornecedorForm(request.POST, instance=fornecedor)
         if form.is_valid():
@@ -1747,12 +1763,17 @@ def editar_fornecedor(request, pk):
 
 @login_required
 def detalhe_fornecedor(request, pk):
-    fornecedor = get_object_or_404(Fornecedor, pk=pk)
+    # SEGURANÇA: Garantir que o fornecedor pertence à empresa do usuário
+    empresas = get_user_empresa(request.user)
+    fornecedor = get_object_or_404(Fornecedor, pk=pk, empresa__in=empresas)
     return render(request, 'core/detalhe_fornecedor.html', {'fornecedor': fornecedor})
 
 @login_required
 def excluir_fornecedor(request, pk):
-    fornecedor = get_object_or_404(Fornecedor, pk=pk)
+    # SEGURANÇA: Garantir que o fornecedor pertence à empresa do usuário
+    empresas = get_user_empresa(request.user)
+    fornecedor = get_object_or_404(Fornecedor, pk=pk, empresa__in=empresas)
+
     if request.method == 'POST':
         nome = fornecedor.nome
         fornecedor.delete()
