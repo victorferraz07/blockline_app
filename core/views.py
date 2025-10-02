@@ -2,12 +2,13 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Sum, Avg
 from django.forms import modelformset_factory, inlineformset_factory
 from django.contrib.auth.decorators import login_required, permission_required
 from django.views.decorators.http import require_POST
 from django.http import JsonResponse
 from django.utils import timezone
+import json
 
 from .models import (
     ItemEstoque, ProdutoFabricado, Recebimento,
@@ -15,12 +16,14 @@ from .models import (
     ImagemProdutoFabricado, ImagemItemEstoque, ItemFornecedor, Expedicao, ItemExpedido, DocumentoExpedicao, ImagemExpedicao,
     Empresa, PerfilUsuario,
     KanbanColumn, Task, TaskQuantidadeFeita, TaskHistorico,
-    JornadaTrabalho, RegistroPonto, ResumoMensal,
+    JornadaTrabalho, RegistroPonto, ResumoMensal, AbonoDia,
+    MovimentacaoEstoque, Cliente,
 )
 from .forms import (
-    ItemEstoqueForm, RetiradaItemForm, AdicaoItemForm, RecebimentoForm, 
+    ItemEstoqueForm, RetiradaItemForm, AdicaoItemForm, RecebimentoForm,
     ProdutoFabricadoForm, DocumentoProdutoForm, ComponenteForm, ProducaoForm,
-    ImagemProdutoForm, ItemFornecedorForm, ExpedicaoForm, ItemExpedidoForm, DocumentoExpedicaoForm, ImagemExpedicaoForm
+    ImagemProdutoForm, ItemFornecedorForm, ExpedicaoForm, ItemExpedidoForm, DocumentoExpedicaoForm, ImagemExpedicaoForm,
+    ClienteForm, FornecedorForm
 )
 
 def get_empresas_permitidas(user):
@@ -36,41 +39,100 @@ def get_empresas_permitidas(user):
 # core/views.py
 @login_required
 def dashboard(request):
-    # A LINHA QUE ESTAVA FALTANDO:
-    # Primeiro, nós chamamos nossa função auxiliar para obter a lista de empresas permitidas.
-    empresas_permitidas = get_empresas_permitidas(request.user)
-    
+    from django.db.models import Sum
+    from datetime import datetime, timedelta
+
+    # Estatísticas gerais
     total_itens_estoque = ItemEstoque.objects.count()
     total_produtos_fabricados = ProdutoFabricado.objects.count()
-    
-    # Agora, a variável 'empresas_permitidas' existe e pode ser usada nos filtros.
-    ultimos_recebimentos = Recebimento.objects.filter(empresa__in=empresas_permitidas).order_by('-data_recebimento')[:5]
-    ultimas_expedicoes = Expedicao.objects.filter(empresa__in=empresas_permitidas).order_by('-data_expedicao')[:5]
+    total_recebimentos = Recebimento.objects.count()
+    total_expedicoes = Expedicao.objects.count()
+
+    # Quantidade total em estoque
+    quantidade_total_estoque = ItemEstoque.objects.aggregate(total=Sum('quantidade'))['total'] or 0
+
+    # Atividades recentes
+    ultimos_recebimentos = Recebimento.objects.order_by('-data_recebimento')[:5]
+    ultimas_expedicoes = Expedicao.objects.order_by('-data_expedicao')[:5]
+
+    # Combinar e ordenar atividades por data
+    atividades = []
+
+    for recebimento in ultimos_recebimentos:
+        atividades.append({
+            'tipo': 'recebimento',
+            'data': recebimento.data_recebimento,
+            'objeto': recebimento
+        })
+
+    for expedicao in ultimas_expedicoes:
+        atividades.append({
+            'tipo': 'expedicao',
+            'data': expedicao.data_expedicao,
+            'objeto': expedicao
+        })
+
+    # Ordenar por data (mais recente primeiro)
+    atividades.sort(key=lambda x: x['data'], reverse=True)
+    atividades = atividades[:10]  # Limitar a 10 atividades
 
     contexto = {
         'total_itens_estoque': total_itens_estoque,
         'total_produtos_fabricados': total_produtos_fabricados,
-        'ultimos_recebimentos': ultimos_recebimentos,
-        'ultimas_expedicoes': ultimas_expedicoes,
+        'total_recebimentos': total_recebimentos,
+        'total_expedicoes': total_expedicoes,
+        'quantidade_total_estoque': quantidade_total_estoque,
+        'atividades': atividades,
     }
     return render(request, 'core/dashboard.html', contexto)
 
 # --- Views de Estoque ---
 @login_required
 def lista_estoque(request):
-    query = request.GET.get('q')
-    itens = ItemEstoque.objects.all().order_by('nome')
+    itens = ItemEstoque.objects.all()
+
+    # Busca funcional
+    query = request.GET.get('q', '').strip()
     if query:
-        itens = itens.filter(Q(nome__icontains=query) | Q(descricao__icontains=query))
+        itens = itens.filter(
+            Q(nome__icontains=query) |
+            Q(descricao__icontains=query) |
+            Q(tipo__icontains=query)
+        )
+
+    # Filtro por tipo
+    tipo_filtro = request.GET.get('tipo', '').strip()
+    if tipo_filtro:
+        itens = itens.filter(tipo=tipo_filtro)
+
+    # Ordenação
+    ordenacao = request.GET.get('ordenar', 'nome')
+    if ordenacao == 'nome':
+        itens = itens.order_by('nome')
+    elif ordenacao == 'estoque_asc':
+        itens = itens.order_by('quantidade', 'nome')
+    elif ordenacao == 'estoque_desc':
+        itens = itens.order_by('-quantidade', 'nome')
+    elif ordenacao == 'tipo':
+        itens = itens.order_by('tipo', 'nome')
+    elif ordenacao == 'data_desc':
+        itens = itens.order_by('-id')
+    else:
+        itens = itens.order_by('nome')
+
+    # Estatísticas
     total_itens = itens.count()
     itens_esgotados = itens.filter(quantidade=0).count()
-    itens_em_baixo_estoque = itens.filter(quantidade__gt=0, quantidade__lte=10).count()
+    itens_saudaveis = itens.filter(quantidade__gte=10).count()
+
     contexto = {
         'itens': itens,
         'total_itens': total_itens,
         'itens_esgotados': itens_esgotados,
-        'itens_em_baixo_estoque': itens_em_baixo_estoque,
+        'itens_saudaveis': itens_saudaveis,
         'query': query,
+        'ordenacao': ordenacao,
+        'tipo_filtro': tipo_filtro,
     }
     return render(request, 'core/lista_estoque.html', contexto)
 
@@ -89,30 +151,71 @@ def adicionar_item(request):
 
 @login_required
 def gerenciar_item(request, pk):
+    from datetime import timedelta
+
     item = get_object_or_404(ItemEstoque, pk=pk)
     FornecedorItemFormSet = inlineformset_factory(ItemEstoque, ItemFornecedor, form=ItemFornecedorForm, extra=1, can_delete=True)
 
     if request.method == 'POST':
-        post_data = request.POST.copy()
-        total_forms = int(post_data.get('fornecedores-TOTAL_FORMS', 0))
-        for i in range(total_forms):
-            field_name = f'fornecedores-{i}-fornecedor'
-            fornecedor_val = post_data.get(field_name)
-            if fornecedor_val and not fornecedor_val.isnumeric():
-                novo_fornecedor, created = Fornecedor.objects.get_or_create(nome=fornecedor_val)
-                post_data[field_name] = novo_fornecedor.pk
-
         form = ItemEstoqueForm(request.POST, request.FILES, instance=item)
-        formset_fornecedores = FornecedorItemFormSet(post_data, instance=item, prefix='fornecedores')
-        
+        formset_fornecedores = FornecedorItemFormSet(request.POST, instance=item, prefix='fornecedores')
+
         if form.is_valid() and formset_fornecedores.is_valid():
             form.save()
             formset_fornecedores.save()
             messages.success(request, 'Item atualizado com sucesso!')
             return redirect('gerenciar_item', pk=item.pk)
+        else:
+            # Exibir erros de validação
+            if not formset_fornecedores.is_valid():
+                for form_error in formset_fornecedores.errors:
+                    if form_error:
+                        messages.error(request, f'Erro no formulário de fornecedores: {form_error}')
+                for non_form_error in formset_fornecedores.non_form_errors():
+                    messages.error(request, f'Erro: {non_form_error}')
     else:
         form = ItemEstoqueForm(instance=item)
         formset_fornecedores = FornecedorItemFormSet(instance=item, prefix='fornecedores')
+
+    # Estatísticas e dados adicionais
+    # 1. Valor total em estoque
+    ultimo_preco = item.itemfornecedor_set.order_by('-data_cotacao').first()
+    valor_total_estoque = 0
+    if ultimo_preco:
+        valor_total_estoque = item.quantidade * float(ultimo_preco.valor_pago)
+
+    # 2. Custo médio unitário
+    custo_medio = item.itemfornecedor_set.aggregate(media=Avg('valor_pago'))['media'] or 0
+
+    # 3. Movimentações nos últimos 30 dias
+    data_limite = timezone.now() - timedelta(days=30)
+    movimentacoes_recentes = item.movimentacoes.filter(data_hora__gte=data_limite)
+    total_entradas = movimentacoes_recentes.filter(tipo='entrada').aggregate(total=Sum('quantidade'))['total'] or 0
+    total_saidas = movimentacoes_recentes.filter(tipo='saida').aggregate(total=Sum('quantidade'))['total'] or 0
+
+    # 4. Histórico completo
+    historico_movimentacoes = item.movimentacoes.all()[:20]  # Últimas 20 movimentações
+
+    # 5. Galeria de imagens
+    galeria_imagens = item.imagens.all()
+
+    # 6. Dados para o gráfico de evolução (últimos 30 dias)
+    evolucao_estoque = []
+    for i in range(29, -1, -1):
+        data = timezone.now() - timedelta(days=i)
+        data_inicio = data.replace(hour=0, minute=0, second=0, microsecond=0)
+        data_fim = data_inicio + timedelta(days=1)
+
+        # Calcular estoque naquela data
+        movimentacoes_ate_data = item.movimentacoes.filter(data_hora__lt=data_fim)
+        entradas = movimentacoes_ate_data.filter(tipo='entrada').aggregate(total=Sum('quantidade'))['total'] or 0
+        saidas = movimentacoes_ate_data.filter(tipo='saida').aggregate(total=Sum('quantidade'))['total'] or 0
+        estoque_dia = entradas - saidas
+
+        evolucao_estoque.append({
+            'data': data.strftime('%d/%m'),
+            'quantidade': estoque_dia
+        })
 
     contexto = {
         'form': form,
@@ -120,6 +223,16 @@ def gerenciar_item(request, pk):
         'formset_fornecedores': formset_fornecedores,
         'retirada_form': RetiradaItemForm(),
         'adicao_form': AdicaoItemForm(),
+        # Estatísticas
+        'valor_total_estoque': valor_total_estoque,
+        'custo_medio': custo_medio,
+        'total_entradas_30d': total_entradas,
+        'total_saidas_30d': total_saidas,
+        # Histórico e galeria
+        'historico_movimentacoes': historico_movimentacoes,
+        'galeria_imagens': galeria_imagens,
+        # Gráfico (convertido para JSON)
+        'evolucao_estoque': json.dumps(evolucao_estoque),
     }
     return render(request, 'core/gerenciar_item.html', contexto)
 
@@ -130,11 +243,22 @@ def retirar_item(request, pk):
         form = RetiradaItemForm(request.POST)
         if form.is_valid():
             quantidade_a_retirar = form.cleaned_data['quantidade']
+            observacoes = form.cleaned_data.get('observacoes', '')
             if quantidade_a_retirar > item.quantidade:
                 messages.error(request, f'Não é possível retirar {quantidade_a_retirar}. Quantidade em estoque: {item.quantidade}.')
             else:
                 item.quantidade -= quantidade_a_retirar
                 item.save()
+
+                # Registrar movimentação
+                MovimentacaoEstoque.objects.create(
+                    item=item,
+                    tipo='saida',
+                    quantidade=quantidade_a_retirar,
+                    usuario=request.user,
+                    observacoes=observacoes
+                )
+
                 messages.success(request, f'{quantidade_a_retirar} unidade(s) de {item.nome} retiradas com sucesso.')
     return redirect('gerenciar_item', pk=item.pk)
 
@@ -145,8 +269,19 @@ def adicionar_estoque(request, pk):
         form = AdicaoItemForm(request.POST)
         if form.is_valid():
             quantidade_a_adicionar = form.cleaned_data['quantidade']
+            observacoes = form.cleaned_data.get('observacoes', '')
             item.quantidade += quantidade_a_adicionar
             item.save()
+
+            # Registrar movimentação
+            MovimentacaoEstoque.objects.create(
+                item=item,
+                tipo='entrada',
+                quantidade=quantidade_a_adicionar,
+                usuario=request.user,
+                observacoes=observacoes
+            )
+
             messages.success(request, f'{quantidade_a_adicionar} unidade(s) de {item.nome} adicionadas com sucesso.')
     return redirect('gerenciar_item', pk=item.pk)
 
@@ -161,70 +296,172 @@ def excluir_item(request, pk):
         return redirect('lista_estoque')
     return redirect('gerenciar_item', pk=pk)
 
+@login_required
+def duplicar_item(request, pk):
+    from django.core.files.base import ContentFile
+    import os
+
+    item_original = get_object_or_404(ItemEstoque, pk=pk)
+
+    # Gerar nome único para a cópia
+    nome_base = f"{item_original.nome} (Cópia)"
+    nome_final = nome_base
+    contador = 1
+
+    while ItemEstoque.objects.filter(nome=nome_final).exists():
+        nome_final = f"{nome_base} {contador}"
+        contador += 1
+
+    # Criar cópia do item
+    item_duplicado = ItemEstoque.objects.create(
+        tipo=item_original.tipo,
+        nome=nome_final,
+        descricao=item_original.descricao,
+        quantidade=0,  # Começa com quantidade zerada
+        local_armazenamento=item_original.local_armazenamento,
+        is_produto_fabricado=item_original.is_produto_fabricado
+    )
+
+    # Copiar foto principal se existir
+    if item_original.foto_principal and os.path.exists(item_original.foto_principal.path):
+        with open(item_original.foto_principal.path, 'rb') as f:
+            item_duplicado.foto_principal.save(
+                os.path.basename(item_original.foto_principal.name),
+                ContentFile(f.read()),
+                save=True
+            )
+
+    # Copiar documentação se existir
+    if item_original.documentacao and os.path.exists(item_original.documentacao.path):
+        with open(item_original.documentacao.path, 'rb') as f:
+            item_duplicado.documentacao.save(
+                os.path.basename(item_original.documentacao.name),
+                ContentFile(f.read()),
+                save=True
+            )
+
+    # Copiar fornecedores associados
+    for item_fornecedor in item_original.itemfornecedor_set.all():
+        ItemFornecedor.objects.create(
+            item_estoque=item_duplicado,
+            fornecedor=item_fornecedor.fornecedor,
+            fornecedor_nome=item_fornecedor.fornecedor_nome,
+            valor_pago=item_fornecedor.valor_pago,
+            data_cotacao=item_fornecedor.data_cotacao
+        )
+
+    messages.success(request, f'Item "{item_duplicado.nome}" foi criado com sucesso!')
+    return redirect('gerenciar_item', pk=item_duplicado.pk)
+
+
 # --- Views de Recebimento ---
 
 @login_required
 @permission_required('core.view_recebimento', raise_exception=True)
 def lista_recebimentos(request):
-    query = request.GET.get('q')
-    recebimentos = Recebimento.objects.all().order_by('-data_recebimento')
+    from datetime import timedelta
+    from decimal import Decimal
+
+    query = request.GET.get('q', '')
+    status_filtro = request.GET.get('status', '')
+    ordenacao = request.GET.get('ordenar', 'data_desc')
+
+    # Filtrar recebimentos
+    recebimentos = Recebimento.objects.all()
+
+    # Aplicar filtro de busca
     if query:
-        recebimentos = recebimentos.filter(Q(numero_nota_fiscal__icontains=query) | Q(fornecedor__icontains=query) | Q(usuario__username__icontains=query) | Q(setor__nome__icontains=query))
-    contexto = {'recebimentos': recebimentos, 'query': query}
+        recebimentos = recebimentos.filter(
+            Q(numero_nota_fiscal__icontains=query) |
+            Q(fornecedor__nome__icontains=query) |
+            Q(usuario__username__icontains=query) |
+            Q(setor__nome__icontains=query)
+        )
+
+    # Aplicar filtro de status
+    if status_filtro:
+        recebimentos = recebimentos.filter(status=status_filtro)
+
+    # Aplicar ordenação
+    if ordenacao == 'data_desc':
+        recebimentos = recebimentos.order_by('-data_recebimento')
+    elif ordenacao == 'data_asc':
+        recebimentos = recebimentos.order_by('data_recebimento')
+    elif ordenacao == 'fornecedor':
+        recebimentos = recebimentos.order_by('fornecedor__nome')
+    elif ordenacao == 'valor_desc':
+        recebimentos = recebimentos.order_by('-valor_total')
+    elif ordenacao == 'status':
+        recebimentos = recebimentos.order_by('status')
+
+    # Estatísticas
+    total_recebimentos = Recebimento.objects.count()
+
+    # Valor total do mês atual
+    data_limite = timezone.now() - timedelta(days=30)
+    recebimentos_mes = Recebimento.objects.filter(data_recebimento__gte=data_limite)
+    valor_total_mes = recebimentos_mes.aggregate(total=Sum('valor_total'))['total'] or Decimal('0.00')
+
+    # Recebimentos aguardando
+    aguardando_conferencia = Recebimento.objects.filter(status='aguardando').count()
+
+    contexto = {
+        'recebimentos': recebimentos,
+        'query': query,
+        'status_filtro': status_filtro,
+        'ordenacao': ordenacao,
+        'total_recebimentos': total_recebimentos,
+        'valor_total_mes': valor_total_mes,
+        'aguardando_conferencia': aguardando_conferencia,
+    }
     return render(request, 'core/lista_recebimentos.html', contexto)
 
 @login_required
 # @permission_required('core.add_recebimento', raise_exception=True)
 def registrar_recebimento(request):
-    empresas_permitidas = get_empresas_permitidas(request.user)
-    num_empresas = empresas_permitidas.count()
-
     if request.method == 'POST':
         form = RecebimentoForm(request.POST, request.FILES)
-        # Se o usuário não for superusuário, a 'empresa' não será validada pelo form principal
-        if not request.user.is_superuser and 'empresa' in form.fields:
+        # Remover campo empresa do formulário (será atribuído automaticamente)
+        if 'empresa' in form.fields:
             del form.fields['empresa']
 
         if form.is_valid():
             recebimento = form.save(commit=False)
-            
-            # LÓGICA DE ATRIBUIÇÃO FINAL:
-            if request.user.is_superuser:
-                # O superusuário escolheu no formulário, o form.save() já cuida disso.
-                pass
-            elif num_empresas == 1:
-                # Se o usuário tem apenas uma empresa, atribuímos ela automaticamente.
-                recebimento.empresa = empresas_permitidas.first()
-            elif num_empresas > 1:
-                # Se ele tem várias, o valor veio do formulário. Mas precisamos pegar o ID do POST.
-                empresa_id = request.POST.get('empresa')
-                if empresa_id:
-                    recebimento.empresa_id = empresa_id
+
+            # Atribuir primeira empresa disponível
+            primeira_empresa = Empresa.objects.first()
+            if primeira_empresa:
+                recebimento.empresa = primeira_empresa
             else:
-                messages.error(request, "Você não está associado a nenhuma empresa.")
+                messages.error(request, "Nenhuma empresa cadastrada no sistema.")
                 return redirect('dashboard')
 
             recebimento.usuario = request.user
             recebimento.save()
             messages.success(request, 'Recebimento registrado com sucesso!')
             return redirect('lista_recebimentos')
+        else:
+            # Mostrar erros de validação com nomes de campos traduzidos
+            for field, errors in form.errors.items():
+                if field in form.fields:
+                    field_label = form.fields[field].label
+                else:
+                    field_label = field
+                for error in errors:
+                    messages.error(request, f"Campo '{field_label}': {error}")
+            if form.non_field_errors():
+                for error in form.non_field_errors():
+                    messages.error(request, f"Erro: {error}")
     else:
         form = RecebimentoForm()
-        
-        # LÓGICA DE EXIBIÇÃO FINAL:
-        if not request.user.is_superuser:
-            if num_empresas > 1:
-                # Se ele pode ver várias, filtramos o dropdown para mostrar APENAS as permitidas.
-                form.fields['empresa'].queryset = empresas_permitidas
-            else:
-                # Se ele pode ver 0 ou 1, não mostramos o campo.
-                if 'empresa' in form.fields:
-                    del form.fields['empresa']
+        # Remover campo empresa do formulário (será atribuído automaticamente)
+        if 'empresa' in form.fields:
+            del form.fields['empresa']
 
     contexto = {
         'form': form,
         'titulo': 'Registrar Novo Recebimento',
-        'ultimos_recebimentos': Recebimento.objects.filter(empresa__in=empresas_permitidas).order_by('-data_recebimento')[:5]
+        'ultimos_recebimentos': Recebimento.objects.all().order_by('-data_recebimento')[:5]
     }
     return render(request, 'core/registrar_recebimento.html', contexto)
 
@@ -267,15 +504,39 @@ def editar_recebimento(request, pk):
 
 @login_required
 def lista_produtos(request):
-    produtos = ProdutoFabricado.objects.select_related('item_associado').all().order_by('nome')
+    produtos = ProdutoFabricado.objects.select_related('item_associado').all()
+
+    # Busca
+    query = request.GET.get('q', '').strip()
+    if query:
+        produtos = produtos.filter(
+            Q(nome__icontains=query) |
+            Q(descricao__icontains=query)
+        )
+
+    # Ordenação
+    ordenacao = request.GET.get('ordenar', 'nome')
+    if ordenacao == 'nome':
+        produtos = produtos.order_by('nome')
+    elif ordenacao == 'data_desc':
+        produtos = produtos.order_by('-id')  # Mais recentes primeiro
+    elif ordenacao == 'data_asc':
+        produtos = produtos.order_by('id')   # Mais antigos primeiro
+    else:
+        produtos = produtos.order_by('nome')  # Fallback
 
     contexto = {
-        'produtos': produtos
+        'produtos': produtos,
+        'query': query,
+        'ordenacao': ordenacao,
     }
     return render(request, 'core/lista_produtos.html', contexto)
 
 @login_required
 def detalhe_produto(request, pk):
+    from datetime import datetime
+    from django.db.models import Sum, Avg
+
     produto = get_object_or_404(ProdutoFabricado, pk=pk)
     componentes = produto.componente_set.all()
 
@@ -286,15 +547,49 @@ def detalhe_produto(request, pk):
         qtd_a_produzir = form.cleaned_data['quantidade_a_produzir']
 
     # Adicionando os cálculos a cada componente
+    custo_total_estimado = 0
+    todos_tem_estoque = True
+
     for componente in componentes:
         componente.total_necessario = componente.quantidade_necessaria * qtd_a_produzir
         componente.estoque_suficiente = componente.item_estoque.quantidade >= componente.total_necessario
 
+        if not componente.estoque_suficiente:
+            todos_tem_estoque = False
+
+        # Calcular custo estimado usando o último preço do fornecedor
+        ultimo_preco = componente.item_estoque.itemfornecedor_set.order_by('-data_cotacao').first()
+        if ultimo_preco:
+            componente.custo_unitario = ultimo_preco.valor_pago
+            componente.custo_total = componente.custo_unitario * componente.total_necessario
+            custo_total_estimado += componente.custo_total
+        else:
+            componente.custo_unitario = 0
+            componente.custo_total = 0
+
+    # Estatísticas do produto
+    estoque_atual = produto.item_associado.quantidade
+    data_criacao = produto.item_associado.data_criacao
+    dias_desde_criacao = (datetime.now().date() - data_criacao.date()).days if data_criacao else 0
+
+    # Média mensal aproximada (baseada no estoque atual e dias desde criação)
+    if dias_desde_criacao > 0:
+        media_mensal = (estoque_atual / dias_desde_criacao) * 30
+    else:
+        media_mensal = 0
+
     contexto = {
         'produto': produto,
         'componentes': componentes,
-        'producao_form': form, # Enviamos o formulário para o template
-        'qtd_a_produzir': qtd_a_produzir # E a quantidade para exibição
+        'producao_form': form,
+        'qtd_a_produzir': qtd_a_produzir,
+        'custo_total_estimado': round(custo_total_estimado, 2),
+        'custo_unitario_estimado': round(custo_total_estimado / qtd_a_produzir, 2) if qtd_a_produzir > 0 else 0,
+        'todos_tem_estoque': todos_tem_estoque,
+        # Estatísticas
+        'estoque_atual': estoque_atual,
+        'data_criacao': data_criacao,
+        'media_mensal': round(media_mensal, 1),
     }
     return render(request, 'core/detalhe_produto.html', contexto)
 
@@ -411,8 +706,47 @@ def finalizar_producao(request, pk):
 
 @login_required
 def lista_expedicoes(request):
-    expedicoes = Expedicao.objects.all().order_by('-data_expedicao')
-    return render(request, 'core/lista_expedicoes.html', {'expedicoes': expedicoes})
+    from django.db.models import Sum, Count
+    from datetime import datetime, timedelta
+
+    # Pega todas as expedições da empresa do usuário
+    expedicoes = Expedicao.objects.all()
+
+    # Filtro por pesquisa (cliente ou nota fiscal)
+    search_query = request.GET.get('search', '')
+    if search_query:
+        expedicoes = expedicoes.filter(
+            Q(cliente__icontains=search_query) |
+            Q(nota_fiscal__icontains=search_query)
+        )
+
+    # Ordenação
+    order_by = request.GET.get('order_by', '-data_expedicao')
+    valid_order_fields = ['-data_expedicao', 'data_expedicao', 'cliente', '-cliente', 'nota_fiscal', '-nota_fiscal']
+    if order_by in valid_order_fields:
+        expedicoes = expedicoes.order_by(order_by)
+
+    # Estatísticas
+    total_expedicoes = Expedicao.objects.count()
+
+    # Total de itens expedidos (soma de todas as quantidades)
+    total_itens_expedidos = ItemExpedido.objects.aggregate(
+        total=Sum('quantidade')
+    )['total'] or 0
+
+    # Expedições dos últimos 30 dias
+    data_limite = datetime.now() - timedelta(days=30)
+    expedicoes_30_dias = Expedicao.objects.filter(data_expedicao__gte=data_limite).count()
+
+    contexto = {
+        'expedicoes': expedicoes,
+        'total_expedicoes': total_expedicoes,
+        'total_itens_expedidos': total_itens_expedidos,
+        'expedicoes_30_dias': expedicoes_30_dias,
+        'search_query': search_query,
+        'order_by': order_by,
+    }
+    return render(request, 'core/lista_expedicoes.html', contexto)
 
 @login_required
 def detalhe_expedicao(request, pk):
@@ -428,12 +762,16 @@ def registrar_expedicao(request):
 
     if request.method == 'POST':
         form = ExpedicaoForm(request.POST, request.FILES)
+        # Remover campo empresa do formulário (será atribuído automaticamente)
+        if 'empresa' in form.fields:
+            del form.fields['empresa']
+
         item_formset = ItemExpedidoFormSet(request.POST, prefix='itens')
         documento_formset = DocumentoExpedicaoFormSet(request.POST, request.FILES, prefix='documentos')
         imagem_formset = ImagemExpedicaoFormSet(request.POST, request.FILES, prefix='imagens')
 
         if form.is_valid() and item_formset.is_valid() and documento_formset.is_valid() and imagem_formset.is_valid():
-            
+
             # --- Verificação de Estoque ---
             pode_prosseguir = True
             for form_item in item_formset:
@@ -443,14 +781,23 @@ def registrar_expedicao(request):
                     if quantidade > produto.item_associado.quantidade:
                         messages.error(request, f"Estoque insuficiente para {produto.nome}. Disponível: {produto.item_associado.quantidade}")
                         pode_prosseguir = False
-            
+
             if not pode_prosseguir:
                 # Se não puder prosseguir, renderiza a página de novo com os erros
                 contexto = {'form': form, 'item_formset': item_formset, 'documento_formset': documento_formset, 'imagem_formset': imagem_formset}
                 return render(request, 'core/registrar_expedicao.html', contexto)
-            
+
             # --- Se tudo estiver OK, salva e dá baixa no estoque ---
             expedicao = form.save(commit=False)
+
+            # Atribuir primeira empresa disponível
+            primeira_empresa = Empresa.objects.first()
+            if primeira_empresa:
+                expedicao.empresa = primeira_empresa
+            else:
+                messages.error(request, "Nenhuma empresa cadastrada no sistema.")
+                return redirect('dashboard')
+
             expedicao.usuario = request.user
             expedicao.save()
 
@@ -855,13 +1202,54 @@ def controle_ponto(request):
     # Criar jornada se não existir
     jornada, created = JornadaTrabalho.objects.get_or_create(
         usuario=usuario,
-        defaults={'horas_diarias': 8.0}
+        defaults={'horas_diarias': 9.0, 'horas_sexta': 8.0, 'intervalo_almoco': 1.0}
     )
 
-    # Dados do mês atual
+    # Dados do mês atual (usando período personalizado do funcionário)
     now = datetime.now()
-    primeiro_dia = datetime(now.year, now.month, 1)
-    ultimo_dia = datetime(now.year, now.month, calendar.monthrange(now.year, now.month)[1], 23, 59, 59)
+    dia_inicio = jornada.dia_inicio_mes
+    dia_fim = jornada.dia_fim_mes
+
+    # Calcular primeiro e último dia do período personalizado
+    if dia_inicio == 1 and dia_fim == 0:
+        # Período padrão: do dia 1 ao último dia do mês
+        primeiro_dia = datetime(now.year, now.month, 1)
+        ultimo_dia = datetime(now.year, now.month, calendar.monthrange(now.year, now.month)[1], 23, 59, 59)
+    else:
+        # Período personalizado
+        if dia_fim == 0:
+            # 0 significa último dia do mês
+            dia_fim = calendar.monthrange(now.year, now.month)[1]
+
+        # Se estamos depois do dia de início, o período é do dia_inicio deste mês até dia_fim do próximo mês
+        # Se estamos antes do dia de início, o período é do dia_inicio do mês passado até dia_fim deste mês
+        if now.day >= dia_inicio:
+            # Período atual: dia_inicio deste mês até dia_fim do próximo mês (ou mesmo mês se dia_fim > dia_inicio)
+            primeiro_dia = datetime(now.year, now.month, dia_inicio, 0, 0, 0)
+
+            if dia_fim >= dia_inicio:
+                # Período termina no mesmo mês
+                ultimo_dia = datetime(now.year, now.month, dia_fim, 23, 59, 59)
+            else:
+                # Período termina no próximo mês
+                if now.month == 12:
+                    proximo_mes = 1
+                    proximo_ano = now.year + 1
+                else:
+                    proximo_mes = now.month + 1
+                    proximo_ano = now.year
+                ultimo_dia = datetime(proximo_ano, proximo_mes, dia_fim, 23, 59, 59)
+        else:
+            # Período anterior: dia_inicio do mês passado até dia_fim deste mês
+            if now.month == 1:
+                mes_anterior = 12
+                ano_anterior = now.year - 1
+            else:
+                mes_anterior = now.month - 1
+                ano_anterior = now.year
+
+            primeiro_dia = datetime(ano_anterior, mes_anterior, dia_inicio, 0, 0, 0)
+            ultimo_dia = datetime(now.year, now.month, dia_fim, 23, 59, 59)
 
     # Registros de ponto do mês
     pontos_mes = RegistroPonto.objects.filter(
@@ -877,21 +1265,69 @@ def controle_ponto(request):
     for ponto in pontos_mes:
         dia = ponto.data_hora.date()
         if dia not in dias_trabalhados:
-            dias_trabalhados[dia] = {'entrada': None, 'saida': None}
+            dias_trabalhados[dia] = {'entrada': None, 'saida': None, 'inicio_almoco': None, 'fim_almoco': None}
 
         if ponto.tipo == 'entrada':
             dias_trabalhados[dia]['entrada'] = ponto.data_hora
-        else:
+        elif ponto.tipo == 'saida':
             dias_trabalhados[dia]['saida'] = ponto.data_hora
+        elif ponto.tipo == 'inicio_almoco':
+            dias_trabalhados[dia]['inicio_almoco'] = ponto.data_hora
+        elif ponto.tipo == 'fim_almoco':
+            dias_trabalhados[dia]['fim_almoco'] = ponto.data_hora
 
     # Calcular horas de cada dia
     for dia, registros in dias_trabalhados.items():
         if registros['entrada'] and registros['saida']:
             delta = registros['saida'] - registros['entrada']
-            horas_trabalhadas += delta.total_seconds() / 3600
+            horas_brutas = delta.total_seconds() / 3600
+
+            # Descontar intervalo de almoço se registrado
+            if registros['inicio_almoco'] and registros['fim_almoco']:
+                intervalo = registros['fim_almoco'] - registros['inicio_almoco']
+                horas_brutas -= intervalo.total_seconds() / 3600
+
+            horas_trabalhadas += horas_brutas
+
+    # Calcular horas abonadas separadamente
+    abonos_periodo = AbonoDia.objects.filter(
+        usuario=usuario,
+        data__gte=primeiro_dia.date(),
+        data__lte=ultimo_dia.date()
+    )
+    horas_abonadas = sum(float(abono.horas_abonadas) for abono in abonos_periodo)
+
+    # Calcular dias de falta (dias úteis sem ponto e sem abono, até hoje)
+    dias_falta = 0
+    dia_atual = primeiro_dia.date()
+    hoje = now.date()
+    dias_semana_trabalho = [int(d) for d in jornada.dias_semana.split(',')]
+
+    # Calcular apenas até hoje, não até o fim do período
+    data_limite = min(ultimo_dia.date(), hoje)
+
+    while dia_atual <= data_limite:
+        # Verifica se é dia de trabalho (considerando dias_semana configurados)
+        if dia_atual.weekday() in dias_semana_trabalho:
+            # Verifica se não tem registro de ponto neste dia
+            tem_ponto = RegistroPonto.objects.filter(
+                usuario=usuario,
+                data_hora__date=dia_atual
+            ).exists()
+
+            # Verifica se não tem abono neste dia
+            tem_abono = AbonoDia.objects.filter(
+                usuario=usuario,
+                data=dia_atual
+            ).exists()
+
+            # Se não tem ponto e não tem abono, é falta
+            if not tem_ponto and not tem_abono:
+                dias_falta += 1
+
+        dia_atual += timedelta(days=1)
 
     # Último ponto do dia
-    hoje = now.date()
     ultimo_ponto_hoje = RegistroPonto.objects.filter(
         usuario=usuario,
         data_hora__date=hoje
@@ -900,37 +1336,118 @@ def controle_ponto(request):
     # Horas esperadas no mês
     horas_esperadas = jornada.horas_mensais
 
-    # Saldo de horas
-    saldo_horas = horas_trabalhadas - horas_esperadas
+    # Saldo de horas (inclui horas abonadas no cálculo)
+    saldo_horas = (horas_trabalhadas + horas_abonadas) - horas_esperadas
 
-    # Últimos 30 dias para gráfico
+    # Últimos 30 dias para gráfico com cores baseadas em horas trabalhadas
     trinta_dias_atras = now - timedelta(days=30)
     presenca_ultimos_30 = []
+
+    # Obter dias de trabalho configurados na jornada
+    dias_semana_trabalho = [int(d) for d in jornada.dias_semana.split(',')]
+
     for i in range(30):
         dia = (now - timedelta(days=29-i)).date()
-        tem_ponto = RegistroPonto.objects.filter(
+
+        # Buscar pontos do dia
+        pontos_dia = RegistroPonto.objects.filter(
             usuario=usuario,
             data_hora__date=dia
-        ).exists()
+        ).order_by('data_hora')
+
+        # Calcular horas trabalhadas no dia
+        horas_dia = 0
+        registros_dia = {'entrada': None, 'saida': None, 'inicio_almoco': None, 'fim_almoco': None}
+
+        for ponto in pontos_dia:
+            if ponto.tipo == 'entrada':
+                registros_dia['entrada'] = ponto.data_hora
+            elif ponto.tipo == 'saida':
+                registros_dia['saida'] = ponto.data_hora
+            elif ponto.tipo == 'inicio_almoco':
+                registros_dia['inicio_almoco'] = ponto.data_hora
+            elif ponto.tipo == 'fim_almoco':
+                registros_dia['fim_almoco'] = ponto.data_hora
+
+        # Verificar se o dia foi abonado
+        abono_dia = AbonoDia.objects.filter(usuario=usuario, data=dia).first()
+
+        # Calcular horas líquidas
+        if registros_dia['entrada'] and registros_dia['saida']:
+            delta = registros_dia['saida'] - registros_dia['entrada']
+            horas_dia = delta.total_seconds() / 3600
+
+            # Descontar intervalo de almoço
+            if registros_dia['inicio_almoco'] and registros_dia['fim_almoco']:
+                intervalo = registros_dia['fim_almoco'] - registros_dia['inicio_almoco']
+                horas_dia -= intervalo.total_seconds() / 3600
+
+        # Definir cor baseada no percentual das horas esperadas (considera sexta diferente)
+        horas_esperadas_dia = jornada.horas_esperadas_dia(dia)
+
+        # Verificar se é dia útil (está nos dias de trabalho configurados)
+        dia_util = dia.weekday() in dias_semana_trabalho
+
+        # Se o dia foi abonado, usar cor amarela
+        if abono_dia:
+            cor = 'bg-yellow-500/50'  # Amarelo com 50% transparência: dia abonado
+            percentual = 100  # Considerar como 100% por ser abonado
+            horas_dia = float(abono_dia.horas_abonadas)  # Usar horas abonadas
+        elif not dia_util:
+            cor = 'bg-gray-300'  # Cinza: dia não útil (fim de semana/feriado)
+            percentual = 0
+        elif horas_dia == 0:
+            cor = 'bg-red-500/50'  # Vermelho com 50% transparência: falta (dia útil sem registro)
+            percentual = 0
+        else:
+            percentual = (horas_dia / horas_esperadas_dia) * 100
+            if percentual >= 100:
+                cor = 'bg-green-500'  # Verde chamativo: 100%+
+            elif percentual >= 75:
+                cor = 'bg-green-500/75'  # Verde com 25% transparência: 75-99%
+            elif percentual >= 50:
+                cor = 'bg-green-500/55'  # Verde com 45% transparência: 50-74%
+            elif percentual >= 25:
+                cor = 'bg-green-500/35'  # Verde com 65% transparência: 25-49%
+            else:
+                cor = 'bg-green-500/15'  # Verde com 85% transparência: 1-24%
+
         presenca_ultimos_30.append({
             'dia': dia.strftime('%d/%m'),
-            'presente': tem_ponto
+            'presente': horas_dia > 0 or abono_dia is not None,
+            'horas': round(horas_dia, 2),
+            'cor': cor,
+            'percentual': round(percentual, 0),
+            'abonado': abono_dia is not None,
+            'tipo_abono': abono_dia.get_tipo_abono_display() if abono_dia else None,
+            'dia_util': dia_util
         })
 
     # Lista de usuários (apenas para superusuário)
     usuarios = User.objects.filter(is_active=True) if request.user.is_superuser else []
+
+    # Abonos do mês (para superusuário)
+    abonos_mes = AbonoDia.objects.filter(
+        data__gte=primeiro_dia.date(),
+        data__lte=ultimo_dia.date()
+    ).order_by('-data') if request.user.is_superuser else []
 
     contexto = {
         'usuario_selecionado': usuario,
         'jornada': jornada,
         'pontos_mes': pontos_mes[:10],  # Últimos 10 registros
         'horas_trabalhadas': round(horas_trabalhadas, 2),
+        'horas_abonadas': round(horas_abonadas, 2),
         'horas_esperadas': round(horas_esperadas, 2),
         'saldo_horas': round(saldo_horas, 2),
         'dias_trabalhados': len([d for d, r in dias_trabalhados.items() if r['entrada'] and r['saida']]),
+        'dias_falta': dias_falta,
         'ultimo_ponto_hoje': ultimo_ponto_hoje,
         'presenca_ultimos_30': presenca_ultimos_30,
         'usuarios': usuarios,
+        'abonos_mes': abonos_mes,
+        'primeiro_dia': primeiro_dia,
+        'ultimo_dia': ultimo_dia,
     }
 
     return render(request, 'core/controle_ponto.html', contexto)
@@ -938,11 +1455,11 @@ def controle_ponto(request):
 @login_required
 @require_POST
 def bater_ponto(request):
-    """Registra entrada ou saída"""
+    """Registra entrada, saída ou almoço"""
     tipo = request.POST.get('tipo')
     observacao = request.POST.get('observacao', '')
 
-    if tipo not in ['entrada', 'saida']:
+    if tipo not in ['entrada', 'saida', 'inicio_almoco', 'fim_almoco']:
         messages.error(request, 'Tipo de ponto inválido.')
         return redirect('controle_ponto')
 
@@ -953,14 +1470,21 @@ def bater_ponto(request):
         data_hora__date=hoje
     ).order_by('-data_hora').first()
 
-    # Validação: não pode bater entrada se já tem entrada sem saída
-    if tipo == 'entrada' and ultimo_ponto and ultimo_ponto.tipo == 'entrada':
-        messages.error(request, 'Você já registrou uma entrada. Registre a saída primeiro.')
+    # Validações
+    if tipo == 'entrada' and ultimo_ponto and ultimo_ponto.tipo in ['entrada', 'inicio_almoco']:
+        messages.error(request, 'Você já registrou uma entrada. Registre a saída ou fim do almoço primeiro.')
         return redirect('controle_ponto')
 
-    # Validação: não pode bater saída sem entrada
-    if tipo == 'saida' and (not ultimo_ponto or ultimo_ponto.tipo == 'saida'):
-        messages.error(request, 'Você precisa registrar uma entrada primeiro.')
+    if tipo == 'inicio_almoco' and (not ultimo_ponto or ultimo_ponto.tipo != 'entrada'):
+        messages.error(request, 'Você precisa registrar a entrada antes de iniciar o almoço.')
+        return redirect('controle_ponto')
+
+    if tipo == 'fim_almoco' and (not ultimo_ponto or ultimo_ponto.tipo != 'inicio_almoco'):
+        messages.error(request, 'Você precisa registrar o início do almoço primeiro.')
+        return redirect('controle_ponto')
+
+    if tipo == 'saida' and (not ultimo_ponto or ultimo_ponto.tipo in ['saida', 'inicio_almoco']):
+        messages.error(request, 'Você precisa registrar entrada/fim de almoço antes da saída.')
         return redirect('controle_ponto')
 
     # Registra o ponto
@@ -970,7 +1494,268 @@ def bater_ponto(request):
         observacao=observacao
     )
 
-    tipo_texto = 'Entrada' if tipo == 'entrada' else 'Saída'
-    messages.success(request, f'{tipo_texto} registrada com sucesso às {timezone.now().strftime("%H:%M")}!')
+    # Mensagem de sucesso
+    mensagens_tipo = {
+        'entrada': 'Entrada',
+        'saida': 'Saída',
+        'inicio_almoco': 'Início do Almoço',
+        'fim_almoco': 'Fim do Almoço'
+    }
+    tipo_texto = mensagens_tipo.get(tipo, tipo)
+    messages.success(request, f'{tipo_texto} registrado com sucesso às {timezone.now().strftime("%H:%M")}!')
 
     return redirect('controle_ponto')
+
+@login_required
+def abonar_dia(request):
+    """Permite superuser abonar dia completo de um funcionário"""
+    if not request.user.is_superuser:
+        messages.error(request, 'Você não tem permissão para abonar dias.')
+        return redirect('controle_ponto')
+
+    if request.method == 'POST':
+        from datetime import datetime
+        usuario_id = request.POST.get('usuario_id')
+        data_str = request.POST.get('data')
+        tipo_abono = request.POST.get('tipo_abono')
+        motivo = request.POST.get('motivo')
+        horas_abonadas = request.POST.get('horas_abonadas', 8.0)
+
+        try:
+            usuario = User.objects.get(pk=usuario_id)
+            data = datetime.strptime(data_str, '%Y-%m-%d').date()
+
+            # Verificar se já existe abono para este dia
+            if AbonoDia.objects.filter(usuario=usuario, data=data).exists():
+                messages.warning(request, f'Já existe um abono para {usuario.username} no dia {data.strftime("%d/%m/%Y")}.')
+                return redirect('controle_ponto')
+
+            # Criar abono
+            AbonoDia.objects.create(
+                usuario=usuario,
+                data=data,
+                tipo_abono=tipo_abono,
+                motivo=motivo,
+                horas_abonadas=horas_abonadas,
+                abonado_por=request.user
+            )
+
+            messages.success(request, f'Dia {data.strftime("%d/%m/%Y")} abonado com sucesso para {usuario.username}!')
+            return redirect('controle_ponto')
+
+        except User.DoesNotExist:
+            messages.error(request, 'Usuário não encontrado.')
+        except ValueError:
+            messages.error(request, 'Data inválida.')
+        except Exception as e:
+            messages.error(request, f'Erro ao abonar dia: {str(e)}')
+
+    return redirect('controle_ponto')
+
+@login_required
+def remover_abono_dia(request, abono_id):
+    """Permite superuser remover um abono de dia"""
+    if not request.user.is_superuser:
+        messages.error(request, 'Você não tem permissão para remover abonos.')
+        return redirect('controle_ponto')
+
+    try:
+        abono = AbonoDia.objects.get(pk=abono_id)
+        usuario_nome = abono.usuario.username
+        data = abono.data.strftime("%d/%m/%Y")
+        abono.delete()
+        messages.success(request, f'Abono do dia {data} de {usuario_nome} foi removido.')
+    except AbonoDia.DoesNotExist:
+        messages.error(request, 'Abono não encontrado.')
+
+    return redirect('controle_ponto')
+
+@login_required
+def configurar_periodo_mes(request):
+    """Permite superuser configurar período de mês personalizado para funcionário"""
+    if not request.user.is_superuser:
+        messages.error(request, 'Você não tem permissão para configurar períodos.')
+        return redirect('controle_ponto')
+
+    if request.method == 'POST':
+        usuario_id = request.POST.get('usuario_id')
+        dia_inicio = request.POST.get('dia_inicio_mes')
+        dia_fim = request.POST.get('dia_fim_mes')
+
+        try:
+            usuario = User.objects.get(pk=usuario_id)
+            jornada, created = JornadaTrabalho.objects.get_or_create(usuario=usuario)
+
+            # Validar dias (1-31 ou 0 para último dia)
+            dia_inicio = int(dia_inicio)
+            dia_fim = int(dia_fim)
+
+            if dia_inicio < 1 or dia_inicio > 31:
+                messages.error(request, 'Dia de início deve ser entre 1 e 31.')
+                return redirect('controle_ponto')
+
+            if dia_fim < 0 or dia_fim > 31:
+                messages.error(request, 'Dia de fim deve ser entre 0 (último dia) e 31.')
+                return redirect('controle_ponto')
+
+            # Atualizar jornada
+            jornada.dia_inicio_mes = dia_inicio
+            jornada.dia_fim_mes = dia_fim
+            jornada.save()
+
+            if dia_fim == 0:
+                periodo_info = f"dia {dia_inicio} ao último dia do mês"
+            else:
+                periodo_info = f"dia {dia_inicio} ao dia {dia_fim}"
+
+            messages.success(request, f'Período personalizado configurado para {usuario.username}: {periodo_info}')
+            return redirect('controle_ponto')
+
+        except User.DoesNotExist:
+            messages.error(request, 'Usuário não encontrado.')
+        except ValueError:
+            messages.error(request, 'Valores inválidos para os dias.')
+        except Exception as e:
+            messages.error(request, f'Erro ao configurar período: {str(e)}')
+
+    return redirect('controle_ponto')
+
+# === VIEWS DE CLIENTES ===
+
+@login_required
+def lista_clientes(request):
+    from django.db.models import Count
+    clientes = Cliente.objects.all().annotate(total_produtos=Count('produtos_fornecidos')).order_by('nome')
+
+    # Filtros
+    query = request.GET.get('q', '')
+    mercado = request.GET.get('mercado', '')
+
+    if query:
+        clientes = clientes.filter(Q(nome__icontains=query) | Q(email__icontains=query))
+    if mercado:
+        clientes = clientes.filter(mercado=mercado)
+
+    contexto = {
+        'clientes': clientes,
+        'query': query,
+        'mercado_filtro': mercado,
+        'total_clientes': Cliente.objects.count(),
+    }
+    return render(request, 'core/lista_clientes.html', contexto)
+
+@login_required
+def adicionar_cliente(request):
+    if request.method == 'POST':
+        form = ClienteForm(request.POST)
+        if form.is_valid():
+            cliente = form.save(commit=False)
+            primeira_empresa = Empresa.objects.first()
+            if primeira_empresa:
+                cliente.empresa = primeira_empresa
+            cliente.save()
+            form.save_m2m()
+            messages.success(request, f'Cliente "{cliente.nome}" cadastrado com sucesso!')
+            return redirect('lista_clientes')
+    else:
+        form = ClienteForm()
+
+    return render(request, 'core/form_cliente.html', {'form': form, 'titulo': 'Adicionar Cliente'})
+
+@login_required
+def editar_cliente(request, pk):
+    cliente = get_object_or_404(Cliente, pk=pk)
+    if request.method == 'POST':
+        form = ClienteForm(request.POST, instance=cliente)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Cliente "{cliente.nome}" atualizado com sucesso!')
+            return redirect('detalhe_cliente', pk=pk)
+    else:
+        form = ClienteForm(instance=cliente)
+
+    return render(request, 'core/form_cliente.html', {'form': form, 'titulo': f'Editar {cliente.nome}', 'cliente': cliente})
+
+@login_required
+def detalhe_cliente(request, pk):
+    cliente = get_object_or_404(Cliente, pk=pk)
+    return render(request, 'core/detalhe_cliente.html', {'cliente': cliente})
+
+@login_required
+def excluir_cliente(request, pk):
+    cliente = get_object_or_404(Cliente, pk=pk)
+    if request.method == 'POST':
+        nome = cliente.nome
+        cliente.delete()
+        messages.success(request, f'Cliente "{nome}" excluído com sucesso!')
+        return redirect('lista_clientes')
+    return redirect('detalhe_cliente', pk=pk)
+
+# === VIEWS DE FORNECEDORES ===
+
+@login_required
+def lista_fornecedores(request):
+    fornecedores = Fornecedor.objects.all().order_by('nome')
+
+    # Filtros
+    query = request.GET.get('q', '')
+    mercado = request.GET.get('mercado', '')
+
+    if query:
+        fornecedores = fornecedores.filter(Q(nome__icontains=query) | Q(email__icontains=query))
+    if mercado:
+        fornecedores = fornecedores.filter(mercado=mercado)
+
+    contexto = {
+        'fornecedores': fornecedores,
+        'query': query,
+        'mercado_filtro': mercado,
+        'total_fornecedores': Fornecedor.objects.count(),
+    }
+    return render(request, 'core/lista_fornecedores.html', contexto)
+
+@login_required
+def adicionar_fornecedor(request):
+    if request.method == 'POST':
+        form = FornecedorForm(request.POST)
+        if form.is_valid():
+            fornecedor = form.save(commit=False)
+            primeira_empresa = Empresa.objects.first()
+            if primeira_empresa:
+                fornecedor.empresa = primeira_empresa
+            fornecedor.save()
+            messages.success(request, f'Fornecedor "{fornecedor.nome}" cadastrado com sucesso!')
+            return redirect('lista_fornecedores')
+    else:
+        form = FornecedorForm()
+
+    return render(request, 'core/form_fornecedor.html', {'form': form, 'titulo': 'Adicionar Fornecedor'})
+
+@login_required
+def editar_fornecedor(request, pk):
+    fornecedor = get_object_or_404(Fornecedor, pk=pk)
+    if request.method == 'POST':
+        form = FornecedorForm(request.POST, instance=fornecedor)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Fornecedor "{fornecedor.nome}" atualizado com sucesso!')
+            return redirect('detalhe_fornecedor', pk=pk)
+    else:
+        form = FornecedorForm(instance=fornecedor)
+
+    return render(request, 'core/form_fornecedor.html', {'form': form, 'titulo': f'Editar {fornecedor.nome}', 'fornecedor': fornecedor})
+
+@login_required
+def detalhe_fornecedor(request, pk):
+    fornecedor = get_object_or_404(Fornecedor, pk=pk)
+    return render(request, 'core/detalhe_fornecedor.html', {'fornecedor': fornecedor})
+
+@login_required
+def excluir_fornecedor(request, pk):
+    fornecedor = get_object_or_404(Fornecedor, pk=pk)
+    if request.method == 'POST':
+        nome = fornecedor.nome
+        fornecedor.delete()
+        messages.success(request, f'Fornecedor "{nome}" excluído com sucesso!')
+        return redirect('lista_fornecedores')
+    return redirect('detalhe_fornecedor', pk=pk)

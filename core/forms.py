@@ -1,8 +1,9 @@
 from django import forms
 from .models import (
-    ItemEstoque, Recebimento, ProdutoFabricado, 
+    ItemEstoque, Recebimento, ProdutoFabricado,
     DocumentoProdutoFabricado, Componente, ImagemProdutoFabricado,
-    Fornecedor, ItemFornecedor, Expedicao, ItemExpedido, DocumentoExpedicao, ImagemExpedicao
+    Fornecedor, ItemFornecedor, Expedicao, ItemExpedido, DocumentoExpedicao, ImagemExpedicao,
+    Cliente
 )
 
 # Formulário para CRIAR e EDITAR um Item de Estoque
@@ -29,6 +30,15 @@ class RetiradaItemForm(forms.Form):
             'placeholder': 'Ex: 10'
         })
     )
+    observacoes = forms.CharField(
+        required=False,
+        label="Observações (opcional)",
+        widget=forms.Textarea(attrs={
+            'class': 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm',
+            'placeholder': 'Descreva o motivo da retirada...',
+            'rows': 3
+        })
+    )
 
 class AdicaoItemForm(forms.Form):
     quantidade = forms.IntegerField(
@@ -39,6 +49,15 @@ class AdicaoItemForm(forms.Form):
             'placeholder': 'Ex: 25'
         })
     )
+    observacoes = forms.CharField(
+        required=False,
+        label="Observações (opcional)",
+        widget=forms.Textarea(attrs={
+            'class': 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm',
+            'placeholder': 'Descreva o motivo da adição...',
+            'rows': 3
+        })
+    )
 
     
 # Formulário para registrar um novo RECEBIMENTO
@@ -46,11 +65,12 @@ class RecebimentoForm(forms.ModelForm):
     class Meta:
         model = Recebimento
         # O campo 'empresa' DEVE estar na lista para que a view possa acessá-lo
-        fields = ['empresa', 'numero_nota_fiscal', 'fornecedor', 'valor_total', 'setor', 'status', 'foto_documento', 'foto_embalagem', 'observacoes']
+        fields = ['empresa', 'numero_nota_fiscal', 'fornecedor', 'fornecedor_nome', 'valor_total', 'setor', 'status', 'foto_documento', 'foto_embalagem', 'observacoes']
         labels = {
             'empresa': 'Registrar para a Empresa',
             'numero_nota_fiscal': 'Número da Nota Fiscal',
-            'fornecedor': 'Fornecedor',
+            'fornecedor': 'Fornecedor Cadastrado (opcional)',
+            'fornecedor_nome': 'Ou digite o nome do fornecedor',
             'valor_total': 'Valor Total da Nota',
             'setor': 'Setor de Destino',
             'status': 'Status',
@@ -61,7 +81,8 @@ class RecebimentoForm(forms.ModelForm):
         widgets = {
             'empresa': forms.Select(attrs={'class': 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md ...'}),
             'numero_nota_fiscal': forms.TextInput(attrs={'class': 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md ...'}),
-            'fornecedor': forms.Select(attrs={'class': 'tom-select-criavel mt-1 block w-full ...'}),
+            'fornecedor': forms.Select(attrs={'class': 'block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:text-sm'}),
+            'fornecedor_nome': forms.TextInput(attrs={'class': 'block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:text-sm', 'placeholder': 'Digite o nome do fornecedor'}),
             'valor_total': forms.NumberInput(attrs={'class': 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md ...'}),
             'setor': forms.Select(attrs={'class': 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md ...'}),
             'status': forms.Select(attrs={'class': 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md ...'}),
@@ -69,6 +90,16 @@ class RecebimentoForm(forms.ModelForm):
             'foto_documento': forms.FileInput(attrs={'class': 'mt-1 block w-full text-sm text-gray-500 ...'}),
             'foto_embalagem': forms.FileInput(attrs={'class': 'mt-1 block w-full text-sm text-gray-500 ...'}),
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        fornecedor = cleaned_data.get('fornecedor')
+        fornecedor_nome = cleaned_data.get('fornecedor_nome')
+
+        if not fornecedor and not fornecedor_nome:
+            raise forms.ValidationError('Selecione um fornecedor cadastrado ou digite o nome.')
+
+        return cleaned_data
 
 # --- Formulários de Produto ---
 
@@ -122,11 +153,42 @@ class ProducaoForm(forms.Form):
 class ItemFornecedorForm(forms.ModelForm):
     class Meta:
         model = ItemFornecedor
-        fields = ['fornecedor', 'valor_pago', 'data_cotacao']
+        fields = ['fornecedor', 'fornecedor_nome', 'valor_pago', 'data_cotacao']
+        labels = {
+            'fornecedor': 'Fornecedor Cadastrado (opcional)',
+            'fornecedor_nome': 'Ou digite o nome do fornecedor',
+            'valor_pago': 'Valor (R$)',
+            'data_cotacao': 'Data da Cotação',
+        }
         widgets = {
-            'fornecedor': forms.Select(attrs={'class': 'tom-select'}),
-            'data_cotacao': forms.DateInput(attrs={'type': 'date'})
-            }
+            'fornecedor': forms.Select(attrs={
+                'class': 'block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'
+            }),
+            'fornecedor_nome': forms.TextInput(attrs={
+                'class': 'block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm',
+                'placeholder': 'Digite o nome do fornecedor se não estiver cadastrado'
+            }),
+            'valor_pago': forms.NumberInput(attrs={
+                'class': 'block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm',
+                'placeholder': '0.00',
+                'step': '0.01',
+                'min': '0'
+            }),
+            'data_cotacao': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'
+            })
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        fornecedor = cleaned_data.get('fornecedor')
+        fornecedor_nome = cleaned_data.get('fornecedor_nome')
+
+        if not fornecedor and not fornecedor_nome:
+            raise forms.ValidationError('Selecione um fornecedor cadastrado ou digite o nome.')
+
+        return cleaned_data
 
 class ExpedicaoForm(forms.ModelForm):
     class Meta:
@@ -170,4 +232,34 @@ class ImagemExpedicaoForm(forms.ModelForm):
         labels = {'imagem': ''}
         widgets = {
             'imagem': forms.FileInput(attrs={'class': 'block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100'}),
+        }
+
+# Formulários para Fornecedor e Cliente
+class FornecedorForm(forms.ModelForm):
+    class Meta:
+        model = Fornecedor
+        fields = ['nome', 'endereco', 'telefone', 'email', 'site', 'mercado', 'descricao']
+        widgets = {
+            'nome': forms.TextInput(attrs={'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent'}),
+            'endereco': forms.Textarea(attrs={'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent', 'rows': 3}),
+            'telefone': forms.TextInput(attrs={'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent', 'placeholder': '(00) 0000-0000'}),
+            'email': forms.EmailInput(attrs={'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent', 'placeholder': 'exemplo@email.com'}),
+            'site': forms.URLInput(attrs={'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent', 'placeholder': 'https://exemplo.com'}),
+            'mercado': forms.Select(attrs={'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent'}),
+            'descricao': forms.Textarea(attrs={'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent', 'rows': 4}),
+        }
+
+class ClienteForm(forms.ModelForm):
+    class Meta:
+        model = Cliente
+        fields = ['nome', 'endereco', 'telefone', 'email', 'site', 'mercado', 'descricao', 'produtos_fornecidos']
+        widgets = {
+            'nome': forms.TextInput(attrs={'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent'}),
+            'endereco': forms.Textarea(attrs={'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent', 'rows': 3}),
+            'telefone': forms.TextInput(attrs={'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent', 'placeholder': '(00) 0000-0000'}),
+            'email': forms.EmailInput(attrs={'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent', 'placeholder': 'exemplo@email.com'}),
+            'site': forms.URLInput(attrs={'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent', 'placeholder': 'https://exemplo.com'}),
+            'mercado': forms.Select(attrs={'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent'}),
+            'descricao': forms.Textarea(attrs={'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent', 'rows': 4}),
+            'produtos_fornecidos': forms.SelectMultiple(attrs={'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent', 'size': '6'}),
         }

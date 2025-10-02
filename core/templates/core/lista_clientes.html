@@ -1,0 +1,123 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">Clientes</h1>
+            <p class="text-gray-600">Gerencie seus clientes e produtos fornecidos.</p>
+        </div>
+        <a href="{% url 'adicionar_cliente' %}" class="bg-indigo-600 text-white py-2 px-6 rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap font-semibold flex items-center space-x-2">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+            </svg>
+            <span>Adicionar Cliente</span>
+        </a>
+    </div>
+
+    <!-- Estatísticas -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-blue-100 text-sm font-medium uppercase tracking-wide">Total de Clientes</p>
+                    <p class="text-4xl font-black mt-2">{{ total_clientes }}</p>
+                </div>
+                <div class="bg-blue-400 bg-opacity-30 rounded-full p-4">
+                    <svg class="w-10 h-10" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+        <form method="GET" class="flex flex-col md:flex-row gap-4">
+            <div class="flex-1">
+                <input type="text" name="q" value="{{ query }}" placeholder="Buscar por nome, email..."
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            </div>
+            <div class="w-full md:w-64">
+                <select name="mercado" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    <option value="">Todos os mercados</option>
+                    <option value="eletronico" {% if mercado_filtro == 'eletronico' %}selected{% endif %}>Eletrônico</option>
+                    <option value="metalurgica" {% if mercado_filtro == 'metalurgica' %}selected{% endif %}>Metalúrgica</option>
+                    <option value="textil" {% if mercado_filtro == 'textil' %}selected{% endif %}>Têxtil</option>
+                    <option value="plastico" {% if mercado_filtro == 'plastico' %}selected{% endif %}>Plástico</option>
+                    <option value="construcao" {% if mercado_filtro == 'construcao' %}selected{% endif %}>Construção</option>
+                    <option value="outro" {% if mercado_filtro == 'outro' %}selected{% endif %}>Outro</option>
+                </select>
+            </div>
+            <button type="submit" class="bg-gray-800 text-white px-6 py-2 rounded-lg hover:bg-gray-700 font-semibold whitespace-nowrap">
+                🔍 Buscar
+            </button>
+        </form>
+    </div>
+
+    <!-- Lista de Clientes -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for cliente in clientes %}
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg transition-shadow overflow-hidden">
+            <div class="p-6">
+                <div class="flex items-start justify-between mb-4">
+                    <h3 class="text-xl font-bold text-gray-900">{{ cliente.nome }}</h3>
+                    {% if cliente.mercado %}
+                    <span class="px-3 py-1 bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-full">
+                        {{ cliente.get_mercado_display }}
+                    </span>
+                    {% endif %}
+                </div>
+
+                <div class="space-y-2 mb-4">
+                    {% if cliente.telefone %}
+                    <p class="text-sm text-gray-600 flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
+                        </svg>
+                        {{ cliente.telefone }}
+                    </p>
+                    {% endif %}
+
+                    {% if cliente.email %}
+                    <p class="text-sm text-gray-600 flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/>
+                            <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/>
+                        </svg>
+                        {{ cliente.email }}
+                    </p>
+                    {% endif %}
+
+                    <p class="text-sm text-gray-500">
+                        📦 {{ cliente.total_produtos }} produto(s) fornecido(s)
+                    </p>
+                </div>
+
+                <div class="flex gap-2">
+                    <a href="{% url 'detalhe_cliente' cliente.pk %}"
+                       class="flex-1 text-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium">
+                        Ver Detalhes
+                    </a>
+                    <a href="{% url 'editar_cliente' cliente.pk %}"
+                       class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
+                        ✏️
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-span-full text-center py-12">
+            <p class="text-gray-500 text-lg">Nenhum cliente encontrado.</p>
+            <a href="{% url 'adicionar_cliente' %}" class="text-indigo-600 hover:text-indigo-800 font-medium mt-2 inline-block">
+                + Adicionar primeiro cliente
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+{% endblock %}

@@ -1,63 +1,226 @@
 {% extends 'core/base.html' %}
 
 {% block content %}
-<div class="container mx-auto">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-    <div class="flex flex-col md:flex-row justify-between items-center mb-8">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <div>
-            <h1 class="text-3xl font-bold text-gray-800">Histórico de Recebimentos</h1>
-            <p class="text-gray-600">Consulte todos os pacotes e materiais recebidos.</p>
+            <h1 class="text-3xl font-bold text-gray-800">Recebimentos</h1>
+            <p class="text-gray-600">Gerencie os recebimentos de materiais e produtos.</p>
         </div>
-        <div class="flex items-center space-x-4 mt-4 md:mt-0">
-            <form action="{% url 'lista_recebimentos' %}" method="GET" class="flex items-center space-x-2">
-                <input type="text" name="q" value="{{ query|default:'' }}" placeholder="Buscar NF, fornecedor..." class="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <button type="submit" class="bg-gray-800 text-white py-2 px-4 rounded-lg hover:bg-gray-700">Buscar</button>
-            </form>
-            <a href="{% url 'registrar_recebimento' %}" class="bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap">
-                + Registrar Recebimento
+        <div class="flex items-center space-x-4">
+            <a href="{% url 'registrar_recebimento' %}" class="bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap font-semibold flex items-center space-x-2">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                </svg>
+                <span>Registrar Recebimento</span>
             </a>
+            <form action="{% url 'lista_recebimentos' %}" method="GET" class="flex items-center space-x-2">
+                <input type="hidden" name="ordenar" value="{{ ordenacao|default:'data_desc' }}">
+                <input type="hidden" name="status" value="{{ status_filtro|default:'' }}">
+                <input type="text" name="q" value="{{ query|default:'' }}" placeholder="Buscar NF, fornecedor..." class="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <button type="submit" class="bg-gray-800 text-white py-2 px-4 rounded-lg hover:bg-gray-700 font-semibold">
+                    🔍 Buscar
+                </button>
+            </form>
         </div>
     </div>
 
-    <div class="bg-white rounded-lg shadow-md overflow-hidden">
-        <table class="w-full">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th class="p-3 text-left text-sm font-semibold text-gray-600">Data</th>
-                    <th class="p-3 text-left text-sm font-semibold text-gray-600">Nota Fiscal</th>
-                    <th class="p-3 text-left text-sm font-semibold text-gray-600">Fornecedor</th>
-                    <th class="p-3 text-left text-sm font-semibold text-gray-600">Usuário</th>
-                    <th class="p-3 text-left text-sm font-semibold text-gray-600">Status</th>
-                    <th class="p-3 text-left text-sm font-semibold text-gray-600">Ação</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for recebimento in recebimentos %}
-                    <tr class="border-b border-gray-200 hover:bg-gray-50">
-                        <td class="p-3 text-sm text-gray-700">{{ recebimento.data_recebimento|date:"d/m/Y H:i" }}</td>
-                        <td class="p-3 font-mono text-gray-700">{{ recebimento.numero_nota_fiscal|default:"N/A" }}</td>
-                        <td class="p-3 text-gray-700">{{ recebimento.fornecedor|default:"N/A" }}</td>
-                        <td class="p-3 text-gray-700">{{ recebimento.usuario.username|default:"-" }}</td>
-                        <td class="p-3">
-                            {% if recebimento.status == 'aguardando' %}
-                                <span class="px-2 py-1 text-xs font-semibold text-yellow-800 bg-yellow-100 rounded-full">Aguardando</span>
-                            {% elif recebimento.status == 'armazenado' %}
-                                <span class="px-2 py-1 text-xs font-semibold text-blue-800 bg-blue-100 rounded-full">Armazenado</span>
-                            {% else %}
-                                <span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">Concluído</span>
-                            {% endif %}
-                        </td>
-                        <td class="p-3">
-                            <a href="{% url 'detalhe_recebimento' recebimento.pk %}" class="text-indigo-600 hover:underline">Ver Detalhes</a>
-                        </td>
-                    </tr>
-                {% empty %}
-                    <tr>
-                        <td colspan="6" class="p-8 text-center text-gray-500">Nenhum recebimento encontrado.</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <!-- Estatísticas -->
+    <div class="grid grid-cols-1 md:grid-cols-{% if user.is_superuser %}3{% else %}2{% endif %} gap-6 mb-8">
+        <!-- Total de Recebimentos -->
+        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-blue-100 text-sm font-medium uppercase tracking-wide">Total de Recebimentos</p>
+                    <p class="text-4xl font-black mt-2">{{ total_recebimentos }}</p>
+                </div>
+                <div class="bg-blue-400 bg-opacity-30 rounded-full p-4">
+                    <svg class="w-10 h-10" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        {% if user.is_superuser %}
+        <!-- Valor Total do Mês -->
+        <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-green-100 text-sm font-medium uppercase tracking-wide">Valor Total (30 dias)</p>
+                    <p class="text-4xl font-black mt-2">R$ {{ valor_total_mes|floatformat:2 }}</p>
+                </div>
+                <div class="bg-green-400 bg-opacity-30 rounded-full p-4">
+                    <svg class="w-10 h-10" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/>
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Aguardando Conferência -->
+        <div class="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl shadow-lg p-6 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-yellow-100 text-sm font-medium uppercase tracking-wide">Aguardando Conferência</p>
+                    <p class="text-4xl font-black mt-2">{{ aguardando_conferencia }}</p>
+                </div>
+                <div class="bg-yellow-400 bg-opacity-30 rounded-full p-4">
+                    <svg class="w-10 h-10" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <!-- Filtros e Ordenação -->
+    <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+        <!-- Filtros por Status -->
+        <div class="flex items-center space-x-2">
+            <span class="text-sm font-medium text-gray-700">Filtrar por status:</span>
+            <div class="flex space-x-2">
+                <a href="{% url 'lista_recebimentos' %}?q={{ query|default:'' }}&ordenar={{ ordenacao|default:'data_desc' }}"
+                   class="px-4 py-2 rounded-lg font-medium transition-colors {% if not status_filtro %}bg-indigo-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                    📦 Todos
+                </a>
+                <a href="{% url 'lista_recebimentos' %}?q={{ query|default:'' }}&ordenar={{ ordenacao|default:'data_desc' }}&status=aguardando"
+                   class="px-4 py-2 rounded-lg font-medium transition-colors {% if status_filtro == 'aguardando' %}bg-yellow-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                    ⏳ Aguardando
+                </a>
+                <a href="{% url 'lista_recebimentos' %}?q={{ query|default:'' }}&ordenar={{ ordenacao|default:'data_desc' }}&status=concluido"
+                   class="px-4 py-2 rounded-lg font-medium transition-colors {% if status_filtro == 'concluido' %}bg-green-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                    ✅ Concluído
+                </a>
+            </div>
+        </div>
+
+        <!-- Ordenação -->
+        <form action="{% url 'lista_recebimentos' %}" method="GET" class="flex items-center space-x-2">
+            <input type="hidden" name="q" value="{{ query|default:'' }}">
+            <input type="hidden" name="status" value="{{ status_filtro|default:'' }}">
+            <label class="text-sm font-medium text-gray-700">Ordenar por:</label>
+            <select name="ordenar" onchange="this.form.submit()"
+                    class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white font-medium">
+                <option value="data_desc" {% if ordenacao == 'data_desc' %}selected{% endif %}>📅 Data (Mais Recentes)</option>
+                <option value="data_asc" {% if ordenacao == 'data_asc' %}selected{% endif %}>📅 Data (Mais Antigos)</option>
+                <option value="fornecedor" {% if ordenacao == 'fornecedor' %}selected{% endif %}>🏭 Fornecedor A-Z</option>
+                <option value="valor_desc" {% if ordenacao == 'valor_desc' %}selected{% endif %}>💰 Maior Valor</option>
+                <option value="status" {% if ordenacao == 'status' %}selected{% endif %}>🔖 Status</option>
+            </select>
+        </form>
+    </div>
+
+    <!-- Grid de Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for recebimento in recebimentos %}
+        <div class="bg-white rounded-xl shadow-md hover:shadow-2xl hover:scale-105 transition-all duration-300 overflow-hidden border border-gray-200">
+            <!-- Header do Card com Status -->
+            <div class="p-5 border-b border-gray-200 {% if recebimento.status == 'aguardando' %}bg-yellow-50{% elif recebimento.status == 'armazenado' %}bg-blue-50{% else %}bg-green-50{% endif %}">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="{% if recebimento.status == 'aguardando' %}bg-yellow-500{% elif recebimento.status == 'armazenado' %}bg-blue-500{% else %}bg-green-500{% endif %} rounded-full p-2">
+                            <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-600 font-medium">NF #{{ recebimento.numero_nota_fiscal|default:"S/N" }}</p>
+                            <p class="text-sm font-bold text-gray-800">{{ recebimento.get_nome_fornecedor }}</p>
+                        </div>
+                    </div>
+                    <div>
+                        {% if recebimento.status == 'aguardando' %}
+                            <span class="px-3 py-1.5 text-xs font-bold text-yellow-800 bg-yellow-200 rounded-full">⏳ AGUARDANDO</span>
+                        {% elif recebimento.status == 'armazenado' %}
+                            <span class="px-3 py-1.5 text-xs font-bold text-blue-800 bg-blue-200 rounded-full">📍 ARMAZENADO</span>
+                        {% else %}
+                            <span class="px-3 py-1.5 text-xs font-bold text-green-800 bg-green-200 rounded-full">✅ CONCLUÍDO</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Corpo do Card -->
+            <div class="p-5 space-y-3">
+                <!-- Data e Usuário -->
+                <div class="flex items-center justify-between text-sm">
+                    <div class="flex items-center space-x-2 text-gray-600">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/>
+                        </svg>
+                        <span>{{ recebimento.data_recebimento|date:"d/m/Y H:i" }}</span>
+                    </div>
+                    <div class="flex items-center space-x-2 text-gray-600">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
+                        </svg>
+                        <span>{{ recebimento.usuario.username|default:"-" }}</span>
+                    </div>
+                </div>
+
+                <!-- Valor -->
+                <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                    <p class="text-xs text-gray-500 font-medium">Valor Total</p>
+                    <p class="text-2xl font-black text-gray-900">R$ {{ recebimento.valor_total|floatformat:2 }}</p>
+                </div>
+
+                <!-- Setor -->
+                <div class="flex items-center space-x-2 text-sm text-gray-600">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
+                    </svg>
+                    <span>{{ recebimento.setor.nome }}</span>
+                </div>
+
+                <!-- Botão Ver Detalhes -->
+                <a href="{% url 'detalhe_recebimento' recebimento.pk %}" class="block text-center mt-4 w-full bg-indigo-600 text-white py-2.5 rounded-lg hover:bg-indigo-700 transition-all font-semibold shadow-md hover:shadow-lg">
+                    📋 Ver Detalhes
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Estado Vazio -->
+    {% if not recebimentos %}
+    <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl shadow-lg p-12 text-center mt-6 border-2 border-dashed border-gray-300">
+        <div class="flex flex-col items-center space-y-4">
+            <svg class="w-24 h-24 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+            </svg>
+            <h3 class="text-2xl font-bold text-gray-800">
+                {% if query or status_filtro %}
+                    📭 Nenhum recebimento encontrado
+                {% else %}
+                    📦 Nenhum recebimento registrado
+                {% endif %}
+            </h3>
+            <p class="text-gray-600 max-w-md">
+                {% if query or status_filtro %}
+                    Não encontramos nenhum recebimento com os filtros aplicados. Tente ajustar sua busca ou remover os filtros.
+                {% else %}
+                    Você ainda não possui nenhum recebimento cadastrado. Clique no botão abaixo para registrar o primeiro!
+                {% endif %}
+            </p>
+            {% if query or status_filtro %}
+                <a href="{% url 'lista_recebimentos' %}" class="mt-4 inline-flex items-center px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-semibold shadow-md">
+                    🔄 Limpar Filtros
+                </a>
+            {% else %}
+                <a href="{% url 'registrar_recebimento' %}" class="mt-4 inline-flex items-center px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold shadow-md">
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                    </svg>
+                    Registrar Primeiro Recebimento
+                </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

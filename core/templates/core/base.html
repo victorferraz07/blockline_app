@@ -31,6 +31,8 @@
             <a href="/estoque/" class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/estoque/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">Estoque</a>
             <a href="/produtos/" class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/produtos/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">Produtos</a>
             <a href="/expedicao/" class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/expedicao/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">Expedição</a>
+            <a href="/clientes/" class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/clientes/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">Clientes</a>
+            <a href="/fornecedores/" class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/fornecedores/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">Fornecedores</a>
             <a href="/kanban/" class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/kanban/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">Kanban</a>
             <a href="{% url 'controle_ponto' %}" class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/ponto/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">⏰ Ponto</a>
           </div>
@@ -38,7 +40,10 @@
           <div class="flex items-center space-x-4 pr-4 mr-0">
             {% if user.is_authenticated %}
               <span class="hidden md:inline text-gray-700">Olá, <span class="font-semibold">{{ user.get_full_name|default:user.username }}</span></span>
-              <a href="/accounts/logout/" class="py-2 px-3 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 font-semibold transition">Sair</a>
+              <form method="post" action="{% url 'logout' %}" class="inline">
+                {% csrf_token %}
+                <button type="submit" class="py-2 px-3 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 font-semibold transition">Sair</button>
+              </form>
             {% else %}
               <a href="/accounts/login/" class="py-2 px-3 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 font-semibold transition">Entrar</a>
             {% endif %}
@@ -53,15 +58,20 @@
         <!-- Mobile menu -->
         <div id="mobile-menu" class="md:hidden hidden flex-col space-y-2 mt-2 pb-4">
           <a href="/" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Dashboard</a>
+          <a href="/recebimento/" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Recebimento</a>
           <a href="/estoque/" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Estoque</a>
           <a href="/produtos/" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Produtos</a>
           <a href="/expedicao/" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Expedição</a>
-          <a href="/recebimento/" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Recebimento</a>
+          <a href="/clientes/" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Clientes</a>
+          <a href="/fornecedores/" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Fornecedores</a>
           <a href="/kanban/" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Kanban</a>
           <a href="{% url 'controle_ponto' %}" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">⏰ Ponto</a>
           {% if user.is_authenticated %}
             <span class="block py-2 px-3 text-gray-700">Olá, <span class="font-semibold">{{ user.get_full_name|default:user.username }}</span></span>
-            <a href="/accounts/logout/" class="block py-2 px-3 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 font-semibold transition">Sair</a>
+            <form method="post" action="{% url 'logout' %}" class="block">
+              {% csrf_token %}
+              <button type="submit" class="w-full text-left py-2 px-3 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 font-semibold transition">Sair</button>
+            </form>
           {% else %}
             <a href="/accounts/login/" class="block py-2 px-3 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 font-semibold transition">Entrar</a>
           {% endif %}

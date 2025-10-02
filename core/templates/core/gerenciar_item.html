@@ -1,110 +1,637 @@
 {% extends 'core/base.html' %}
 {% block content %}
-<div x-data="{ 
-    editMode: false, 
-    showRetiradaModal: false, 
-    showAdicaoModal: false, 
+<div x-data="{
+    editMode: false,
+    showRetiradaModal: false,
+    showAdicaoModal: false,
     showExcluirModal: false,
+    lightboxOpen: false,
+    lightboxImage: '',
     fornecedorFormCount: {{ formset_fornecedores.total_form_count|default:0 }}
-}" class="container mx-auto">
-    
-    <div class="bg-white p-8 rounded-lg shadow-md max-w-4xl mx-auto border border-gray-200">
-        
+}" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- Header com Breadcrumbs -->
+    <nav class="mb-6 text-sm">
+        <ol class="flex items-center space-x-2 text-gray-600">
+            <li><a href="{% url 'lista_estoque' %}" class="hover:text-indigo-600 transition-colors">📦 Estoque</a></li>
+            <li><span class="text-gray-400">/</span></li>
+            <li class="text-gray-900 font-semibold">{{ item.nome }}</li>
+        </ol>
+    </nav>
+
+    <!-- Cards de Estatísticas -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <!-- Valor Total em Estoque -->
+        <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border-2 border-green-200 shadow-md">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-green-700 mb-1">💰 Valor Total em Estoque</p>
+                    <p class="text-3xl font-black text-green-700">R$ {{ valor_total_estoque|floatformat:2 }}</p>
+                    <p class="text-xs text-green-600 mt-1">{{ item.quantidade }} un × último preço</p>
+                </div>
+                <svg class="w-12 h-12 text-green-300" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"/>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Movimentações 30 dias -->
+        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border-2 border-blue-200 shadow-md">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-blue-700 mb-1">📈 Movimentações (30 dias)</p>
+                    <div class="flex items-baseline space-x-3 mt-2">
+                        <div>
+                            <p class="text-xs text-blue-600">Entradas</p>
+                            <p class="text-2xl font-black text-green-600">+{{ total_entradas_30d }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-blue-600">Saídas</p>
+                            <p class="text-2xl font-black text-red-600">-{{ total_saidas_30d }}</p>
+                        </div>
+                    </div>
+                </div>
+                <svg class="w-12 h-12 text-blue-300" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Custo Médio -->
+        <div class="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border-2 border-purple-200 shadow-md">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-purple-700 mb-1">💵 Custo Médio Unitário</p>
+                    <p class="text-3xl font-black text-purple-700">R$ {{ custo_medio|floatformat:2 }}</p>
+                    <p class="text-xs text-purple-600 mt-1">Média dos fornecedores</p>
+                </div>
+                <svg class="w-12 h-12 text-purple-300" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V8z" clip-rule="evenodd"/>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conteúdo Principal -->
+    <div class="bg-white p-8 rounded-xl shadow-lg border border-gray-200">
+
+        <!-- Modo Visualização -->
         <div x-show="!editMode">
             <div class="flex justify-between items-start mb-6">
-                <div><h1 class="text-3xl font-bold text-gray-800">{{ item.nome }}</h1><p class="text-gray-500 mt-1">{{ item.descricao|default:"Sem descrição." }}</p></div>
-                <button @click="editMode = true" class="bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors whitespace-nowrap font-semibold">Editar Dados</button>
+                <div>
+                    <h1 class="text-4xl font-bold text-gray-800">{{ item.nome }}</h1>
+                    <p class="text-gray-500 mt-2">{{ item.descricao|default:"Sem descrição." }}</p>
+                </div>
+                <button @click="editMode = true" class="bg-gray-200 text-gray-700 py-2 px-6 rounded-lg hover:bg-gray-300 transition-colors font-semibold flex items-center space-x-2">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
+                    </svg>
+                    <span>Editar Dados</span>
+                </button>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center bg-gray-50 p-4 rounded-lg border">
-                <div class="text-center"><p class="text-gray-500 text-sm">Quantidade em Estoque</p><p class="text-5xl font-black text-gray-900">{{ item.quantidade }}</p><p class="text-xs text-gray-500 mt-1">@ {{ item.local_armazenamento|default:"Não especificado" }}</p></div>
-                <div class="space-y-4">
-                    <div><p class="block text-sm font-medium text-gray-600 mb-1">Foto Principal</p>{% if item.foto_principal %}<img src="{{ item.foto_principal.url }}" alt="Foto de {{ item.nome }}" class="rounded-md shadow-sm max-h-32">{% else %}<p class="text-sm text-gray-500">Nenhuma foto cadastrada.</p>{% endif %}</div>
-                    <div><p class="block text-sm font-medium text-gray-600 mb-1">Documentação</p>{% if item.documentacao %}<a href="{{ item.documentacao.url }}" target="_blank" class="text-indigo-600 hover:underline">Ver/Baixar Documento</a>{% else %}<p class="text-sm text-gray-500">Nenhum documento cadastrado.</p>{% endif %}</div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                <!-- Galeria de Imagens -->
+                <div class="lg:col-span-2">
+                    <h3 class="font-semibold text-lg text-gray-700 mb-3">🖼️ Galeria de Imagens</h3>
+                    {% if item.foto_principal or galeria_imagens %}
+                        <div class="grid grid-cols-2 gap-3">
+                            {% if item.foto_principal %}
+                            <div class="aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:ring-4 hover:ring-indigo-300 transition-all"
+                                 @click="lightboxOpen = true; lightboxImage = '{{ item.foto_principal.url }}'">
+                                <img src="{{ item.foto_principal.url }}" alt="{{ item.nome }}" class="w-full h-full object-cover">
+                            </div>
+                            {% endif %}
+                            {% for imagem in galeria_imagens %}
+                            <div class="aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:ring-4 hover:ring-indigo-300 transition-all"
+                                 @click="lightboxOpen = true; lightboxImage = '{{ imagem.imagem.url }}'">
+                                <img src="{{ imagem.imagem.url }}" alt="Imagem {{ forloop.counter }}" class="w-full h-full object-cover">
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="bg-gray-100 rounded-lg p-8 text-center border-2 border-dashed border-gray-300">
+                            <svg class="w-16 h-16 text-gray-400 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                            <p class="text-sm text-gray-500">Nenhuma imagem cadastrada</p>
+                        </div>
+                    {% endif %}
+
+                    {% if item.documentacao %}
+                    <div class="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <p class="text-sm font-medium text-blue-700 mb-2">📄 Documentação</p>
+                        <a href="{{ item.documentacao.url }}" target="_blank" class="text-indigo-600 hover:text-indigo-800 underline font-medium">
+                            Ver/Baixar Documento
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Informações de Estoque -->
+                <div class="bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-xl border-2 border-gray-200">
+                    <div class="text-center mb-4">
+                        <p class="text-sm font-semibold text-gray-600 mb-2">Quantidade em Estoque</p>
+                        <p class="text-6xl font-black {% if item.quantidade == 0 %}text-red-600{% elif item.quantidade >= 10 %}text-green-600{% else %}text-gray-900{% endif %}">
+                            {{ item.quantidade }}
+                        </p>
+                        <p class="text-sm text-gray-500 mt-2">📍 {{ item.local_armazenamento|default:"Local não especificado" }}</p>
+                    </div>
                 </div>
             </div>
-            <div class="mt-6">
-                <h3 class="font-semibold text-lg text-gray-700 mb-2">Fornecedores e Preços de Custo</h3>
-                <div class="bg-gray-50 p-4 rounded-lg border">
-                    <ul class="space-y-3">
-                        {% for item_fornecedor in item.itemfornecedor_set.all %}
-                            <li class="flex justify-between items-center text-sm p-2 hover:bg-gray-100 rounded">
-                                <span class="font-semibold text-gray-800">{{ item_fornecedor.fornecedor.nome }}</span>
-                                <div class="text-right"><span class="font-bold text-gray-900">R$ {{ item_fornecedor.valor_pago }}</span><span class="block text-xs text-gray-500">Cotação: {{ item_fornecedor.data_cotacao|date:"d/m/Y" }}</span></div>
-                            </li>
-                        {% empty %}
-                            <p class="text-sm text-gray-500">Nenhum fornecedor associado a este item.</p>
-                        {% endfor %}
-                    </ul>
+
+            <!-- Fornecedores -->
+            <div class="mb-8">
+                <h3 class="font-semibold text-xl text-gray-700 mb-4">🏭 Fornecedores e Preços</h3>
+                <div class="bg-gray-50 p-4 rounded-xl border-2 border-gray-200">
+                    {% if item.itemfornecedor_set.all %}
+                        {% with fornecedores=item.itemfornecedor_set.all %}
+                        {% with mais_recente=fornecedores.first melhor_preco=fornecedores|dictsort:"valor_pago"|first %}
+                        <div class="space-y-2">
+                            {% for item_fornecedor in fornecedores %}
+                                <div class="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow relative">
+                                    <div class="flex items-center space-x-3 flex-1">
+                                        <div class="bg-indigo-100 p-2 rounded-lg">
+                                            <svg class="w-6 h-6 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z" clip-rule="evenodd"/>
+                                            </svg>
+                                        </div>
+                                        <div class="flex-1">
+                                            <div class="flex items-center space-x-2">
+                                                <span class="font-bold text-gray-800 text-lg">{{ item_fornecedor.get_nome_fornecedor }}</span>
+                                                {% if item_fornecedor == mais_recente %}
+                                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800" title="Fornecedor mais recente">
+                                                    🕐 Recente
+                                                </span>
+                                                {% endif %}
+                                                {% if item_fornecedor == melhor_preco %}
+                                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800" title="Melhor preço">
+                                                    💰 Melhor Preço
+                                                </span>
+                                                {% endif %}
+                                            </div>
+                                            <p class="text-xs text-gray-500">Cotação: {{ item_fornecedor.data_cotacao|date:"d/m/Y" }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="text-2xl font-black {% if item_fornecedor == melhor_preco %}text-green-600{% else %}text-gray-900{% endif %}">
+                                            R$ {{ item_fornecedor.valor_pago }}
+                                        </span>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        {% endwith %}
+                        {% endwith %}
+                    {% else %}
+                        <p class="text-sm text-gray-500 text-center py-4">Nenhum fornecedor associado a este item.</p>
+                    {% endif %}
                 </div>
             </div>
-            <hr class="my-6">
-            <div class="flex justify-between items-center">
-                <div class="flex space-x-2"><button @click="showAdicaoModal = true" class="bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors font-semibold">+ Adicionar Estoque</button><button @click="showRetiradaModal = true" class="bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors font-semibold">- Retirar Material</button></div>
-                <button @click="showExcluirModal = true" class="text-sm font-semibold text-red-600 hover:text-red-800 hover:underline transition-colors">Excluir Item</button>
+
+            <!-- Histórico de Movimentações -->
+            <div class="mb-8">
+                <h3 class="font-semibold text-xl text-gray-700 mb-4">📋 Histórico de Movimentações (Últimas 20)</h3>
+                {% if historico_movimentacoes %}
+                    <div class="overflow-x-auto">
+                        <table class="w-full bg-white border border-gray-200 rounded-lg overflow-hidden">
+                            <thead class="bg-gradient-to-r from-gray-100 to-gray-200">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Data/Hora</th>
+                                    <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Tipo</th>
+                                    <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Quantidade</th>
+                                    <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Usuário</th>
+                                    <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Observações</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                                {% for mov in historico_movimentacoes %}
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-4 py-3 text-sm text-gray-700">{{ mov.data_hora|date:"d/m/Y H:i" }}</td>
+                                    <td class="px-4 py-3">
+                                        {% if mov.tipo == 'entrada' %}
+                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">
+                                                ⬆️ Entrada
+                                            </span>
+                                        {% else %}
+                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800">
+                                                ⬇️ Saída
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-4 py-3 text-sm font-bold {% if mov.tipo == 'entrada' %}text-green-600{% else %}text-red-600{% endif %}">
+                                        {% if mov.tipo == 'entrada' %}+{% else %}-{% endif %}{{ mov.quantidade }}
+                                    </td>
+                                    <td class="px-4 py-3 text-sm text-gray-700">{{ mov.usuario.username|default:"Sistema" }}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-500">{{ mov.observacoes|default:"-"|truncatechars:50 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="bg-gray-100 rounded-lg p-8 text-center border-2 border-dashed border-gray-300">
+                        <svg class="w-16 h-16 text-gray-400 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        <p class="text-sm text-gray-500">Nenhuma movimentação registrada ainda</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Gráfico de Evolução -->
+            <div class="mb-8">
+                <h3 class="font-semibold text-xl text-gray-700 mb-4">📊 Evolução do Estoque (30 dias)</h3>
+                <div class="bg-gradient-to-br from-gray-50 to-blue-50 p-6 rounded-xl border-2 border-gray-200">
+                    <canvas id="graficoEvolucao" class="w-full" style="max-height: 300px;"></canvas>
+                </div>
+            </div>
+
+            <hr class="my-8 border-gray-300">
+
+            <!-- Ações -->
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="flex flex-wrap gap-3">
+                    <button @click="showAdicaoModal = true" class="bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-all font-semibold shadow-md hover:shadow-lg flex items-center space-x-2">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                        </svg>
+                        <span>Adicionar Estoque</span>
+                    </button>
+                    <button @click="showRetiradaModal = true" class="bg-red-600 text-white py-3 px-6 rounded-lg hover:bg-red-700 transition-all font-semibold shadow-md hover:shadow-lg flex items-center space-x-2">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/>
+                        </svg>
+                        <span>Retirar Material</span>
+                    </button>
+                    <a href="{% url 'duplicar_item' item.pk %}" class="bg-purple-600 text-white py-3 px-6 rounded-lg hover:bg-purple-700 transition-all font-semibold shadow-md hover:shadow-lg flex items-center space-x-2">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z"/>
+                            <path d="M5 3a2 2 0 00-2 2v6a2 2 0 002 2V5h8a2 2 0 00-2-2H5z"/>
+                        </svg>
+                        <span>Duplicar Item</span>
+                    </a>
+                </div>
+                <button @click="showExcluirModal = true" class="text-sm font-semibold text-red-600 hover:text-red-800 hover:underline transition-colors">
+                    🗑️ Excluir Item
+                </button>
             </div>
         </div>
 
-        <div x-show="editMode" style="display: none;">
-            <form method="post" enctype="multipart/form-data">
+        <!-- Modo Edição -->
+        <div x-show="editMode" style="display: none;" x-data="{ activeTab: 'info', previewImage: '{% if item.foto_principal %}{{ item.foto_principal.url }}{% endif %}', saving: false }">
+            <form method="post" enctype="multipart/form-data" @submit="saving = true">
                 {% csrf_token %}
-                <div class="flex justify-between items-center mb-6"><h1 class="text-2xl font-semibold text-gray-800">Editando: {{ item.nome }}</h1><button type="button" @click="editMode = false" class="text-gray-500 hover:text-gray-700">Cancelar</button></div>
-                <div class="space-y-4 border-b pb-8 mb-8">{% for field in form %}<div class="mb-2">{{ field.label_tag }}{{ field }}{% if field.errors %}<div class="text-red-500 text-sm mt-1">{{ field.errors }}</div>{% endif %}</div>{% endfor %}</div>
-                <h2 class="text-xl font-semibold text-gray-700 mb-4">Fornecedores e Preços de Custo</h2>
-                {{ formset_fornecedores.management_form }}
-                <div id="fornecedor-formset" class="space-y-4">
-                    {% for f_form in formset_fornecedores %}
-                    <div class="grid grid-cols-[1fr,auto,auto,auto] gap-x-4 p-2 border rounded-md items-center">
-                        {{ f_form.id }}
-                        <div>{{ f_form.fornecedor.label_tag }}{{ f_form.fornecedor }}</div><div>{{ f_form.valor_pago.label_tag }}{{ f_form.valor_pago }}</div><div>{{ f_form.data_cotacao.label_tag }}{{ f_form.data_cotacao }}</div>
-                        <div class="flex items-center justify-center pt-5">{% if f_form.instance.pk %}<label for="{{ f_form.DELETE.id_for_label }}" class="flex items-center cursor-pointer text-sm text-gray-500 hover:text-red-600 transition-colors"><span class="ml-2 font-semibold">Remover</span>{{ f_form.DELETE }}</label>{% endif %}</div>
-                    </div>
+                <div class="flex justify-between items-center mb-6">
+                    <h1 class="text-2xl font-semibold text-gray-800">✏️ Editando: {{ item.nome }}</h1>
+                    <button type="button" @click="editMode = false" class="text-gray-500 hover:text-gray-700 font-semibold">❌ Cancelar</button>
+                </div>
+
+                <!-- Navegação de Abas -->
+                <nav class="flex space-x-4 border-b border-gray-200 mb-6">
+                    <button type="button" @click="activeTab = 'info'" :class="activeTab === 'info' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                            class="py-3 px-4 border-b-2 font-semibold transition-colors">
+                        ℹ️ Informações Básicas
+                    </button>
+                    <button type="button" @click="activeTab = 'fornecedores'" :class="activeTab === 'fornecedores' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                            class="py-3 px-4 border-b-2 font-semibold transition-colors">
+                        💰 Fornecedores
+                    </button>
+                    <button type="button" @click="activeTab = 'galeria'" :class="activeTab === 'galeria' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                            class="py-3 px-4 border-b-2 font-semibold transition-colors">
+                        🖼️ Foto Principal
+                    </button>
+                    <button type="button" @click="activeTab = 'docs'" :class="activeTab === 'docs' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                            class="py-3 px-4 border-b-2 font-semibold transition-colors">
+                        📄 Documentação
+                    </button>
+                </nav>
+
+                <!-- Conteúdo das Abas -->
+
+                <!-- Aba: Informações Básicas -->
+                <div x-show="activeTab === 'info'" class="space-y-5">
+                    {% for field in form %}
+                        {% if field.name != 'foto_principal' and field.name != 'documentacao' %}
+                        <div class="mb-4">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                {{ field.label }}
+                                {% if field.field.required %}<span class="text-red-500">*</span>{% endif %}
+                            </label>
+                            {{ field }}
+                            {% if field.errors %}
+                            <div class="text-red-500 text-sm mt-1 flex items-center">
+                                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                </svg>
+                                {{ field.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
                     {% endfor %}
                 </div>
+
+                <!-- Aba: Fornecedores -->
+                <div x-show="activeTab === 'fornecedores'" class="space-y-4">
+                    <h2 class="text-xl font-semibold text-gray-700 mb-4">Fornecedores e Preços de Custo</h2>
+                    {{ formset_fornecedores.management_form }}
+                    <div id="fornecedor-formset" class="space-y-4">
+                        {% for f_form in formset_fornecedores %}
+                        <div class="p-4 border rounded-lg bg-gray-50 space-y-4">
+                            {{ f_form.id }}
+
+                            <!-- Grid para os campos do fornecedor -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="space-y-2">
+                                    <label class="block text-sm font-medium text-gray-700">
+                                        {{ f_form.fornecedor.label }}
+                                    </label>
+                                    {{ f_form.fornecedor }}
+                                    <p class="text-xs text-gray-500">Selecione um fornecedor cadastrado</p>
+                                </div>
+
+                                <div class="space-y-2">
+                                    <label class="block text-sm font-medium text-gray-700">
+                                        {{ f_form.fornecedor_nome.label }}
+                                    </label>
+                                    {{ f_form.fornecedor_nome }}
+                                    <p class="text-xs text-gray-500">Ou digite o nome se não estiver cadastrado</p>
+                                </div>
+                            </div>
+
+                            <!-- Grid para valor e data -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                                <div class="space-y-2">
+                                    <label class="block text-sm font-medium text-gray-700">
+                                        {{ f_form.valor_pago.label }}
+                                    </label>
+                                    {{ f_form.valor_pago }}
+                                </div>
+
+                                <div class="space-y-2">
+                                    <label class="block text-sm font-medium text-gray-700">
+                                        {{ f_form.data_cotacao.label }}
+                                    </label>
+                                    {{ f_form.data_cotacao }}
+                                </div>
+
+                                <div class="flex items-center justify-center">
+                                    {% if f_form.instance.pk %}
+                                    <label for="{{ f_form.DELETE.id_for_label }}" class="flex items-center cursor-pointer text-sm text-red-600 hover:text-red-700 transition-colors font-medium">
+                                        {{ f_form.DELETE }}
+                                        <span class="ml-2">🗑️ Remover</span>
+                                    </label>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Erros do formulário -->
+                            {% if f_form.errors %}
+                            <div class="bg-red-50 border border-red-200 rounded-md p-3">
+                                {% for field, error in f_form.errors.items %}
+                                <p class="text-sm text-red-600">{{ field }}: {{ error }}</p>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Aba: Foto Principal -->
+                <div x-show="activeTab === 'galeria'" class="space-y-4">
+                    <h2 class="text-xl font-semibold text-gray-700 mb-4">Foto Principal do Item</h2>
+
+                    <!-- Preview da Imagem -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-semibold text-gray-700 mb-3">Preview da Imagem</label>
+                        <div class="flex items-center space-x-6">
+                            <div class="w-48 h-48 bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-300 flex items-center justify-center">
+                                <img x-show="previewImage" :src="previewImage" alt="Preview" class="w-full h-full object-cover">
+                                <div x-show="!previewImage" class="text-center text-gray-400">
+                                    <svg class="w-16 h-16 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                    <p class="text-sm">Sem imagem</p>
+                                </div>
+                            </div>
+                            <div class="flex-1">
+                                {% for field in form %}
+                                    {% if field.name == 'foto_principal' %}
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">{{ field.label }}</label>
+                                    <input type="file" name="foto_principal" accept="image/*"
+                                           @change="const file = $event.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = (e) => { previewImage = e.target.result; }; reader.readAsDataURL(file); }"
+                                           class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                                    {% if field.errors %}
+                                    <div class="text-red-500 text-sm mt-1">{{ field.errors }}</div>
+                                    {% endif %}
+                                    {% endif %}
+                                {% endfor %}
+                                <p class="text-xs text-gray-500 mt-2">Formatos aceitos: JPG, PNG, GIF</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Aba: Documentação -->
+                <div x-show="activeTab === 'docs'" class="space-y-4">
+                    <h2 class="text-xl font-semibold text-gray-700 mb-4">Documentação do Item</h2>
+                    {% for field in form %}
+                        {% if field.name == 'documentacao' %}
+                        <div class="mb-4">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">{{ field.label }}</label>
+                            {{ field }}
+                            {% if item.documentacao %}
+                            <div class="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                <p class="text-sm text-blue-800 mb-2">📄 Documento atual:</p>
+                                <a href="{{ item.documentacao.url }}" target="_blank" class="text-indigo-600 hover:text-indigo-800 underline font-medium">
+                                    Ver/Baixar Documento
+                                </a>
+                            </div>
+                            {% endif %}
+                            {% if field.errors %}
+                            <div class="text-red-500 text-sm mt-1">{{ field.errors }}</div>
+                            {% endif %}
+                            <p class="text-xs text-gray-500 mt-2">Formatos aceitos: PDF, DOC, DOCX, XLS, XLSX</p>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+
+                <!-- Botões de Ação -->
                 <div class="flex justify-end mt-8 border-t pt-6">
-                    <button type="button" @click="editMode = false" class="bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 mr-4 font-semibold">Cancelar</button>
-                    <button type="submit" class="bg-indigo-600 text-white py-2 px-6 rounded-lg hover:bg-indigo-700 font-semibold">Salvar Alterações</button>
+                    <button type="button" @click="editMode = false" class="bg-gray-200 text-gray-800 py-2 px-6 rounded-lg hover:bg-gray-300 mr-4 font-semibold">Cancelar</button>
+                    <button type="submit" :disabled="saving"
+                            class="bg-indigo-600 text-white py-2 px-6 rounded-lg hover:bg-indigo-700 font-semibold shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2">
+                        <svg x-show="saving" class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span x-show="!saving">💾 Salvar Alterações</span>
+                        <span x-show="saving">Salvando...</span>
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 
-    <div x-show="showAdicaoModal" style="display: none;" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div @click.away="showAdicaoModal = false" class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
-            <h2 class="text-2xl font-bold mb-4">Adicionar ao Estoque: {{ item.nome }}</h2><p class="mb-4">Estoque atual: <span class="font-bold">{{ item.quantidade }}</span></p>
+    <!-- Modal Adicionar Estoque -->
+    <div x-show="showAdicaoModal" x-cloak style="display: none;" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div @click.away="showAdicaoModal = false" class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md">
+            <h2 class="text-2xl font-bold mb-4 text-gray-800">➕ Adicionar ao Estoque</h2>
+            <p class="mb-4 text-gray-600">Estoque atual: <span class="font-bold text-2xl text-green-600">{{ item.quantidade }}</span></p>
             <form action="{% url 'adicionar_estoque' item.pk %}" method="post">
                 {% csrf_token %}
-                {% for field in adicao_form %}<div class="mb-4">{{ field.label_tag }}{{ field }}</div>{% endfor %}
+                {% for field in adicao_form %}
+                <div class="mb-4">
+                    {{ field.label_tag }}
+                    {{ field }}
+                </div>
+                {% endfor %}
                 <div class="flex justify-end space-x-4 mt-6">
-                    <button type="button" @click="showAdicaoModal = false" class="bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 font-semibold">Cancelar</button>
-                    <button type="submit" class="bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 font-semibold">Confirmar Adição</button>
+                    <button type="button" @click="showAdicaoModal = false" class="bg-gray-200 text-gray-800 py-2 px-6 rounded-lg hover:bg-gray-300 font-semibold">Cancelar</button>
+                    <button type="submit" class="bg-green-600 text-white py-2 px-6 rounded-lg hover:bg-green-700 font-semibold shadow-md">✅ Confirmar Adição</button>
                 </div>
             </form>
         </div>
     </div>
-    <div x-show="showRetiradaModal" style="display: none;" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div @click.away="showRetiradaModal = false" class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
-            <h2 class="text-2xl font-bold mb-4">Retirar: {{ item.nome }}</h2><p class="mb-4">Estoque atual: <span class="font-bold">{{ item.quantidade }}</span></p>
+
+    <!-- Modal Retirar Estoque -->
+    <div x-show="showRetiradaModal" x-cloak style="display: none;" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div @click.away="showRetiradaModal = false" class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md">
+            <h2 class="text-2xl font-bold mb-4 text-gray-800">➖ Retirar do Estoque</h2>
+            <p class="mb-4 text-gray-600">Estoque atual: <span class="font-bold text-2xl text-red-600">{{ item.quantidade }}</span></p>
             <form action="{% url 'retirar_item' item.pk %}" method="post">
                 {% csrf_token %}
-                {% for field in retirada_form %}<div class="mb-4">{{ field.label_tag }}{{ field }}</div>{% endfor %}
+                {% for field in retirada_form %}
+                <div class="mb-4">
+                    {{ field.label_tag }}
+                    {{ field }}
+                </div>
+                {% endfor %}
                 <div class="flex justify-end space-x-4 mt-6">
-                    <button type="button" @click="showRetiradaModal = false" class="bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 font-semibold">Cancelar</button>
-                    <button type="submit" class="bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 font-semibold">Confirmar Retirada</button>
+                    <button type="button" @click="showRetiradaModal = false" class="bg-gray-200 text-gray-800 py-2 px-6 rounded-lg hover:bg-gray-300 font-semibold">Cancelar</button>
+                    <button type="submit" class="bg-red-600 text-white py-2 px-6 rounded-lg hover:bg-red-700 font-semibold shadow-md">✅ Confirmar Retirada</button>
                 </div>
             </form>
         </div>
     </div>
-    <div x-show="showExcluirModal" style="display: none;" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div @click.away="showExcluirModal = false" class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md text-center">
-            <h2 class="text-2xl font-bold mt-4">Confirmar Exclusão</h2><p class="mb-6 mt-2 text-gray-600">Você tem certeza que deseja excluir o item <strong class="text-red-700 font-semibold">{{ item.nome }}</strong>? Esta ação é irreversível.</p>
+
+    <!-- Modal Excluir -->
+    <div x-show="showExcluirModal" x-cloak style="display: none;" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div @click.away="showExcluirModal = false" class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md text-center">
+            <svg class="w-16 h-16 text-red-500 mx-auto mb-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+            <h2 class="text-2xl font-bold mb-2">⚠️ Confirmar Exclusão</h2>
+            <p class="mb-6 text-gray-600">Você tem certeza que deseja excluir o item <strong class="text-red-700 font-semibold">{{ item.nome }}</strong>? Esta ação é irreversível.</p>
             <form action="{% url 'excluir_item' item.pk %}" method="post">
                 {% csrf_token %}
                 <div class="flex justify-center space-x-4">
                     <button type="button" @click="showExcluirModal = false" class="bg-gray-200 text-gray-800 py-2 px-6 rounded-lg hover:bg-gray-300 font-semibold">Cancelar</button>
-                    <button type="submit" class="bg-red-600 text-white py-2 px-6 rounded-lg hover:bg-red-700 font-semibold">Sim, Excluir</button>
+                    <button type="submit" class="bg-red-600 text-white py-2 px-6 rounded-lg hover:bg-red-700 font-semibold shadow-md">🗑️ Sim, Excluir</button>
                 </div>
             </form>
         </div>
     </div>
+
+    <!-- Lightbox para Imagens -->
+    <div x-show="lightboxOpen" x-cloak @click.self="lightboxOpen = false" @keydown.escape.window="lightboxOpen = false"
+         class="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+        <div class="relative max-w-6xl max-h-[90vh] w-full">
+            <button @click="lightboxOpen = false" class="absolute -top-14 right-0 text-white hover:text-gray-300 transition-colors">
+                <svg class="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+            <img :src="lightboxImage" alt="Imagem ampliada" class="w-full h-full object-contain rounded-lg shadow-2xl">
+        </div>
+    </div>
 </div>
+
+<!-- Chart.js para o gráfico -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('graficoEvolucao');
+    if (ctx) {
+        const evolucaoData = JSON.parse('{{ evolucao_estoque|escapejs }}');
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: evolucaoData.map(d => d.data),
+                datasets: [{
+                    label: 'Quantidade em Estoque',
+                    data: evolucaoData.map(d => d.quantidade),
+                    borderColor: 'rgb(99, 102, 241)',
+                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: 'rgb(99, 102, 241)',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        titleFont: {
+                            size: 14
+                        },
+                        bodyFont: {
+                            size: 13
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            font: {
+                                size: 12
+                            }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            font: {
+                                size: 11
+                            }
+                        },
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+
+<style>
+[x-cloak] { display: none !important; }
+</style>
 {% endblock %}
