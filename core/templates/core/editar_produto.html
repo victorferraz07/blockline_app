@@ -1,139 +1,322 @@
 {% extends 'core/base.html' %}
-    
+
 {% block content %}
-<div x-data="{ 
-    compFormCount: {{ componente_formset.total_form_count }}, 
+<div x-data="{
+    compFormCount: {{ componente_formset.total_form_count }},
     docFormCount: {{ documento_formset.total_form_count }},
-    imgFormCount: {{ imagem_formset.total_form_count }} 
+    imgFormCount: {{ imagem_formset.total_form_count }},
+    activeTab: 'info',
+    previewImage: '{{ produto.foto_principal.url|default:'' }}'
 }" class="container mx-auto">
 
-    <div class="bg-white p-8 rounded-lg shadow-md max-w-4xl mx-auto">
-        <h1 class="text-3xl font-bold text-gray-800 mb-6">Editando Produto: {{ produto.nome }}</h1>
+    <!-- Breadcrumbs -->
+    <nav class="flex mb-6" aria-label="Breadcrumb">
+        <ol class="inline-flex items-center space-x-1 md:space-x-3">
+            <li class="inline-flex items-center">
+                <a href="{% url 'lista_produtos' %}" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-indigo-600 transition-colors">
+                    <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
+                    </svg>
+                    Produtos
+                </a>
+            </li>
+            <li>
+                <div class="flex items-center">
+                    <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                    </svg>
+                    <a href="{% url 'detalhe_produto' produto.pk %}" class="ml-1 text-sm font-medium text-gray-700 hover:text-indigo-600 md:ml-2">{{ produto.nome|truncatewords:3 }}</a>
+                </div>
+            </li>
+            <li>
+                <div class="flex items-center">
+                    <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span class="ml-1 text-sm font-medium text-gray-500 md:ml-2">Editar</span>
+                </div>
+            </li>
+        </ol>
+    </nav>
+
+    <div class="bg-white p-8 rounded-lg shadow-md max-w-5xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Editando Produto</h1>
+        <p class="text-gray-600 mb-8">{{ produto.nome }}</p>
+
+        <!-- Tabs Navigation -->
+        <div class="border-b border-gray-200 mb-6">
+            <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                <button @click="activeTab = 'info'" :class="activeTab === 'info' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
+                    ℹ️ Informações Básicas
+                </button>
+                <button @click="activeTab = 'receita'" :class="activeTab === 'receita' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
+                    📋 Receita
+                </button>
+                <button @click="activeTab = 'galeria'" :class="activeTab === 'galeria' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
+                    🖼️ Galeria
+                </button>
+                <button @click="activeTab = 'documentos'" :class="activeTab === 'documentos' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
+                    📄 Documentos
+                </button>
+            </nav>
+        </div>
         
-        <form method="post" enctype="multipart/form-data">
+        <form method="post" enctype="multipart/form-data" x-data="{ saving: false }" @submit="saving = true">
             {% csrf_token %}
-            
-            <div class="space-y-4 border-b pb-8 mb-8">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ form.nome.label }}</label>
-                        {{ form.nome }}
+
+            <!-- Tab: Informações Básicas -->
+            <div x-show="activeTab === 'info'" class="space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Preview da Foto -->
+                    <div class="lg:col-span-1">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Preview</label>
+                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+                            <div class="aspect-square bg-white rounded-lg overflow-hidden shadow-sm">
+                                <img x-show="previewImage" :src="previewImage" alt="Preview" class="w-full h-full object-cover">
+                                <div x-show="!previewImage" class="w-full h-full flex items-center justify-center text-gray-400">
+                                    <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ form.foto_principal.label }}</label>
-                        {{ form.foto_principal }}
+
+                    <!-- Campos do Formulário -->
+                    <div class="lg:col-span-2 space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                {{ form.nome.label }} <span class="text-red-500">*</span>
+                            </label>
+                            {{ form.nome }}
+                            {% if form.nome.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.nome.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">{{ form.foto_principal.label }}</label>
+                            <input type="file" name="foto_principal" accept="image/*" @change="
+                                const file = $event.target.files[0];
+                                if (file) {
+                                    const reader = new FileReader();
+                                    reader.onload = (e) => { previewImage = e.target.result; };
+                                    reader.readAsDataURL(file);
+                                }
+                            " class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
+                            <p class="mt-1 text-xs text-gray-500">PNG, JPG até 5MB</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">{{ form.descricao.label }}</label>
+                            {{ form.descricao }}
+                            {% if form.descricao.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.descricao.errors.0 }}</p>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">{{ form.descricao.label }}</label>
-                    {{ form.descricao }}
-                </div>
             </div>
 
-            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Galeria de Fotos</h2>
-            {{ imagem_formset.management_form }}
-            <div id="image-formset" class="space-y-4">
-                {% for img_form in imagem_formset %}
-                <div class="flex items-center space-x-4 p-3 border rounded-md bg-gray-50">
-                    {{ img_form.id }}
-                    {% if img_form.instance.pk and img_form.instance.imagem %}
-                        <img src="{{ img_form.instance.imagem.url }}" class="h-16 w-16 object-cover rounded">
-                    {% endif %}
-                    <div class="flex-grow">{{ img_form.imagem }}</div>
-                    {% if img_form.instance.pk %}
-                    <div class="flex items-center">
-                        <label for="{{ img_form.DELETE.id_for_label }}" class="text-sm text-red-600 mr-2">Remover</label>
-                        {{ img_form.DELETE }}
+            <!-- Tab: Galeria -->
+            <div x-show="activeTab === 'galeria'" class="space-y-6">
+                <div class="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg p-4 mb-4">
+                    <p class="text-sm text-indigo-800">📸 Adicione fotos adicionais do produto para compor a galeria</p>
+                </div>
+
+                {{ imagem_formset.management_form }}
+                <div id="image-formset" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {% for img_form in imagem_formset %}
+                    <div class="border-2 border-gray-200 rounded-lg p-4 bg-white hover:border-indigo-300 transition-colors">
+                        {{ img_form.id }}
+                        {% if img_form.instance.pk and img_form.instance.imagem %}
+                            <img src="{{ img_form.instance.imagem.url }}" class="w-full h-40 object-cover rounded-lg mb-3 shadow-sm">
+                        {% else %}
+                            <div class="w-full h-40 bg-gray-100 rounded-lg mb-3 flex items-center justify-center">
+                                <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                            </div>
+                        {% endif %}
+                        <div class="space-y-2">
+                            {{ img_form.imagem }}
+                            {% if img_form.instance.pk %}
+                            <div class="flex items-center justify-between pt-2 border-t">
+                                <label for="{{ img_form.DELETE.id_for_label }}" class="text-sm font-medium text-red-600 cursor-pointer hover:text-red-800">🗑️ Remover</label>
+                                {{ img_form.DELETE }}
+                            </div>
+                            {% endif %}
+                        </div>
                     </div>
-                    {% endif %}
+                    {% endfor %}
                 </div>
-                {% endfor %}
+                <button type="button" @click="
+                    let template = document.getElementById('empty-image-form-template').innerHTML;
+                    let newForm = template.replace(/__prefix__/g, imgFormCount);
+                    document.getElementById('image-formset').insertAdjacentHTML('beforeend', newForm);
+                    document.getElementById('id_imagens-TOTAL_FORMS').value = imgFormCount + 1;
+                    imgFormCount++;
+                " class="mt-4 inline-flex items-center px-4 py-2 border border-indigo-300 rounded-lg text-sm font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-colors">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    Adicionar Foto
+                </button>
+                <template id="empty-image-form-template">
+                    <div class="border-2 border-gray-200 rounded-lg p-4 bg-white">
+                        {{ imagem_formset.empty_form.id }}
+                        <div class="w-full h-40 bg-gray-100 rounded-lg mb-3 flex items-center justify-center">
+                            <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                        </div>
+                        {{ imagem_formset.empty_form.imagem }}
+                    </div>
+                </template>
             </div>
-            <button type="button" @click="
-                let template = document.getElementById('empty-image-form-template').innerHTML;
-                let newForm = template.replace(/__prefix__/g, imgFormCount);
-                document.getElementById('image-formset').insertAdjacentHTML('beforeend', newForm);
-                document.getElementById('id_imagens-TOTAL_FORMS').value = imgFormCount + 1;
-                imgFormCount++;
-            " class="mt-4 text-sm text-indigo-600 hover:text-indigo-800 font-semibold">+ Adicionar outra foto</button>
-            <template id="empty-image-form-template">
-                <div class="flex items-center space-x-4 p-3 border rounded-md bg-gray-50">
-                    {{ imagem_formset.empty_form.id }}
-                    <div class="flex-grow">{{ imagem_formset.empty_form.imagem }}</div>
-                </div>
-            </template>
-            
-            <hr class="my-8">
 
-            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Receita de Componentes</h2>
-            {{ componente_formset.management_form }}
-            <div class="grid grid-cols-[1fr,auto,auto] gap-x-4 mb-2 px-2 text-sm font-medium text-gray-500">
-                <span>Componente</span>
-                <span>Qtd. Necessária</span>
-                <span>Remover</span>
-            </div>
-            <div id="component-formset" class="space-y-2">
-                {% for comp_form in componente_formset %}
-                <div class="grid grid-cols-[1fr,120px,80px] items-center gap-x-4 p-2 border rounded-md">
-                    {{ comp_form.id }}
-                    <div>{{ comp_form.item_estoque }}</div>
-                    <div>{{ comp_form.quantidade_necessaria }}</div>
-                    <div class="text-center">{% if comp_form.instance.pk %}{{ comp_form.DELETE }}{% endif %}</div>
+            <!-- Tab: Receita -->
+            <div x-show="activeTab === 'receita'" class="space-y-6" x-data="{ custoTotal: 0 }">
+                <div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4">
+                    <div class="flex items-center justify-between">
+                        <p class="text-sm text-green-800">📋 Defina os componentes necessários para produzir 1 unidade</p>
+                        <div class="text-right">
+                            <p class="text-xs text-green-600">Custo Estimado</p>
+                            <p class="text-lg font-bold text-green-800" x-text="'R$ ' + custoTotal.toFixed(2)"></p>
+                        </div>
+                    </div>
                 </div>
-                {% endfor %}
-            </div>
-            <button type="button" @click="
-                let template = document.getElementById('empty-component-form-template').innerHTML;
-                let newForm = template.replace(/__prefix__/g, compFormCount);
-                document.getElementById('component-formset').insertAdjacentHTML('beforeend', newForm);
-                document.getElementById('id_componentes-TOTAL_FORMS').value = compFormCount + 1;
-                compFormCount++;
-            " class="mt-4 text-sm text-indigo-600 hover:text-indigo-800 font-semibold">+ Adicionar outro componente</button>
-            <template id="empty-component-form-template">
-                <div class="grid grid-cols-[1fr,120px,80px] items-center gap-x-4 p-2 border rounded-md">
-                    {{ componente_formset.empty_form.id }}
-                    <div>{{ componente_formset.empty_form.item_estoque }}</div>
-                    <div>{{ componente_formset.empty_form.quantidade_necessaria }}</div>
-                </div>
-            </template>
 
-            <hr class="my-8">
+                {{ componente_formset.management_form }}
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50 border-b-2 border-gray-200">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Componente</th>
+                                <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider w-32">Qtd.</th>
+                                <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider w-20">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="component-formset" class="divide-y divide-gray-100">
+                            {% for comp_form in componente_formset %}
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                {{ comp_form.id }}
+                                <td class="px-4 py-3">{{ comp_form.item_estoque }}</td>
+                                <td class="px-4 py-3 text-center">{{ comp_form.quantidade_necessaria }}</td>
+                                <td class="px-4 py-3 text-center">
+                                    {% if comp_form.instance.pk %}
+                                        <label for="{{ comp_form.DELETE.id_for_label }}" class="text-red-600 hover:text-red-800 cursor-pointer">
+                                            🗑️
+                                        </label>
+                                        {{ comp_form.DELETE }}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
 
-            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Documentos</h2>
-            {{ documento_formset.management_form }}
-            <div class="grid grid-cols-[1fr,1fr,auto] gap-x-4 mb-2 px-2 text-sm font-medium text-gray-500">
-                <span>Arquivo</span>
-                <span>Tipo de Documento</span>
-                <span>Remover</span>
+                <button type="button" @click="
+                    let template = document.getElementById('empty-component-form-template').innerHTML;
+                    let newForm = template.replace(/__prefix__/g, compFormCount);
+                    document.getElementById('component-formset').insertAdjacentHTML('beforeend', newForm);
+                    document.getElementById('id_componentes-TOTAL_FORMS').value = compFormCount + 1;
+                    compFormCount++;
+                " class="inline-flex items-center px-4 py-2 border border-green-300 rounded-lg text-sm font-semibold text-green-700 bg-green-50 hover:bg-green-100 transition-colors">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    Adicionar Componente
+                </button>
+
+                <template id="empty-component-form-template">
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        {{ componente_formset.empty_form.id }}
+                        <td class="px-4 py-3">{{ componente_formset.empty_form.item_estoque }}</td>
+                        <td class="px-4 py-3 text-center">{{ componente_formset.empty_form.quantidade_necessaria }}</td>
+                        <td class="px-4 py-3 text-center"></td>
+                    </tr>
+                </template>
             </div>
-            <div id="document-formset" class="space-y-2">
-                {% for doc_form in documento_formset %}
-                <div class="grid grid-cols-[1fr,1fr,80px] items-center gap-x-4 p-2 border rounded-md">
-                    {{ doc_form.id }}
-                    <div>{{ doc_form.documento }}</div>
-                    <div>{{ doc_form.tipo }}</div>
-                    <div class="text-center">{% if doc_form.instance.pk %}{{ doc_form.DELETE }}{% endif %}</div>
+
+            <!-- Tab: Documentos -->
+            <div x-show="activeTab === 'documentos'" class="space-y-6">
+                <div class="bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <p class="text-sm text-blue-800">📄 Anexe manuais, certificados e outros documentos técnicos</p>
                 </div>
-                {% endfor %}
+
+                {{ documento_formset.management_form }}
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50 border-b-2 border-gray-200">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Arquivo</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tipo</th>
+                                <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider w-20">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="document-formset" class="divide-y divide-gray-100">
+                            {% for doc_form in documento_formset %}
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                {{ doc_form.id }}
+                                <td class="px-4 py-3">{{ doc_form.documento }}</td>
+                                <td class="px-4 py-3">{{ doc_form.tipo }}</td>
+                                <td class="px-4 py-3 text-center">
+                                    {% if doc_form.instance.pk %}
+                                        <label for="{{ doc_form.DELETE.id_for_label }}" class="text-red-600 hover:text-red-800 cursor-pointer">
+                                            🗑️
+                                        </label>
+                                        {{ doc_form.DELETE }}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <button type="button" @click="
+                    let template = document.getElementById('empty-document-form-template').innerHTML;
+                    let newForm = template.replace(/__prefix__/g, docFormCount);
+                    document.getElementById('document-formset').insertAdjacentHTML('beforeend', newForm);
+                    document.getElementById('id_documentos-TOTAL_FORMS').value = docFormCount + 1;
+                    docFormCount++;
+                " class="inline-flex items-center px-4 py-2 border border-blue-300 rounded-lg text-sm font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    Adicionar Documento
+                </button>
+
+                <template id="empty-document-form-template">
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        {{ documento_formset.empty_form.id }}
+                        <td class="px-4 py-3">{{ documento_formset.empty_form.documento }}</td>
+                        <td class="px-4 py-3">{{ documento_formset.empty_form.tipo }}</td>
+                        <td class="px-4 py-3 text-center"></td>
+                    </tr>
+                </template>
             </div>
-            <button type="button" @click="
-                let template = document.getElementById('empty-document-form-template').innerHTML;
-                let newForm = template.replace(/__prefix__/g, docFormCount);
-                document.getElementById('document-formset').insertAdjacentHTML('beforeend', newForm);
-                document.getElementById('id_documentos-TOTAL_FORMS').value = docFormCount + 1;
-                docFormCount++;
-            " class="mt-4 text-sm text-indigo-600 hover:text-indigo-800 font-semibold">+ Adicionar outro documento</button>
-            <template id="empty-document-form-template">
-                <div class="grid grid-cols-[1fr,1fr,80px] items-center gap-x-4 p-2 border rounded-md">
-                    {{ documento_formset.empty_form.id }}
-                    <div>{{ documento_formset.empty_form.documento }}</div>
-                    <div>{{ documento_formset.empty_form.tipo }}</div>
+
+            <!-- Botões de Ação -->
+            <div class="flex justify-between items-center mt-8 pt-6 border-t">
+                <a href="{% url 'detalhe_produto' produto.pk %}" class="text-gray-600 hover:text-gray-800 font-medium transition-colors">
+                    ← Voltar sem salvar
+                </a>
+                <div class="flex gap-3">
+                    <a href="{% url 'detalhe_produto' produto.pk %}" class="bg-gray-200 text-gray-800 py-2 px-6 rounded-lg hover:bg-gray-300 font-semibold transition-colors">
+                        Cancelar
+                    </a>
+                    <button type="submit" :disabled="saving" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-2 px-8 rounded-lg hover:from-indigo-700 hover:to-purple-700 font-semibold shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                        <svg x-show="saving" class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span x-show="!saving">💾 Salvar Alterações</span>
+                        <span x-show="saving">Salvando...</span>
+                    </button>
                 </div>
-            </template>
-            
-            <div class="flex justify-end mt-8 border-t pt-6">
-                <a href="{% url 'detalhe_produto' produto.pk %}" class="bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 mr-4 font-semibold">Cancelar</a>
-                <button type="submit" class="bg-indigo-600 text-white py-2 px-6 rounded-lg hover:bg-indigo-700 font-semibold">Salvar Alterações</button>
             </div>
         </form>
     </div>

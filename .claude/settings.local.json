@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(./venv/Scripts/python.exe manage.py check)"
+      "Bash(./venv/Scripts/python.exe manage.py check)",
+      "Bash(./venv/Scripts/python.exe manage.py makemigrations)"
     ],
     "deny": [],
     "ask": []

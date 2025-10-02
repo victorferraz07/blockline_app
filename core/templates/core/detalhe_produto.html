@@ -1,7 +1,33 @@
 {% extends 'core/base.html' %}
 {% block content %}
-<div x-data="{ showExcluirModal: false }" class="container mx-auto">
-    
+<div x-data="{
+    showExcluirModal: false,
+    lightboxOpen: false,
+    lightboxImage: ''
+}" class="container mx-auto">
+
+    <!-- Breadcrumbs -->
+    <nav class="flex mb-6" aria-label="Breadcrumb">
+        <ol class="inline-flex items-center space-x-1 md:space-x-3">
+            <li class="inline-flex items-center">
+                <a href="{% url 'lista_produtos' %}" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-indigo-600 transition-colors">
+                    <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
+                    </svg>
+                    Produtos
+                </a>
+            </li>
+            <li>
+                <div class="flex items-center">
+                    <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span class="ml-1 text-sm font-medium text-gray-500 md:ml-2">{{ produto.nome|truncatewords:3 }}</span>
+                </div>
+            </li>
+        </ol>
+    </nav>
+
     <div class="bg-white p-8 rounded-lg shadow-md max-w-7xl mx-auto">
         <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-8 gap-4 border-b pb-6">
             <div>
@@ -18,64 +44,207 @@
             
             <div class="lg:col-span-1 space-y-6">
                 <div class="bg-white rounded-lg border p-4">
-                    <h3 class="font-semibold text-gray-700 mb-2">Foto Principal</h3>
+                    <h3 class="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                        📷 Foto Principal
+                    </h3>
                     {% if produto.foto_principal %}
-                        <img src="{{ produto.foto_principal.url }}" alt="{{ produto.nome }}" class="w-full rounded-md object-cover aspect-square">
+                        <div class="cursor-pointer" @click="lightboxImage = '{{ produto.foto_principal.url }}'; lightboxOpen = true">
+                            <img src="{{ produto.foto_principal.url }}" alt="{{ produto.nome }}" class="w-full rounded-lg object-cover aspect-square hover:opacity-90 transition-opacity shadow-md">
+                        </div>
                     {% else %}
-                        <div class="w-full aspect-square bg-gray-200 flex items-center justify-center rounded-md"><p class="text-gray-500">Sem foto</p></div>
+                        <div class="w-full aspect-square bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center rounded-lg">
+                            <p class="text-gray-500">📦 Sem foto</p>
+                        </div>
                     {% endif %}
                 </div>
                 <div class="bg-white rounded-lg border p-4">
-                    <h3 class="font-semibold text-gray-700 mb-4">Galeria</h3>
-                    <div class="grid grid-cols-3 gap-2">
+                    <h3 class="font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                        🖼️ Galeria <span class="text-xs font-normal text-gray-500">({{ produto.imagens.count }} fotos)</span>
+                    </h3>
+                    <div class="grid grid-cols-2 gap-3">
                         {% for imagem in produto.imagens.all %}
-                            <a href="{{ imagem.imagem.url }}" target="_blank"><img src="{{ imagem.imagem.url }}" alt="Imagem da galeria" class="aspect-square w-full rounded object-cover hover:opacity-80"></a>
+                            <div class="cursor-pointer group relative overflow-hidden rounded-lg" @click="lightboxImage = '{{ imagem.imagem.url }}'; lightboxOpen = true">
+                                <img src="{{ imagem.imagem.url }}" alt="Galeria {{ forloop.counter }}" class="aspect-square w-full rounded-lg object-cover group-hover:scale-110 transition-transform duration-300 shadow">
+                                <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity flex items-center justify-center">
+                                    <svg class="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path>
+                                    </svg>
+                                </div>
+                            </div>
                         {% empty %}
-                            <p class="col-span-3 text-sm text-gray-500">Nenhuma imagem na galeria.</p>
+                            <p class="col-span-2 text-sm text-gray-500 text-center py-8">📷 Nenhuma imagem adicional</p>
                         {% endfor %}
                     </div>
                 </div>
             </div>
 
             <div class="lg:col-span-2 space-y-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="bg-white rounded-lg shadow-inner p-6 text-center h-full flex flex-col justify-center border">
-                        <p class="text-gray-500 text-sm">Produtos Prontos em Estoque</p>
-                        <p class="text-6xl font-black text-gray-900">{{ produto.item_associado.quantidade }}</p>
+                <!-- Cards de Estatísticas -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-5 border border-green-200">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-semibold text-green-700">Estoque Atual</span>
+                            <span class="text-2xl">📦</span>
+                        </div>
+                        <p class="text-4xl font-black text-green-700">{{ estoque_atual }}</p>
+                        <p class="text-xs text-green-600 mt-1">Unidades prontas</p>
                     </div>
-                    <div class="bg-white rounded-lg shadow-inner p-6 border h-full">
-                        <h3 class="font-semibold text-lg text-gray-800 mb-4">Simulador de Produção</h3>
-                        <form method="GET" class="flex flex-col h-full">
-                            <div class="flex-grow">
-                                {{ producao_form.quantidade_a_produzir.label_tag }}
+
+                    <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-5 border border-blue-200">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-semibold text-blue-700">Média Mensal</span>
+                            <span class="text-2xl">📊</span>
+                        </div>
+                        <p class="text-4xl font-black text-blue-700">{{ media_mensal|floatformat:0 }}</p>
+                        <p class="text-xs text-blue-600 mt-1">Unidades/mês</p>
+                    </div>
+
+                    <div class="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-5 border border-purple-200">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-semibold text-purple-700">Cadastrado há</span>
+                            <span class="text-2xl">📅</span>
+                        </div>
+                        <p class="text-4xl font-black text-purple-700">{{ data_criacao|timesince|truncatewords:1 }}</p>
+                        <p class="text-xs text-purple-600 mt-1">{{ data_criacao|date:"d/m/Y" }}</p>
+                    </div>
+                </div>
+
+                <!-- Simulador de Produção Melhorado -->
+                <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
+                    <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-4">
+                        <h3 class="font-bold text-lg text-white flex items-center gap-2">
+                            🧮 Simulador de Produção
+                        </h3>
+                    </div>
+                    <div class="p-6">
+                        <form method="GET" class="space-y-4" x-data="{ loading: false }" @submit="loading = true">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Quantidade a Produzir:</label>
                                 {{ producao_form.quantidade_a_produzir }}
                             </div>
-                            <button type="submit" class="mt-auto w-full bg-indigo-600 text-white py-2 px-6 rounded-lg hover:bg-indigo-700 font-semibold">Simular</button>
+
+                            {% if qtd_a_produzir > 1 %}
+                            <div class="bg-gray-50 rounded-lg p-4 space-y-2">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm font-medium text-gray-700">💰 Custo Estimado Total:</span>
+                                    <span class="text-2xl font-bold text-indigo-600">R$ {{ custo_total_estimado|floatformat:2 }}</span>
+                                </div>
+                                <div class="flex justify-between items-center text-sm">
+                                    <span class="text-gray-600">Custo por Unidade:</span>
+                                    <span class="font-semibold text-gray-800">R$ {{ custo_unitario_estimado|floatformat:2 }}</span>
+                                </div>
+                                <div class="flex justify-between items-center text-sm pt-2 border-t">
+                                    <span class="text-gray-600">Status de Estoque:</span>
+                                    {% if todos_tem_estoque %}
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                                            ✓ Disponível
+                                        </span>
+                                    {% else %}
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800">
+                                            ✗ Componentes Faltando
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <button type="submit" :disabled="loading" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 px-6 rounded-lg hover:from-indigo-700 hover:to-purple-700 font-semibold shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                                <svg x-show="loading" class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span x-show="!loading">🔄 Simular Produção</span>
+                                <span x-show="loading">Simulando...</span>
+                            </button>
                         </form>
                     </div>
                 </div>
                 
-                <div class="bg-white rounded-lg shadow-md overflow-hidden border">
-                    <div class="p-4 border-b"><h3 class="font-semibold text-gray-700">Receita para produzir {{ qtd_a_produzir|default:1 }} unidade(s)</h3></div>
+                <div class="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200">
+                    <div class="bg-gradient-to-r from-gray-50 to-gray-100 p-4 border-b">
+                        <h3 class="font-bold text-gray-800 flex items-center gap-2">
+                            📋 Receita para produzir {{ qtd_a_produzir|default:1 }} unidade(s)
+                        </h3>
+                    </div>
                     <table class="w-full">
-                        <thead class="bg-gray-50"><tr><th class="p-3 text-left ...">Componente</th><th class="p-3 text-center ...">Qtd. Necessária</th><th class="p-3 text-center ...">Qtd. em Estoque</th></tr></thead>
-                        <tbody>
+                        <thead class="bg-gray-50 border-b-2 border-gray-200">
+                            <tr>
+                                <th class="p-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Componente</th>
+                                <th class="p-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Qtd. Necessária</th>
+                                <th class="p-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Qtd. em Estoque</th>
+                                <th class="p-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
                             {% for componente in componentes %}
-                            <tr class="border-b"><td class="p-3">{{ componente.item_estoque.nome }}</td><td class="p-3 text-center font-bold">{{ componente.total_necessario }}</td><td class="p-3 text-center font-bold {% if componente.estoque_suficiente %} text-green-600 {% else %} text-red-500 {% endif %}">{{ componente.item_estoque.quantidade }}{% if not componente.estoque_suficiente %}<span class="block text-xs font-normal text-red-500">(Insuficiente)</span>{% endif %}</td></tr>
-                            {% empty %}<tr><td colspan="3" class="p-4 text-center text-gray-500">Nenhum componente na receita.</td></tr>{% endfor %}
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="p-4 font-medium text-gray-800">{{ componente.item_estoque.nome }}</td>
+                                <td class="p-4 text-center">
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-indigo-100 text-indigo-800">
+                                        {{ componente.total_necessario }}
+                                    </span>
+                                </td>
+                                <td class="p-4 text-center">
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold {% if componente.estoque_suficiente %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+                                        {{ componente.item_estoque.quantidade }}
+                                    </span>
+                                </td>
+                                <td class="p-4 text-center">
+                                    {% if componente.estoque_suficiente %}
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">
+                                            ✓ OK
+                                        </span>
+                                    {% else %}
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800">
+                                            ✗ Falta
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="p-8 text-center text-gray-500">
+                                    <svg class="mx-auto h-12 w-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                                    </svg>
+                                    Nenhum componente na receita.
+                                </td>
+                            </tr>
+                            {% endfor %}
                         </tbody>
                     </table>
                 </div>
                 
-                <div class="bg-white rounded-lg shadow-md p-6 border">
-                    <h3 class="font-semibold text-lg text-gray-700 mb-4">Documentos Técnicos</h3>
-                    <ul class="space-y-2">
-                        {% for doc in produto.documentos.all %}
-                            <li class="p-2 hover:bg-gray-50 rounded-md"><a href="{{ doc.documento.url }}" target="_blank" class="text-indigo-600 hover:underline font-medium">{{ doc.get_tipo_display }}</a></li>
-                        {% empty %}
-                            <p class="text-sm text-gray-500">Nenhum documento anexado.</p>
-                        {% endfor %}
-                    </ul>
+                <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
+                    <div class="bg-gradient-to-r from-gray-50 to-gray-100 p-4 border-b">
+                        <h3 class="font-bold text-gray-800 flex items-center gap-2">
+                            📄 Documentos Técnicos <span class="text-xs font-normal text-gray-500">({{ produto.documentos.count }} arquivo{{ produto.documentos.count|pluralize }})</span>
+                        </h3>
+                    </div>
+                    <div class="p-6">
+                        <ul class="space-y-2">
+                            {% for doc in produto.documentos.all %}
+                                <li>
+                                    <a href="{{ doc.documento.url }}" target="_blank" class="flex items-center gap-3 p-3 hover:bg-indigo-50 rounded-lg transition-colors group">
+                                        <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        </svg>
+                                        <span class="text-indigo-600 group-hover:text-indigo-800 font-medium flex-1">{{ doc.get_tipo_display }}</span>
+                                        <svg class="w-4 h-4 text-gray-400 group-hover:text-indigo-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                                        </svg>
+                                    </a>
+                                </li>
+                            {% empty %}
+                                <li class="text-center py-8 text-gray-500">
+                                    <svg class="mx-auto h-12 w-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                    </svg>
+                                    <p class="text-sm">Nenhum documento anexado.</p>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
                 </div>
             </div>
         </div>
@@ -87,16 +256,44 @@
         </div>
     </div>
 
+    <!-- Lightbox Modal -->
+    <div x-show="lightboxOpen"
+         x-cloak
+         @click.self="lightboxOpen = false"
+         @keydown.escape.window="lightboxOpen = false"
+         class="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+        <div class="relative max-w-5xl max-h-[90vh] w-full">
+            <button @click="lightboxOpen = false" class="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+            <img :src="lightboxImage" alt="Imagem ampliada" class="w-full h-full object-contain rounded-lg shadow-2xl">
+        </div>
+    </div>
+
+    <!-- Modal de Exclusão -->
     <div x-show="showExcluirModal" style="display: none;" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div @click.away="showExcluirModal = false" class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md text-center">
-            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100"><svg class="h-6 w-6 text-red-600" ...><path ... /></svg></div>
+        <div @click.away="showExcluirModal = false" class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md text-center" x-data="{ deleting: false }">
+            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+            </div>
             <h2 class="text-2xl font-bold mt-4">Confirmar Exclusão de Produto</h2>
-            <p class="mb-6 mt-2 text-gray-600">...tem certeza...?</p>
-            <form action="{% url 'excluir_produto' produto.pk %}" method="post">
+            <p class="mb-6 mt-2 text-gray-600">Tem certeza que deseja excluir <span class="font-semibold">"{{ produto.nome }}"</span>? Esta ação não pode ser desfeita.</p>
+            <form action="{% url 'excluir_produto' produto.pk %}" method="post" @submit="deleting = true">
             {% csrf_token %}
             <div class="flex justify-center space-x-4">
-                <button type="button" @click="showExcluirModal = false" class="bg-gray-200 text-gray-800 py-2 px-6 rounded-lg hover:bg-gray-300 font-semibold">Cancelar</button>
-                <button type="submit" class="bg-red-600 text-white py-2 px-6 rounded-lg hover:bg-red-700 font-semibold">Sim, Excluir</button>
+                <button type="button" @click="showExcluirModal = false" :disabled="deleting" class="bg-gray-200 text-gray-800 py-2 px-6 rounded-lg hover:bg-gray-300 font-semibold disabled:opacity-50 transition-all">Cancelar</button>
+                <button type="submit" :disabled="deleting" class="bg-red-600 text-white py-2 px-6 rounded-lg hover:bg-red-700 font-semibold disabled:opacity-50 transition-all flex items-center gap-2">
+                    <svg x-show="deleting" class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span x-show="!deleting">Sim, Excluir</span>
+                    <span x-show="deleting">Excluindo...</span>
+                </button>
             </div>
         </form>
         </div>

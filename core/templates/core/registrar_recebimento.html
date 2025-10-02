@@ -1,112 +1,281 @@
 {% extends 'core/base.html' %}
 
 {% block content %}
-<div class="container mx-auto">
-    <div class="grid grid-cols-1 {% if not is_editing %}lg:grid-cols-3{% endif %} gap-8">
-        
-        <div class="{% if not is_editing %}lg:col-span-2{% else %}col-span-1 lg:col-span-3{% endif %}">
-            <div class="bg-white p-8 rounded-lg shadow-md {% if is_editing %}max-w-4xl mx-auto{% endif %}">
-                <h1 class="text-3xl font-bold text-gray-800 mb-6">{{ titulo }}</h1>
+<div x-data="{
+    previewDocumento: '{% if is_editing and recebimento.foto_documento %}{{ recebimento.foto_documento.url }}{% endif %}',
+    previewEmbalagem: '{% if is_editing and recebimento.foto_embalagem %}{{ recebimento.foto_embalagem.url }}{% endif %}',
+    saving: false
+}" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
-                <form method="post" enctype="multipart/form-data">
+    <!-- Breadcrumbs -->
+    <nav class="mb-6 text-sm">
+        <ol class="flex items-center space-x-2 text-gray-600">
+            <li><a href="{% url 'lista_recebimentos' %}" class="hover:text-indigo-600 transition-colors">📦 Recebimentos</a></li>
+            <li><span class="text-gray-400">/</span></li>
+            <li class="text-gray-900 font-semibold">{% if is_editing %}Editar{% else %}Registrar Novo{% endif %}</li>
+        </ol>
+    </nav>
+
+    <div class="grid grid-cols-1 {% if not is_editing %}lg:grid-cols-3{% endif %} gap-8">
+
+        <!-- Formulário Principal -->
+        <div class="{% if not is_editing %}lg:col-span-2{% else %}col-span-1 lg:col-span-3{% endif %}">
+            <div class="bg-white p-8 rounded-xl shadow-lg {% if is_editing %}max-w-4xl mx-auto{% endif %}">
+                <div class="mb-6">
+                    <h1 class="text-3xl font-bold text-gray-800">{{ titulo }}</h1>
+                    <p class="text-gray-600 mt-1">
+                        {% if is_editing %}
+                            Atualize as informações do recebimento
+                        {% else %}
+                            Preencha os campos abaixo para registrar um novo recebimento
+                        {% endif %}
+                    </p>
+                </div>
+
+                <form method="post" enctype="multipart/form-data" @submit="saving = true">
                     {% csrf_token %}
-                    
+
                     <div class="space-y-6">
-                        
+
                         {% if user.is_superuser and form.empresa %}
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">{{ form.empresa.label }}</label>
+                        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg">
+                            <label class="block text-sm font-bold text-blue-900 mb-2">
+                                <span class="text-red-500">*</span> {{ form.empresa.label }}
+                            </label>
                             {{ form.empresa }}
+                            {% if form.empresa.help_text %}
+                            <p class="text-xs text-blue-700 mt-1">{{ form.empresa.help_text }}</p>
+                            {% endif %}
                         </div>
                         {% endif %}
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">{{ form.numero_nota_fiscal.label }}</label>
-                                {{ form.numero_nota_fiscal }}
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">{{ form.fornecedor.label }}</label>
-                                {{ form.fornecedor }}
-                            </div>
-                        </div>
+                        <!-- Informações da Nota Fiscal -->
+                        <div class="border-t-4 border-indigo-500 pt-4">
+                            <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center space-x-2">
+                                <svg class="w-5 h-5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
+                                </svg>
+                                <span>Informações da Nota Fiscal</span>
+                            </h2>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">{{ form.setor.label }}</label>
-                                {{ form.setor }}
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">
+                                        <span class="text-red-500">*</span> {{ form.numero_nota_fiscal.label }}
+                                    </label>
+                                    {{ form.numero_nota_fiscal }}
+                                    {% if form.numero_nota_fiscal.errors %}
+                                    <p class="text-xs text-red-600 mt-1">{{ form.numero_nota_fiscal.errors.0 }}</p>
+                                    {% endif %}
+                                </div>
                             </div>
-                            {% if is_editing %}
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">{{ form.status.label }}</label>
+
+                            <!-- Fornecedor: FK ou Texto Livre -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                                <div class="space-y-2">
+                                    <label class="block text-sm font-bold text-gray-700">
+                                        {{ form.fornecedor.label }}
+                                    </label>
+                                    {{ form.fornecedor }}
+                                    <p class="text-xs text-gray-500">Selecione um fornecedor cadastrado</p>
+                                    {% if form.fornecedor.errors %}
+                                    <p class="text-xs text-red-600">{{ form.fornecedor.errors.0 }}</p>
+                                    {% endif %}
+                                </div>
+
+                                <div class="space-y-2">
+                                    <label class="block text-sm font-bold text-gray-700">
+                                        {{ form.fornecedor_nome.label }}
+                                    </label>
+                                    {{ form.fornecedor_nome }}
+                                    <p class="text-xs text-gray-500">Ou digite o nome se não estiver cadastrado</p>
+                                    {% if form.fornecedor_nome.errors %}
+                                    <p class="text-xs text-red-600">{{ form.fornecedor_nome.errors.0 }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">
+                                        <span class="text-red-500">*</span> {{ form.setor.label }}
+                                    </label>
+                                    {{ form.setor }}
+                                    {% if form.setor.errors %}
+                                    <p class="text-xs text-red-600 mt-1">{{ form.setor.errors.0 }}</p>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">
+                                        <span class="text-red-500">*</span> {{ form.valor_total.label }}
+                                    </label>
+                                    {{ form.valor_total }}
+                                    {% if form.valor_total.errors %}
+                                    <p class="text-xs text-red-600 mt-1">{{ form.valor_total.errors.0 }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="mt-6">
+                                <label class="block text-sm font-bold text-gray-700 mb-2">
+                                    <span class="text-red-500">*</span> {{ form.status.label }}
+                                </label>
                                 {{ form.status }}
-                            </div>
-                            {% endif %}
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">{{ form.valor_total.label }}</label>
-                            {{ form.valor_total }}
-                        </div>
-                        
-                        <hr class="my-4">
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                            <div class="space-y-2">
-                                <label class="block text-sm font-medium text-gray-700">{{ form.foto_documento.label }}</label>
-                                {% if is_editing and recebimento.foto_documento %}
-                                    <div class="mb-2"><img src="{{ recebimento.foto_documento.url }}" class="h-40 w-auto rounded-md shadow-sm border"></div>
-                                    <label for="{{ form.foto_documento.clear_id }}" class="mt-2 flex items-center text-sm text-red-600 font-semibold hover:text-red-800 cursor-pointer">
-                                        {{ form.foto_documento.clear }}<span class="ml-2">Excluir Imagem Atual</span>
-                                    </label>
-                                    <p class="text-xs text-gray-500 pt-2">Para trocar a imagem, escolha um novo arquivo:</p>
+                                <p class="text-xs text-gray-500 mt-1">Status atual do recebimento</p>
+                                {% if form.status.errors %}
+                                <p class="text-xs text-red-600 mt-1">{{ form.status.errors.0 }}</p>
                                 {% endif %}
-                                {{ form.foto_documento }}
-                            </div>
-                            <div class="space-y-2">
-                                <label class="block text-sm font-medium text-gray-700">{{ form.foto_embalagem.label }}</label>
-                                {% if is_editing and recebimento.foto_embalagem %}
-                                    <div class="mb-2"><img src="{{ recebimento.foto_embalagem.url }}" class="h-40 w-auto rounded-md shadow-sm border"></div>
-                                    <label for="{{ form.foto_embalagem.clear_id }}" class="mt-2 flex items-center text-sm text-red-600 font-semibold hover:text-red-800 cursor-pointer">
-                                        {{ form.foto_embalagem.clear }}<span class="ml-2">Excluir Imagem Atual</span>
-                                    </label>
-                                    <p class="text-xs text-gray-500 pt-2">Para trocar a imagem, escolha um novo arquivo:</p>
-                                {% endif %}
-                                {{ form.foto_embalagem }}
                             </div>
                         </div>
 
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">{{ form.observacoes.label }}</label>
-                            {{ form.observacoes }}
+                        <!-- Upload de Fotos -->
+                        <div class="border-t-4 border-green-500 pt-4">
+                            <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center space-x-2">
+                                <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/>
+                                </svg>
+                                <span>Fotos do Recebimento</span>
+                            </h2>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <!-- Foto do Documento -->
+                                <div class="space-y-3">
+                                    <label class="block text-sm font-bold text-gray-700">
+                                        📄 {{ form.foto_documento.label }}
+                                    </label>
+
+                                    <!-- Preview da Imagem -->
+                                    <div x-show="previewDocumento" class="relative">
+                                        <img :src="previewDocumento" class="w-full h-48 object-cover rounded-lg border-2 border-gray-300">
+                                        {% if is_editing and recebimento.foto_documento %}
+                                        <label for="{{ form.foto_documento.clear_id }}" class="mt-2 flex items-center text-sm text-red-600 font-semibold hover:text-red-800 cursor-pointer">
+                                            {{ form.foto_documento.clear }}
+                                            <span class="ml-2">🗑️ Excluir Imagem Atual</span>
+                                        </label>
+                                        {% endif %}
+                                    </div>
+
+                                    <!-- Input de Upload -->
+                                    <div class="relative">
+                                        <input type="file"
+                                               name="{{ form.foto_documento.name }}"
+                                               id="{{ form.foto_documento.id_for_label }}"
+                                               accept="image/*"
+                                               class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
+                                               @change="const file = $event.target.files[0];
+                                                        if (file) {
+                                                            const reader = new FileReader();
+                                                            reader.onload = (e) => { previewDocumento = e.target.result; };
+                                                            reader.readAsDataURL(file);
+                                                        }">
+                                    </div>
+                                    <p class="text-xs text-gray-500">Foto da nota fiscal ou documento</p>
+                                </div>
+
+                                <!-- Foto da Embalagem -->
+                                <div class="space-y-3">
+                                    <label class="block text-sm font-bold text-gray-700">
+                                        📦 {{ form.foto_embalagem.label }}
+                                    </label>
+
+                                    <!-- Preview da Imagem -->
+                                    <div x-show="previewEmbalagem" class="relative">
+                                        <img :src="previewEmbalagem" class="w-full h-48 object-cover rounded-lg border-2 border-gray-300">
+                                        {% if is_editing and recebimento.foto_embalagem %}
+                                        <label for="{{ form.foto_embalagem.clear_id }}" class="mt-2 flex items-center text-sm text-red-600 font-semibold hover:text-red-800 cursor-pointer">
+                                            {{ form.foto_embalagem.clear }}
+                                            <span class="ml-2">🗑️ Excluir Imagem Atual</span>
+                                        </label>
+                                        {% endif %}
+                                    </div>
+
+                                    <!-- Input de Upload -->
+                                    <div class="relative">
+                                        <input type="file"
+                                               name="{{ form.foto_embalagem.name }}"
+                                               id="{{ form.foto_embalagem.id_for_label }}"
+                                               accept="image/*"
+                                               class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
+                                               @change="const file = $event.target.files[0];
+                                                        if (file) {
+                                                            const reader = new FileReader();
+                                                            reader.onload = (e) => { previewEmbalagem = e.target.result; };
+                                                            reader.readAsDataURL(file);
+                                                        }">
+                                    </div>
+                                    <p class="text-xs text-gray-500">Foto da embalagem do produto recebido</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Observações -->
+                        <div class="border-t-4 border-purple-500 pt-4">
+                            <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center space-x-2">
+                                <svg class="w-5 h-5 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 13V5a2 2 0 00-2-2H4a2 2 0 00-2 2v8a2 2 0 002 2h3l3 3 3-3h3a2 2 0 002-2zM5 7a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1zm1 3a1 1 0 100 2h3a1 1 0 100-2H6z" clip-rule="evenodd"/>
+                                </svg>
+                                <span>Observações</span>
+                            </h2>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">{{ form.observacoes.label }}</label>
+                                {{ form.observacoes }}
+                                <p class="text-xs text-gray-500 mt-1">Informações adicionais sobre o recebimento</p>
+                            </div>
                         </div>
                     </div>
-                    
-                    <div class="flex justify-end mt-8 border-t pt-6">
-                        <a href="{% url 'lista_recebimentos' %}" class="bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 mr-4 font-semibold">Cancelar</a>
-                        <button type="submit" class="bg-indigo-600 text-white py-2 px-6 rounded-lg hover:bg-indigo-700 font-semibold">
-                            {% if is_editing %}Salvar Alterações{% else %}Registrar Recebimento{% endif %}
-                        </button>
+
+                    <!-- Botões de Ação -->
+                    <div class="flex justify-between items-center mt-8 pt-6 border-t border-gray-200">
+                        <p class="text-sm text-gray-500">
+                            <span class="text-red-500 font-bold">*</span> Campos obrigatórios
+                        </p>
+                        <div class="flex space-x-4">
+                            <a href="{% url 'lista_recebimentos' %}" class="bg-gray-200 text-gray-800 py-2.5 px-6 rounded-lg hover:bg-gray-300 font-semibold transition-colors">
+                                Cancelar
+                            </a>
+                            <button type="submit" :disabled="saving" class="bg-indigo-600 text-white py-2.5 px-6 rounded-lg hover:bg-indigo-700 font-semibold transition-colors shadow-md flex items-center space-x-2">
+                                <svg x-show="saving" class="animate-spin h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+                                </svg>
+                                <span x-show="!saving">
+                                    {% if is_editing %}💾 Salvar Alterações{% else %}✅ Registrar Recebimento{% endif %}
+                                </span>
+                                <span x-show="saving">Salvando...</span>
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>
         </div>
 
+        <!-- Sidebar: Histórico Recente (apenas no modo de criação) -->
         {% if not is_editing %}
         <div class="lg:col-span-1">
-            <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                <h2 class="text-xl font-semibold text-gray-800 mb-4">Histórico Recente</h2>
-                <ul class="space-y-4">
+            <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-indigo-500 sticky top-6">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center space-x-2">
+                    <svg class="w-5 h-5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+                    </svg>
+                    <span>Histórico Recente</span>
+                </h2>
+                <div class="space-y-4 max-h-96 overflow-y-auto">
                     {% for recebimento_hist in ultimos_recebimentos %}
-                        <li class="border-b border-gray-200 pb-3">
-                            <p class="font-semibold text-gray-700 truncate">NF: {{ recebimento_hist.numero_nota_fiscal|default:"S/N" }}</p>
-                            <p class="text-sm text-gray-600">De: <strong>{{ recebimento_hist.fornecedor.nome|default:"N/A" }}</strong></p>
-                            <p class="text-xs text-gray-400 mt-1">{{ recebimento_hist.data_recebimento|date:"d/m/Y H:i" }} por {{ recebimento_hist.usuario.username|default:"-" }}</p>
-                        </li>
+                    <div class="border-b border-gray-200 pb-3 hover:bg-gray-50 p-2 rounded-lg transition-colors">
+                        <p class="font-bold text-gray-800 truncate">NF: {{ recebimento_hist.numero_nota_fiscal|default:"S/N" }}</p>
+                        <p class="text-sm text-gray-600">🏭 <strong>{{ recebimento_hist.get_nome_fornecedor }}</strong></p>
+                        <p class="text-sm text-gray-600">💰 R$ {{ recebimento_hist.valor_total|floatformat:2 }}</p>
+                        <p class="text-xs text-gray-400 mt-1">📅 {{ recebimento_hist.data_recebimento|date:"d/m/Y H:i" }}</p>
+                        <p class="text-xs text-gray-400">👤 {{ recebimento_hist.usuario.username|default:"-" }}</p>
+                    </div>
                     {% empty %}
-                        <li class="text-sm text-gray-500">Nenhum recebimento registrado ainda.</li>
+                    <div class="text-center py-8">
+                        <svg class="w-12 h-12 text-gray-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                        </svg>
+                        <p class="text-sm text-gray-500 font-medium">Nenhum recebimento registrado ainda</p>
+                    </div>
                     {% endfor %}
-                </ul>
+                </div>
             </div>
         </div>
         {% endif %}

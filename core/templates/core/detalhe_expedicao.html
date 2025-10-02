@@ -1,116 +1,262 @@
 {% extends 'core/base.html' %}
 
 {% block content %}
-<div x-data="{ showExcluirModal: false }" class="container mx-auto">
-    <div class="bg-white p-8 rounded-lg shadow-md max-w-4xl mx-auto">
-        
-        <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-6 border-b pb-6">
+<div x-data="{
+    showExcluirModal: false,
+    lightboxOpen: false,
+    lightboxImage: ''
+}" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- Breadcrumbs -->
+    <nav class="mb-6 text-sm">
+        <ol class="flex items-center space-x-2 text-gray-600">
+            <li><a href="{% url 'lista_expedicoes' %}" class="hover:text-indigo-600 transition-colors">📦 Expedições</a></li>
+            <li><span class="text-gray-400">/</span></li>
+            <li class="text-gray-900 font-semibold">Detalhes #{{ expedicao.pk }}</li>
+        </ol>
+    </nav>
+
+    <!-- Cabeçalho -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <div class="flex flex-col md:flex-row justify-between md:items-center space-y-4 md:space-y-0">
             <div>
-                <h1 class="text-3xl font-bold text-gray-800">Detalhes da Expedição #{{ expedicao.pk }}</h1>
-                <p class="text-gray-600 mt-1">Registrado em {{ expedicao.data_expedicao|date:"d/m/Y \à\s H:i" }} por {{ expedicao.usuario.username|default:'Sistema' }}</p>
+                <h1 class="text-3xl font-bold text-gray-900">Expedição #{{ expedicao.pk }}</h1>
+                <p class="text-gray-600 mt-1">
+                    📅 {{ expedicao.data_expedicao|date:"d/m/Y \à\s H:i" }} •
+                    👤 {{ expedicao.usuario.username|default:'Sistema' }}
+                </p>
             </div>
-            <div class="flex-shrink-0 mt-4 sm:mt-0 flex items-center">
-                <a href="{% url 'editar_expedicao' expedicao.pk %}" class="bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 font-semibold transition-colors">
+            <div class="flex items-center space-x-3">
+                <a href="{% url 'editar_expedicao' expedicao.pk %}"
+                   class="inline-flex items-center px-4 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition-colors">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
                     Editar
                 </a>
-                <a href="{% url 'lista_expedicoes' %}" class="text-indigo-600 hover:underline ml-4 font-semibold">Voltar para a Lista</a>
+                <button @click="showExcluirModal = true"
+                        class="inline-flex items-center px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                    Excluir
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cards de Informações -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <!-- Cliente -->
+        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
+            <div class="flex items-start justify-between">
+                <div class="flex-1">
+                    <p class="text-blue-100 text-xs font-semibold uppercase tracking-wide mb-2">Cliente / Destino</p>
+                    <p class="text-2xl font-black">{{ expedicao.cliente }}</p>
+                </div>
+                <div class="bg-blue-400 bg-opacity-30 rounded-full p-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>
+                </div>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div class="space-y-4">
-                <div>
-                    <p class="text-sm font-semibold text-gray-500">Cliente / Destino</p>
-                    <p class="text-lg text-gray-900 font-medium">{{ expedicao.cliente }}</p>
+        <!-- Nota Fiscal -->
+        <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white">
+            <div class="flex items-start justify-between">
+                <div class="flex-1">
+                    <p class="text-green-100 text-xs font-semibold uppercase tracking-wide mb-2">Nota Fiscal</p>
+                    <p class="text-2xl font-black">{{ expedicao.nota_fiscal|default:"-" }}</p>
                 </div>
-                
-                {% if expedicao.nota_fiscal %}
-                <div>
-                    <p class="text-sm font-semibold text-gray-500">Número da Nota Fiscal</p>
-                    <p class="text-lg text-gray-900 font-mono">{{ expedicao.nota_fiscal }}</p>
+                <div class="bg-green-400 bg-opacity-30 rounded-full p-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
                 </div>
-                {% endif %}
+            </div>
+        </div>
 
-                <div>
-                    <p class="text-sm font-semibold text-gray-500">Observações</p>
-                    <p class="text-lg text-gray-800 break-words">{{ expedicao.observacoes|default:"Nenhuma." }}</p>
+        <!-- Total de Itens -->
+        <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg p-6 text-white">
+            <div class="flex items-start justify-between">
+                <div class="flex-1">
+                    <p class="text-purple-100 text-xs font-semibold uppercase tracking-wide mb-2">Total de Itens</p>
+                    <p class="text-2xl font-black">{{ expedicao.itens.count }}</p>
                 </div>
+                <div class="bg-purple-400 bg-opacity-30 rounded-full p-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                <div class="pt-2">
-                    <h3 class="font-semibold text-lg text-gray-700 mb-2">Documentos Anexados</h3>
-                    <div class="bg-gray-50 p-4 rounded-lg border">
-                        <ul class="space-y-2">
-                            {% for doc in expedicao.documentos.all %}
-                                <li class="p-2 hover:bg-gray-100 rounded-md">
-                                    <a href="{{ doc.documento.url }}" target="_blank" class="text-indigo-600 hover:underline font-medium">
-                                        {{ doc.get_tipo_display }}
-                                    </a>
-                                </li>
-                            {% empty %}
-                                <p class="text-sm text-gray-500">Nenhum documento anexado.</p>
-                            {% endfor %}
-                        </ul>
-                    </div>
+    <!-- Conteúdo Principal -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Coluna Esquerda -->
+        <div class="space-y-6">
+            <!-- Observações -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    Observações
+                </h3>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <p class="text-gray-800 whitespace-pre-wrap">{{ expedicao.observacoes|default:"Nenhuma observação registrada." }}</p>
                 </div>
             </div>
 
-            <div class="space-y-6">
-                <div>
-                    <h3 class="font-semibold text-lg text-gray-700 mb-2">Itens Enviados</h3>
-                    <div class="bg-gray-50 p-4 rounded-lg border">
-                        <ul class="space-y-2">
-                            {% for item in expedicao.itens.all %}
-                                <li class="flex justify-between items-center text-sm">
-                                    <span class="text-gray-800">{{ item.produto.nome }}</span>
-                                    <span class="font-bold text-gray-900">{{ item.quantidade }} un.</span>
-                                </li>
-                            {% empty %}
-                                <p class="text-sm text-gray-500">Nenhum item nesta expedição.</p>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                </div>
-                <div>
-                    <h3 class="font-semibold text-lg text-gray-700 mb-2">Fotos da Expedição</h3>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-lg border">
-                        {% for foto in expedicao.imagens.all %}
-                            <a href="{{ foto.imagem.url }}" target="_blank" class="block">
-                                <img src="{{ foto.imagem.url }}" alt="Foto da expedição" class="aspect-square w-full rounded object-cover hover:opacity-80 transition-opacity shadow-sm">
+            <!-- Documentos -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                    </svg>
+                    Documentos Anexados
+                </h3>
+                {% if expedicao.documentos.all %}
+                    <div class="space-y-2">
+                        {% for doc in expedicao.documentos.all %}
+                            <a href="{{ doc.documento.url }}" target="_blank"
+                               class="flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors group">
+                                <div class="flex items-center space-x-3">
+                                    <div class="bg-indigo-100 rounded-lg p-2">
+                                        <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                                        </svg>
+                                    </div>
+                                    <span class="font-medium text-gray-900">{{ doc.get_tipo_display }}</span>
+                                </div>
+                                <svg class="w-5 h-5 text-gray-400 group-hover:text-indigo-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                                </svg>
                             </a>
-                        {% empty %}
-                            <p class="col-span-full text-sm text-gray-500">Nenhuma foto anexada.</p>
                         {% endfor %}
                     </div>
-                </div>
+                {% else %}
+                    <div class="bg-gray-50 rounded-lg p-8 text-center">
+                        <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                        </svg>
+                        <p class="text-gray-500 text-sm">Nenhum documento anexado</p>
+                    </div>
+                {% endif %}
             </div>
         </div>
 
-        <div class="border-t mt-8 pt-6 flex justify-end">
-            <button @click="showExcluirModal = true" class="text-sm font-semibold text-red-600 hover:text-red-800 hover:underline transition-colors">
-                Excluir
+        <!-- Coluna Direita -->
+        <div class="space-y-6">
+            <!-- Itens Expedidos -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                    </svg>
+                    Itens Expedidos
+                </h3>
+                {% if expedicao.itens.all %}
+                    <div class="space-y-2">
+                        {% for item in expedicao.itens.all %}
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                <span class="text-gray-900 font-medium">{{ item.produto.nome }}</span>
+                                <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-bold">{{ item.quantidade }}x</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="bg-gray-50 rounded-lg p-8 text-center">
+                        <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                        </svg>
+                        <p class="text-gray-500 text-sm">Nenhum item registrado</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Fotos da Expedição -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    Fotos da Expedição
+                </h3>
+                {% if expedicao.imagens.all %}
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {% for foto in expedicao.imagens.all %}
+                            <button @click="lightboxImage = '{{ foto.imagem.url }}'; lightboxOpen = true"
+                                    class="aspect-square rounded-lg overflow-hidden hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <img src="{{ foto.imagem.url }}" alt="Foto da expedição" class="w-full h-full object-cover">
+                            </button>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="bg-gray-50 rounded-lg p-8 text-center">
+                        <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        <p class="text-gray-500 text-sm">Nenhuma foto anexada</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Lightbox Modal -->
+    <div x-show="lightboxOpen"
+         x-cloak
+         @click="lightboxOpen = false"
+         class="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4 z-50"
+         style="display: none;">
+        <div class="relative max-w-7xl max-h-full">
+            <button @click="lightboxOpen = false"
+                    class="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
             </button>
+            <img :src="lightboxImage" class="max-w-full max-h-[90vh] rounded-lg shadow-2xl" @click.stop>
         </div>
     </div>
 
-    <div x-show="showExcluirModal" style="display: none;" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div @click.away="showExcluirModal = false" class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md text-center">
-            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-                <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
-            </div>
-            <h2 class="text-2xl font-bold mt-4">Confirmar Exclusão</h2>
-            <p class="mb-6 mt-2 text-gray-600">Você tem certeza que deseja excluir a expedição <strong class="text-red-700 font-semibold">#{{ expedicao.pk }}</strong>? Esta ação é irreversível.</p>
-            <form action="{% url 'excluir_expedicao' expedicao.pk %}" method="post">
-                {% csrf_token %}
-                <div class="flex justify-center space-x-4">
-                    {% if perms.core.change_expedicao %}
-                        <a href="{% url 'editar_expedicao' expedicao.pk %}" class="...">Editar</a>
-                    {% endif %}
-                    {% if perms.core.delete_expedicao %}
-                        <button @click="showExcluirModal = true" class="...">Excluir</button>
-                    {% endif %}
+    <!-- Modal de Exclusão -->
+    <div x-show="showExcluirModal"
+         x-cloak
+         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+         style="display: none;">
+        <div @click.away="showExcluirModal = false"
+             class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
+            <div class="text-center">
+                <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
+                    <svg class="h-8 w-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
                 </div>
-            </form>
+                <h2 class="text-2xl font-bold text-gray-900 mb-2">Confirmar Exclusão</h2>
+                <p class="text-gray-600 mb-6">
+                    Você tem certeza que deseja excluir a expedição <strong class="text-red-700 font-semibold">#{{ expedicao.pk }}</strong>? Esta ação é irreversível.
+                </p>
+                <form action="{% url 'excluir_expedicao' expedicao.pk %}" method="post">
+                    {% csrf_token %}
+                    <div class="flex space-x-3">
+                        <button type="button"
+                                @click="showExcluirModal = false"
+                                class="flex-1 px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition-colors">
+                            Cancelar
+                        </button>
+                        <button type="submit"
+                                class="flex-1 px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors">
+                            Excluir
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
+
 </div>
 {% endblock %}

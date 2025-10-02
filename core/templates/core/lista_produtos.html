@@ -4,22 +4,34 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
     <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-        
+
         <div>
             <h1 class="text-3xl font-bold text-gray-800">Produtos Fabricados</h1>
             <p class="text-gray-600">Gerencie os produtos, veja documentações e simule produções</p>
         </div>
 
-        <div class="flex items-center space-x-4">
-            
+        <div class="flex items-center flex-wrap gap-3">
+            <!-- Busca -->
             <form action="{% url 'lista_produtos' %}" method="GET" class="flex items-center space-x-2">
                 <input type="text" name="q" value="{{ query|default:'' }}" placeholder="Buscar produtos..." class="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <input type="hidden" name="ordenar" value="{{ ordenacao }}">
                 <button type="submit" class="bg-gray-800 text-white py-2 px-4 rounded-lg hover:bg-gray-700 whitespace-nowrap">
-                    Buscar
+                    🔍 Buscar
                 </button>
             </form>
 
-            <a href="{% url 'adicionar_produto' %}" class="bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap">
+            <!-- Ordenação -->
+            <form action="{% url 'lista_produtos' %}" method="GET" class="flex items-center">
+                <input type="hidden" name="q" value="{{ query|default:'' }}">
+                <select name="ordenar" onchange="this.form.submit()" class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                    <option value="nome" {% if ordenacao == 'nome' %}selected{% endif %}>📝 Nome A-Z</option>
+                    <option value="data_desc" {% if ordenacao == 'data_desc' %}selected{% endif %}>🆕 Mais Recentes</option>
+                    <option value="data_asc" {% if ordenacao == 'data_asc' %}selected{% endif %}>📅 Mais Antigos</option>
+                </select>
+            </form>
+
+            <!-- Novo Produto -->
+            <a href="{% url 'adicionar_produto' %}" class="bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap shadow-md">
                 + Novo Produto
             </a>
         </div>
@@ -28,34 +40,68 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
     
         {% for produto in produtos %}
-        <div class="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 flex flex-col">
-            <div class="aspect-square bg-gray-100">
+        <div class="bg-white rounded-lg shadow-md hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col relative overflow-hidden group">
+            <!-- Badge de Estoque -->
+            {% if produto.item_associado.quantidade == 0 %}
+            <div class="absolute top-3 right-3 z-10 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+                SEM ESTOQUE
+            </div>
+            {% endif %}
+
+            <!-- Imagem do Produto -->
+            <div class="aspect-square bg-gray-100 relative overflow-hidden">
                 {% if produto.foto_principal %}
-                    <img src="{{ produto.foto_principal.url }}" alt="{{ produto.nome }}" class="w-full h-full object-cover">
+                    <img src="{{ produto.foto_principal.url }}" alt="{{ produto.nome }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
                 {% else %}
                     <div class="w-full h-full flex items-center justify-center">
-                        <svg class="h-16 w-16 text-gray-400" ...></svg>
+                        <svg class="h-16 w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                        </svg>
                     </div>
                 {% endif %}
             </div>
+
+            <!-- Conteúdo do Card -->
             <div class="p-4 flex flex-col flex-grow">
                 <div class="flex-grow">
                     <h3 class="text-lg font-bold text-gray-800">{{ produto.nome }}</h3>
-                    <p class="text-gray-600 text-sm mt-1 h-10">{{ produto.descricao|default:""|truncatechars:80 }}</p>
+                    <p class="text-gray-600 text-sm mt-1 h-10 line-clamp-2">{{ produto.descricao|default:"Sem descrição"|truncatechars:80 }}</p>
                 </div>
-                <div class="mt-4 text-center">
-                    <p class="text-xs text-gray-500">Prontos em Estoque</p>
-                    <p class="text-3xl font-black text-gray-900">{{ produto.item_associado.quantidade }}</p>
+
+                <!-- Indicador de Estoque com Cores -->
+                <div class="mt-4 text-center p-3 rounded-lg {% if produto.item_associado.quantidade == 0 %}bg-red-50{% else %}bg-green-50{% endif %}">
+                    <p class="text-xs {% if produto.item_associado.quantidade == 0 %}text-red-600{% else %}text-green-600{% endif %} font-medium mb-1">Prontos em Estoque</p>
+                    <p class="text-4xl font-black {% if produto.item_associado.quantidade == 0 %}text-red-600{% else %}text-green-600{% endif %}">
+                        {{ produto.item_associado.quantidade }}
+                    </p>
                 </div>
-                <a href="{% url 'detalhe_produto' produto.pk %}" class="block text-center mt-4 w-full bg-gray-800 text-white py-2 rounded-lg hover:bg-gray-700 transition-colors">
-                    Mais Detalhes
+
+                <!-- Botão de Ação -->
+                <a href="{% url 'detalhe_produto' produto.pk %}" class="block text-center mt-4 w-full bg-gray-800 text-white py-2 rounded-lg hover:bg-indigo-600 transition-colors font-medium shadow-sm">
+                    Ver Detalhes
                 </a>
             </div>
         </div>
         {% empty %}
-            <div class="col-span-full bg-white rounded-lg shadow-md p-8 text-center">
-                <h3 class="text-xl font-semibold text-gray-800">Nenhum produto cadastrado</h3>
-                <p class="text-gray-500 mt-2">Clique em "+ Novo Produto" para cadastrar o primeiro.</p>
+            <div class="col-span-full bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl shadow-lg p-12 text-center border-2 border-dashed border-gray-300">
+                <div class="max-w-md mx-auto">
+                    <svg class="mx-auto h-24 w-24 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                    </svg>
+                    {% if query %}
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">🔍 Nenhum resultado encontrado</h3>
+                        <p class="text-gray-600 mb-6">Não encontramos produtos com "<span class="font-semibold text-indigo-600">{{ query }}</span>"</p>
+                        <a href="{% url 'lista_produtos' %}" class="inline-block bg-indigo-600 text-white py-2 px-6 rounded-lg hover:bg-indigo-700 transition-colors shadow-md">
+                            ← Ver Todos os Produtos
+                        </a>
+                    {% else %}
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">📦 Nenhum produto cadastrado</h3>
+                        <p class="text-gray-600 mb-6">Comece criando seu primeiro produto fabricado</p>
+                        <a href="{% url 'adicionar_produto' %}" class="inline-block bg-indigo-600 text-white py-3 px-8 rounded-lg hover:bg-indigo-700 transition-colors shadow-md font-semibold">
+                            + Criar Primeiro Produto
+                        </a>
+                    {% endif %}
+                </div>
             </div>
         {% endfor %}
     </div>

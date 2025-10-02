@@ -1,58 +1,223 @@
 {% extends 'core/base.html' %}
 
 {% block content %}
-<div class="container mx-auto">
+<div x-data="{
+    searchOpen: false
+}" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
-    <div class="flex flex-col md:flex-row justify-between items-center mb-8">
+    <!-- Cabeçalho -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 space-y-4 md:space-y-0">
         <div>
-            <h1 class="text-3xl font-bold text-gray-800">Histórico de Expedições</h1>
-            <p class="text-gray-600">Consulte todas as saídas de produtos registrados.</p>
+            <h1 class="text-3xl font-bold text-gray-900">📦 Expedições</h1>
+            <p class="text-gray-600 mt-1">Gerencie todas as saídas de produtos</p>
         </div>
-        <div>
-            <a href="{% url 'registrar_expedicao' %}" class="bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap font-semibold">
-                + Registrar Nova Expedição
-            </a>
+        <a href="{% url 'registrar_expedicao' %}"
+           class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors shadow-sm">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Nova Expedição
+        </a>
+    </div>
+
+    <!-- Cards de Estatísticas -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <!-- Total de Expedições -->
+        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-blue-100 text-sm font-medium uppercase tracking-wide">Total de Expedições</p>
+                    <p class="text-4xl font-black mt-2">{{ total_expedicoes }}</p>
+                </div>
+                <div class="bg-blue-400 bg-opacity-30 rounded-full p-3">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total de Itens Expedidos -->
+        <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-green-100 text-sm font-medium uppercase tracking-wide">Itens Expedidos</p>
+                    <p class="text-4xl font-black mt-2">{{ total_itens_expedidos }}</p>
+                </div>
+                <div class="bg-green-400 bg-opacity-30 rounded-full p-3">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Expedições dos últimos 30 dias -->
+        <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg p-6 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-purple-100 text-sm font-medium uppercase tracking-wide">Últimos 30 Dias</p>
+                    <p class="text-4xl font-black mt-2">{{ expedicoes_30_dias }}</p>
+                </div>
+                <div class="bg-purple-400 bg-opacity-30 rounded-full p-3">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="bg-white rounded-lg shadow-md overflow-hidden">
-        <table class="w-full">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th class="p-3 text-left text-sm font-semibold text-gray-600">ID</th>
-                    <th class="p-3 text-left text-sm font-semibold text-gray-600">Data</th>
-                    <th class="p-3 text-left text-sm font-semibold text-gray-600">Cliente / Destino</th>
-                    <th class="p-3 text-left text-sm font-semibold text-gray-600">Itens Enviados</th>
-                    <th class="p-3 text-left text-sm font-semibold text-gray-600">Responsável</th>
-                    <th class="p-3 text-left text-sm font-semibold text-gray-600">Ação</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for expedicao in expedicoes %}
-                    <tr class="border-b border-gray-200 hover:bg-gray-50">
-                        <td class="p-3 text-sm font-bold text-gray-600">#{{ expedicao.pk }}</td>
-                        <td class="p-3 text-sm text-gray-700">{{ expedicao.data_expedicao|date:"d/m/Y H:i" }}</td>
-                        <td class="p-3 text-gray-800 font-semibold">{{ expedicao.cliente }}</td>
-                        <td class="p-3 text-sm text-gray-700">
-                            <ul class="list-disc list-inside">
-                                {% for item in expedicao.itens.all %}
-                                    <li>{{ item.quantidade }}x {{ item.produto.nome }}</li>
+    <!-- Barra de Pesquisa e Ordenação -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+        <div class="flex flex-col md:flex-row gap-4">
+            <!-- Campo de Pesquisa -->
+            <div class="flex-1">
+                <form method="GET" action="{% url 'lista_expedicoes' %}" class="relative">
+                    <input type="text"
+                           name="search"
+                           value="{{ search_query }}"
+                           placeholder="Buscar por cliente ou nota fiscal..."
+                           class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    <svg class="absolute left-3 top-3 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                </form>
+            </div>
+
+            <!-- Dropdown de Ordenação -->
+            <div class="md:w-64">
+                <form method="GET" id="orderForm" action="{% url 'lista_expedicoes' %}">
+                    {% if search_query %}
+                        <input type="hidden" name="search" value="{{ search_query }}">
+                    {% endif %}
+                    <select name="order_by"
+                            onchange="document.getElementById('orderForm').submit()"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        <option value="-data_expedicao" {% if order_by == '-data_expedicao' %}selected{% endif %}>📅 Mais Recentes</option>
+                        <option value="data_expedicao" {% if order_by == 'data_expedicao' %}selected{% endif %}>📅 Mais Antigas</option>
+                        <option value="cliente" {% if order_by == 'cliente' %}selected{% endif %}>👤 Cliente (A-Z)</option>
+                        <option value="-cliente" {% if order_by == '-cliente' %}selected{% endif %}>👤 Cliente (Z-A)</option>
+                        <option value="nota_fiscal" {% if order_by == 'nota_fiscal' %}selected{% endif %}>📄 Nota Fiscal (A-Z)</option>
+                        <option value="-nota_fiscal" {% if order_by == '-nota_fiscal' %}selected{% endif %}>📄 Nota Fiscal (Z-A)</option>
+                    </select>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Expedições em Cards -->
+    {% if expedicoes %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for expedicao in expedicoes %}
+                <div class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-200">
+                    <!-- Cabeçalho do Card -->
+                    <div class="bg-gradient-to-r from-indigo-500 to-purple-600 p-4 text-white">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-xs font-semibold opacity-90 uppercase tracking-wide">Expedição</p>
+                                <p class="text-2xl font-black mt-1">#{{ expedicao.pk }}</p>
+                            </div>
+                            <div class="bg-white bg-opacity-20 rounded-lg px-3 py-1">
+                                <p class="text-xs font-bold">{{ expedicao.data_expedicao|date:"d/m/Y" }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Corpo do Card -->
+                    <div class="p-4 space-y-3">
+                        <!-- Cliente -->
+                        <div class="flex items-start space-x-2">
+                            <svg class="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
+                            <div class="flex-1">
+                                <p class="text-xs text-gray-500 font-medium">Cliente / Destino</p>
+                                <p class="text-sm font-bold text-gray-900">{{ expedicao.cliente }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Nota Fiscal -->
+                        {% if expedicao.nota_fiscal %}
+                        <div class="flex items-start space-x-2">
+                            <svg class="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                            <div class="flex-1">
+                                <p class="text-xs text-gray-500 font-medium">Nota Fiscal</p>
+                                <p class="text-sm font-bold text-gray-900">{{ expedicao.nota_fiscal }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Itens Expedidos -->
+                        <div class="bg-gray-50 rounded-lg p-3">
+                            <p class="text-xs text-gray-500 font-semibold mb-2 uppercase tracking-wide">Itens Expedidos</p>
+                            <ul class="space-y-1">
+                                {% for item in expedicao.itens.all|slice:":3" %}
+                                    <li class="flex items-center justify-between text-sm">
+                                        <span class="text-gray-700">{{ item.produto.nome }}</span>
+                                        <span class="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full text-xs font-bold">{{ item.quantidade }}x</span>
+                                    </li>
                                 {% endfor %}
+                                {% if expedicao.itens.count > 3 %}
+                                    <li class="text-xs text-gray-500 italic">+ {{ expedicao.itens.count|add:"-3" }} item{{ expedicao.itens.count|add:"-3"|pluralize }}</li>
+                                {% endif %}
                             </ul>
-                        </td>
-                        <td class="p-3 text-sm text-gray-700">{{ expedicao.usuario.username|default:"-" }}</td>
-                        <td class="p-3">
-                            <a href="{% url 'detalhe_expedicao' expedicao.pk %}" class="text-indigo-600 hover:underline">Ver Detalhes</a>
-                        </td>
-                    </tr>
-                {% empty %}
-                    <tr>
-                        <td colspan="6" class="p-8 text-center text-gray-500">Nenhuma expedição registrada ainda.</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+                        </div>
+
+                        <!-- Responsável -->
+                        <div class="flex items-center justify-between pt-2 border-t border-gray-200">
+                            <div class="flex items-center space-x-2">
+                                <div class="bg-indigo-100 rounded-full p-1.5">
+                                    <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500">Responsável</p>
+                                    <p class="text-sm font-semibold text-gray-800">{{ expedicao.usuario.username|default:"-" }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rodapé do Card -->
+                    <div class="bg-gray-50 px-4 py-3 border-t border-gray-200">
+                        <a href="{% url 'detalhe_expedicao' expedicao.pk %}"
+                           class="block w-full text-center bg-indigo-600 text-white py-2 rounded-lg font-semibold hover:bg-indigo-700 transition-colors">
+                            Ver Detalhes
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <!-- Estado Vazio -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+            <div class="max-w-md mx-auto">
+                <div class="bg-gray-100 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Nenhuma expedição encontrada</h3>
+                {% if search_query %}
+                    <p class="text-gray-600 mb-4">Não encontramos expedições com o termo "{{ search_query }}".</p>
+                    <a href="{% url 'lista_expedicoes' %}" class="text-indigo-600 hover:underline font-medium">Limpar pesquisa</a>
+                {% else %}
+                    <p class="text-gray-600 mb-4">Comece registrando sua primeira expedição de produtos.</p>
+                    <a href="{% url 'registrar_expedicao' %}"
+                       class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        Registrar Primeira Expedição
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
 
 </div>
 {% endblock %}

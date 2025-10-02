@@ -1,7 +1,7 @@
 {% extends 'core/base.html' %}
 
 {% block content %}
-<div x-data="{ showModal: false, itemToDeleteUrl: '', itemToDeleteName: '' }" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
     <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
         <div>
@@ -9,63 +9,127 @@
             <p class="text-gray-600">Gerencie os itens em estoque.</p>
         </div>
         <div class="flex items-center space-x-4">
-            <a href="{% url 'adicionar_item' %}" class="bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap font-semibold">
-                + Adicionar Item
+            <a href="{% url 'adicionar_item' %}" class="bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap font-semibold flex items-center space-x-2">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                </svg>
+                <span>Adicionar Item</span>
             </a>
             <form action="{% url 'lista_estoque' %}" method="GET" class="flex items-center space-x-2">
+                <input type="hidden" name="ordenar" value="{{ ordenacao|default:'nome' }}">
+                <input type="hidden" name="tipo" value="{{ tipo_filtro|default:'' }}">
                 <input type="text" name="q" value="{{ query|default:'' }}" placeholder="Buscar itens..." class="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 <button type="submit" class="bg-gray-800 text-white py-2 px-4 rounded-lg hover:bg-gray-700 font-semibold">
-                    Buscar
+                    🔍 Buscar
                 </button>
             </form>
         </div>
     </div>
 
+    <!-- Filtros e Ordenação -->
+    <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+        <!-- Filtros por Tipo -->
+        <div class="flex items-center space-x-2">
+            <span class="text-sm font-medium text-gray-700">Filtrar por tipo:</span>
+            <div class="flex space-x-2">
+                <a href="{% url 'lista_estoque' %}?q={{ query|default:'' }}&ordenar={{ ordenacao|default:'nome' }}"
+                   class="px-4 py-2 rounded-lg font-medium transition-colors {% if not tipo_filtro %}bg-indigo-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                    📦 Todos
+                </a>
+                <a href="{% url 'lista_estoque' %}?q={{ query|default:'' }}&ordenar={{ ordenacao|default:'nome' }}&tipo=produto_acabado"
+                   class="px-4 py-2 rounded-lg font-medium transition-colors {% if tipo_filtro == 'produto_acabado' %}bg-emerald-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                    ✅ Produtos
+                </a>
+                <a href="{% url 'lista_estoque' %}?q={{ query|default:'' }}&ordenar={{ ordenacao|default:'nome' }}&tipo=componente"
+                   class="px-4 py-2 rounded-lg font-medium transition-colors {% if tipo_filtro == 'componente' %}bg-gray-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                    🔧 Componentes
+                </a>
+            </div>
+        </div>
+
+        <!-- Ordenação -->
+        <form action="{% url 'lista_estoque' %}" method="GET" class="flex items-center space-x-2">
+            <input type="hidden" name="q" value="{{ query|default:'' }}">
+            <input type="hidden" name="tipo" value="{{ tipo_filtro|default:'' }}">
+            <label class="text-sm font-medium text-gray-700">Ordenar por:</label>
+            <select name="ordenar" onchange="this.form.submit()"
+                    class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white font-medium">
+                <option value="nome" {% if ordenacao == 'nome' %}selected{% endif %}>📝 Nome A-Z</option>
+                <option value="estoque_asc" {% if ordenacao == 'estoque_asc' %}selected{% endif %}>📈 Estoque Crescente</option>
+                <option value="estoque_desc" {% if ordenacao == 'estoque_desc' %}selected{% endif %}>📉 Estoque Decrescente</option>
+                <option value="tipo" {% if ordenacao == 'tipo' %}selected{% endif %}>🏷️ Tipo</option>
+                <option value="data_desc" {% if ordenacao == 'data_desc' %}selected{% endif %}>🆕 Mais Recentes</option>
+            </select>
+        </form>
+    </div>
+
+    <!-- Estatísticas -->
     <div class="flex justify-end space-x-2 text-sm mb-8">
         <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-medium">{{ total_itens }} Itens</span>
         <span class="bg-red-100 text-red-800 px-3 py-1 rounded-full font-medium">{{ itens_esgotados }} Esgotados</span>
+        <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full font-medium">{{ itens_saudaveis }} Disponíveis</span>
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
 
         {% for item in itens %}
-        <div class="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 flex flex-col">
-            <button @click="showModal = true; itemToDeleteUrl = '{% url 'excluir_item' item.pk %}'; itemToDeleteName = '{{ item.nome|escapejs }}';" 
-                class="absolute top-2 left-2 z-20 p-1.5 bg-white bg-opacity-75 rounded-full text-gray-500 hover:text-red-600 hover:bg-red-100 transition-colors">
-                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-            </button>
-            <div class="aspect-square bg-gray-100 relative">
-                <div class="absolute top-2 right-2 z-10">
-                    
+        <div class="bg-white rounded-lg shadow-md hover:shadow-2xl hover:scale-105 transition-all duration-300 flex flex-col relative">
+            <div class="aspect-square bg-gray-100 relative overflow-hidden">
+                <!-- Badge de Status de Estoque -->
+                <div class="absolute top-3 right-3 z-10">
+                    {% if item.quantidade == 0 %}
+                        <div class="bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center space-x-1">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                            </svg>
+                            <span>ESGOTADO</span>
+                        </div>
+                    {% elif item.quantidade >= 10 %}
+                        <div class="bg-green-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center space-x-1">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                            </svg>
+                            <span>DISPONÍVEL</span>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Badge de Tipo -->
+                <div class="absolute top-3 left-14 z-10">
                     {% if item.tipo == 'produto_acabado' %}
-                        <span class="px-2 py-1 text-xs font-semibold text-emerald-800 bg-emerald-50 rounded-full shadow">Produto</span>
+                        <span class="px-2 py-1 text-xs font-semibold text-emerald-800 bg-emerald-50 rounded-full shadow">✅ Produto</span>
                     {% else %}
-                        <span class="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-200 rounded-full shadow">Componente</span>
+                        <span class="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-200 rounded-full shadow">🔧 Componente</span>
                     {% endif %}
                 </div>
 
                 {% if item.foto_principal %}
-                    <img src="{{ item.foto_principal.url }}" alt="{{ item.nome }}" class="w-full h-full object-cover">
+                    <img src="{{ item.foto_principal.url }}" alt="{{ item.nome }}" class="w-full h-full object-cover transition-transform duration-300 hover:scale-110">
                 {% else %}
-                    <div class="w-full h-full flex items-center justify-center">
-                        <svg class="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                        <svg class="h-16 w-16 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                     </div>
                 {% endif %}
             </div>
-            
+
             <div class="p-4 flex flex-col flex-grow">
                 <div class="flex-grow">
                     <h3 class="text-xl font-bold text-gray-800 truncate" title="{{ item.nome }}">{{ item.nome }}</h3>
-                    <p class="text-gray-500 text-sm mt-1 h-10">{{ item.descricao|default:""|truncatechars:70 }}</p>
-                </div>
-                
-                <div class="mt-4">
-                    <p class="text-xs text-gray-500">Em Estoque</p>
-                    <p class="text-2xl font-semibold text-gray-700">{{ item.quantidade }}</p>
+                    <p class="text-gray-500 text-sm mt-1 line-clamp-2 h-10">{{ item.descricao|default:"Sem descrição"|truncatechars:70 }}</p>
                 </div>
 
-                <a href="{% url 'gerenciar_item' item.pk %}" class="block text-center mt-4 w-full bg-gray-800 text-white py-2 rounded-lg hover:bg-gray-700 transition-colors">
-                    Gerenciar
+                <div class="mt-4 bg-gray-50 rounded-lg p-3 border border-gray-200">
+                    <p class="text-xs text-gray-500 font-medium">Em Estoque</p>
+                    <p class="text-3xl font-black {% if item.quantidade == 0 %}text-red-600{% elif item.quantidade >= 10 %}text-green-600{% else %}text-gray-700{% endif %}">
+                        {{ item.quantidade }}
+                    </p>
+                    {% if item.local_armazenamento %}
+                        <p class="text-xs text-gray-500 mt-1">📍 {{ item.local_armazenamento|truncatechars:25 }}</p>
+                    {% endif %}
+                </div>
+
+                <a href="{% url 'gerenciar_item' item.pk %}" class="block text-center mt-4 w-full bg-indigo-600 text-white py-2.5 rounded-lg hover:bg-indigo-700 transition-all font-semibold shadow-md hover:shadow-lg">
+                    🔧 Gerenciar
                 </a>
             </div>
         </div>
@@ -74,23 +138,39 @@
     </div>
     
     {% if not itens %}
-        <div class="col-span-full bg-white rounded-lg shadow-md p-8 text-center mt-6">
-            <h3 class="text-xl font-semibold text-gray-800">Nenhum item em estoque</h3>
-            <p class="text-gray-500 mt-2">Clique em "Adicionar Item" para cadastrar o primeiro.</p>
+        <div class="col-span-full bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl shadow-lg p-12 text-center mt-6 border-2 border-dashed border-gray-300">
+            <div class="flex flex-col items-center space-y-4">
+                <svg class="w-24 h-24 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                </svg>
+                <h3 class="text-2xl font-bold text-gray-800">
+                    {% if query or tipo_filtro %}
+                        📭 Nenhum item encontrado
+                    {% else %}
+                        📦 Estoque Vazio
+                    {% endif %}
+                </h3>
+                <p class="text-gray-600 max-w-md">
+                    {% if query or tipo_filtro %}
+                        Não encontramos nenhum item com os filtros aplicados. Tente ajustar sua busca ou remover os filtros.
+                    {% else %}
+                        Você ainda não possui nenhum item cadastrado em estoque. Clique no botão abaixo para adicionar o primeiro!
+                    {% endif %}
+                </p>
+                {% if query or tipo_filtro %}
+                    <a href="{% url 'lista_estoque' %}" class="mt-4 inline-flex items-center px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-semibold shadow-md">
+                        🔄 Limpar Filtros
+                    </a>
+                {% else %}
+                    <a href="{% url 'adicionar_item' %}" class="mt-4 inline-flex items-center px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold shadow-md">
+                        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                        </svg>
+                        Adicionar Primeiro Item
+                    </a>
+                {% endif %}
+            </div>
         </div>
     {% endif %}
-</div>
-<div x-show="showModal" style="display: none;" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-    <div @click.away="showModal = false" class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md text-center">
-        <h2 class="text-2xl font-bold mt-4">Confirmar Exclusão</h2>
-        <p class="mb-6 mt-2 text-gray-600">Você tem certeza que deseja excluir o item <strong class="text-red-700 font-semibold" x-text="itemToDeleteName"></strong>? Esta ação é irreversível.</p>
-        <form :action="itemToDeleteUrl" method="post">
-            {% csrf_token %}
-            <div class="flex justify-center space-x-4">
-                <button type="button" @click="showModal = false" class="bg-gray-200 text-gray-800 py-2 px-6 rounded-lg hover:bg-gray-300 font-semibold">Cancelar</button>
-                <button type="submit" class="bg-red-600 text-white py-2 px-6 rounded-lg hover:bg-red-700 font-semibold">Sim, Excluir</button>
-            </div>
-        </form>
-    </div>
 </div>
 {% endblock %}
