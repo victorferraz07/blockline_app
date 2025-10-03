@@ -2,10 +2,13 @@
 .env
 .env.local
 .env.*.local
+.env.*
+!.env.example
 
 # Python
 __pycache__/
 *.py[cod]
+*.sqlite3
 *$py.class
 *.so
 .Python
@@ -13,6 +16,7 @@ venv/
 env/
 ENV/
 /bin/
+.envrc
 
 # Django
 *.log
@@ -21,6 +25,7 @@ db.sqlite3
 db.sqlite3-journal
 /media/
 /staticfiles/
+static/
 
 # IDEs
 .vscode/
