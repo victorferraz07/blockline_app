@@ -6,6 +6,7 @@ urlpatterns = [
     
     # --- Rotas de Estoque ---
     path('estoque/', views.lista_estoque, name='lista_estoque'),
+    path('estoque/historico/', views.historico_geral_estoque, name='historico_geral_estoque'),
     path('estoque/adicionar/', views.adicionar_item, name='adicionar_item'),
     path('estoque/<int:pk>/gerenciar/', views.gerenciar_item, name='gerenciar_item'),
     path('estoque/<int:pk>/historico/', views.historico_completo_item, name='historico_completo_item'),
