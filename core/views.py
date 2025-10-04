@@ -198,7 +198,7 @@ def gerenciar_item(request, pk):
     total_saidas = movimentacoes_recentes.filter(tipo='saida').aggregate(total=Sum('quantidade'))['total'] or 0
 
     # 4. Histórico com opção de carregar mais
-    limite = int(request.GET.get('limite', 20))  # Padrão: 20, aumenta ao clicar "Carregar Mais"
+    limite = int(request.GET.get('limite', 10))  # Padrão: 10, aumenta ao clicar "Carregar Mais"
     historico_movimentacoes = item.movimentacoes.all()[:limite]
     total_movimentacoes = item.movimentacoes.count()
     tem_mais = total_movimentacoes > limite
