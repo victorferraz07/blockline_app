@@ -191,15 +191,10 @@
 
             <!-- Histórico de Movimentações -->
             <div class="mb-8">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-semibold text-xl text-gray-700">📋 Histórico de Movimentações (Últimas 20)</h3>
-                    <a href="{% url 'historico_completo_item' item.pk %}" class="bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-all font-semibold shadow-md hover:shadow-lg flex items-center space-x-2">
-                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V8z" clip-rule="evenodd"/>
-                        </svg>
-                        <span>Ver Histórico Completo</span>
-                    </a>
-                </div>
+                <h3 class="font-semibold text-xl text-gray-700 mb-4">
+                    📋 Histórico de Movimentações
+                    <span class="text-sm text-gray-500">({{ historico_movimentacoes|length }} de {{ total_movimentacoes }})</span>
+                </h3>
                 {% if historico_movimentacoes %}
                     <div class="overflow-x-auto">
                         <table class="w-full bg-white border border-gray-200 rounded-lg overflow-hidden">
@@ -237,6 +232,19 @@
                             </tbody>
                         </table>
                     </div>
+
+                    <!-- Botão Carregar Mais -->
+                    {% if tem_mais %}
+                    <div class="mt-4 text-center">
+                        <a href="?limite={{ limite_atual|add:20 }}" class="inline-flex items-center px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all font-semibold shadow-md hover:shadow-lg">
+                            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                            </svg>
+                            Carregar Mais 20 Registros
+                        </a>
+                        <p class="text-sm text-gray-500 mt-2">Ainda há mais {{ total_movimentacoes }} movimentações para visualizar</p>
+                    </div>
+                    {% endif %}
                 {% else %}
                     <div class="bg-gray-100 rounded-lg p-8 text-center border-2 border-dashed border-gray-300">
                         <svg class="w-16 h-16 text-gray-400 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">

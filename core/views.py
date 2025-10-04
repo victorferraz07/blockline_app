@@ -197,8 +197,11 @@ def gerenciar_item(request, pk):
     total_entradas = movimentacoes_recentes.filter(tipo='entrada').aggregate(total=Sum('quantidade'))['total'] or 0
     total_saidas = movimentacoes_recentes.filter(tipo='saida').aggregate(total=Sum('quantidade'))['total'] or 0
 
-    # 4. Histórico completo
-    historico_movimentacoes = item.movimentacoes.all()[:20]  # Últimas 20 movimentações
+    # 4. Histórico com opção de carregar mais
+    limite = int(request.GET.get('limite', 20))  # Padrão: 20, aumenta ao clicar "Carregar Mais"
+    historico_movimentacoes = item.movimentacoes.all()[:limite]
+    total_movimentacoes = item.movimentacoes.count()
+    tem_mais = total_movimentacoes > limite
 
     # 5. Galeria de imagens
     galeria_imagens = item.imagens.all()
@@ -234,6 +237,9 @@ def gerenciar_item(request, pk):
         'total_saidas_30d': total_saidas,
         # Histórico e galeria
         'historico_movimentacoes': historico_movimentacoes,
+        'total_movimentacoes': total_movimentacoes,
+        'tem_mais': tem_mais,
+        'limite_atual': limite,
         'galeria_imagens': galeria_imagens,
         # Gráfico (convertido para JSON)
         'evolucao_estoque': json.dumps(evolucao_estoque),
