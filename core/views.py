@@ -241,6 +241,75 @@ def gerenciar_item(request, pk):
     return render(request, 'core/gerenciar_item.html', contexto)
 
 @login_required
+def historico_completo_item(request, pk):
+    """View para exibir o histórico completo de movimentações de um item com filtros e paginação"""
+    from django.core.paginator import Paginator
+    from datetime import datetime
+
+    item = get_object_or_404(ItemEstoque, pk=pk)
+
+    # Obter todas as movimentações do item
+    movimentacoes = item.movimentacoes.all()
+
+    # Aplicar filtros
+    tipo_filtro = request.GET.get('tipo', '')
+    usuario_filtro = request.GET.get('usuario', '')
+    data_inicio = request.GET.get('data_inicio', '')
+    data_fim = request.GET.get('data_fim', '')
+
+    if tipo_filtro:
+        movimentacoes = movimentacoes.filter(tipo=tipo_filtro)
+
+    if usuario_filtro:
+        movimentacoes = movimentacoes.filter(usuario__id=usuario_filtro)
+
+    if data_inicio:
+        try:
+            data_inicio_obj = datetime.strptime(data_inicio, '%Y-%m-%d')
+            movimentacoes = movimentacoes.filter(data_hora__gte=data_inicio_obj)
+        except ValueError:
+            pass
+
+    if data_fim:
+        try:
+            data_fim_obj = datetime.strptime(data_fim, '%Y-%m-%d')
+            # Adicionar 1 dia para incluir todo o dia final
+            from datetime import timedelta
+            data_fim_obj = data_fim_obj + timedelta(days=1)
+            movimentacoes = movimentacoes.filter(data_hora__lt=data_fim_obj)
+        except ValueError:
+            pass
+
+    # Estatísticas do período filtrado
+    total_entradas = movimentacoes.filter(tipo='entrada').aggregate(total=Sum('quantidade'))['total'] or 0
+    total_saidas = movimentacoes.filter(tipo='saida').aggregate(total=Sum('quantidade'))['total'] or 0
+    saldo_periodo = total_entradas - total_saidas
+
+    # Paginação (50 itens por página)
+    paginator = Paginator(movimentacoes, 50)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    # Obter lista de usuários que fizeram movimentações para o filtro
+    usuarios = User.objects.filter(movimentacoes__item=item).distinct().order_by('username')
+
+    contexto = {
+        'item': item,
+        'page_obj': page_obj,
+        'usuarios': usuarios,
+        'tipo_filtro': tipo_filtro,
+        'usuario_filtro': usuario_filtro,
+        'data_inicio': data_inicio,
+        'data_fim': data_fim,
+        'total_entradas': total_entradas,
+        'total_saidas': total_saidas,
+        'saldo_periodo': saldo_periodo,
+        'total_registros': movimentacoes.count(),
+    }
+
+    return render(request, 'core/historico_movimentacoes.html', contexto)
+
+@login_required
 def retirar_item(request, pk):
     item = get_object_or_404(ItemEstoque, pk=pk)
     if request.method == 'POST':

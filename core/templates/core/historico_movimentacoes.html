@@ -1,0 +1,231 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- Header com Breadcrumbs -->
+    <nav class="mb-6 text-sm">
+        <ol class="flex items-center space-x-2 text-gray-600">
+            <li><a href="{% url 'lista_estoque' %}" class="hover:text-indigo-600 transition-colors">📦 Estoque</a></li>
+            <li><span class="text-gray-400">/</span></li>
+            <li><a href="{% url 'gerenciar_item' item.pk %}" class="hover:text-indigo-600 transition-colors">{{ item.nome }}</a></li>
+            <li><span class="text-gray-400">/</span></li>
+            <li class="text-gray-900 font-semibold">Histórico Completo</li>
+        </ol>
+    </nav>
+
+    <!-- Título e Estatísticas -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">📋 Histórico Completo de Movimentações</h1>
+        <p class="text-gray-600">Item: <span class="font-semibold text-gray-900">{{ item.nome }}</span></p>
+    </div>
+
+    <!-- Cards de Estatísticas do Período Filtrado -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border-2 border-blue-200 shadow-md">
+            <p class="text-sm font-semibold text-blue-700 mb-1">📊 Total de Registros</p>
+            <p class="text-3xl font-black text-blue-700">{{ total_registros }}</p>
+        </div>
+
+        <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border-2 border-green-200 shadow-md">
+            <p class="text-sm font-semibold text-green-700 mb-1">⬆️ Entradas</p>
+            <p class="text-3xl font-black text-green-700">+{{ total_entradas }}</p>
+        </div>
+
+        <div class="bg-gradient-to-br from-red-50 to-rose-50 rounded-xl p-6 border-2 border-red-200 shadow-md">
+            <p class="text-sm font-semibold text-red-700 mb-1">⬇️ Saídas</p>
+            <p class="text-3xl font-black text-red-700">-{{ total_saidas }}</p>
+        </div>
+
+        <div class="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border-2 border-purple-200 shadow-md">
+            <p class="text-sm font-semibold text-purple-700 mb-1">💹 Saldo do Período</p>
+            <p class="text-3xl font-black {% if saldo_periodo >= 0 %}text-green-700{% else %}text-red-700{% endif %}">
+                {% if saldo_periodo >= 0 %}+{% endif %}{{ saldo_periodo }}
+            </p>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6 mb-6">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">🔍 Filtros</h2>
+        <form method="GET" action="{% url 'historico_completo_item' item.pk %}" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <!-- Filtro por Tipo -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Tipo de Movimentação</label>
+                <select name="tipo" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="">Todos</option>
+                    <option value="entrada" {% if tipo_filtro == 'entrada' %}selected{% endif %}>⬆️ Entrada</option>
+                    <option value="saida" {% if tipo_filtro == 'saida' %}selected{% endif %}>⬇️ Saída</option>
+                </select>
+            </div>
+
+            <!-- Filtro por Usuário -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Usuário</label>
+                <select name="usuario" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="">Todos</option>
+                    {% for usuario in usuarios %}
+                    <option value="{{ usuario.id }}" {% if usuario_filtro == usuario.id|stringformat:"s" %}selected{% endif %}>
+                        {{ usuario.username }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Filtro por Data Início -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Data Início</label>
+                <input type="date" name="data_inicio" value="{{ data_inicio }}"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+
+            <!-- Filtro por Data Fim -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Data Fim</label>
+                <input type="date" name="data_fim" value="{{ data_fim }}"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+
+            <!-- Botões -->
+            <div class="flex items-end space-x-2">
+                <button type="submit" class="flex-1 bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors font-semibold">
+                    🔍 Filtrar
+                </button>
+                <a href="{% url 'historico_completo_item' item.pk %}" class="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors font-semibold text-center">
+                    🔄 Limpar
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tabela de Histórico -->
+    <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+        {% if page_obj %}
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gradient-to-r from-gray-100 to-gray-200">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Data/Hora</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Tipo</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Quantidade</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Usuário</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Observações</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        {% for mov in page_obj %}
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
+                                <div class="font-medium">{{ mov.data_hora|date:"d/m/Y" }}</div>
+                                <div class="text-xs text-gray-500">{{ mov.data_hora|date:"H:i" }}</div>
+                            </td>
+                            <td class="px-6 py-4">
+                                {% if mov.tipo == 'entrada' %}
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">
+                                        ⬆️ Entrada
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800">
+                                        ⬇️ Saída
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 text-sm font-bold whitespace-nowrap {% if mov.tipo == 'entrada' %}text-green-600{% else %}text-red-600{% endif %}">
+                                {% if mov.tipo == 'entrada' %}+{% else %}-{% endif %}{{ mov.quantidade }}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-700">
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
+                                        <span class="text-indigo-600 font-bold text-xs">{{ mov.usuario.username|slice:":2"|upper }}</span>
+                                    </div>
+                                    <span>{{ mov.usuario.username|default:"Sistema" }}</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-500">
+                                {% if mov.observacoes %}
+                                    <div class="max-w-xs truncate" title="{{ mov.observacoes }}">
+                                        {{ mov.observacoes }}
+                                    </div>
+                                {% else %}
+                                    <span class="text-gray-400">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginação -->
+            {% if page_obj.has_other_pages %}
+            <div class="bg-gray-50 px-6 py-4 border-t border-gray-200">
+                <div class="flex items-center justify-between">
+                    <div class="text-sm text-gray-700">
+                        Mostrando
+                        <span class="font-semibold">{{ page_obj.start_index }}</span>
+                        até
+                        <span class="font-semibold">{{ page_obj.end_index }}</span>
+                        de
+                        <span class="font-semibold">{{ page_obj.paginator.count }}</span>
+                        registros
+                    </div>
+
+                    <div class="flex items-center space-x-2">
+                        {% if page_obj.has_previous %}
+                            <a href="?page=1{% if tipo_filtro %}&tipo={{ tipo_filtro }}{% endif %}{% if usuario_filtro %}&usuario={{ usuario_filtro }}{% endif %}{% if data_inicio %}&data_inicio={{ data_inicio }}{% endif %}{% if data_fim %}&data_fim={{ data_fim }}{% endif %}"
+                               class="px-3 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+                                ««
+                            </a>
+                            <a href="?page={{ page_obj.previous_page_number }}{% if tipo_filtro %}&tipo={{ tipo_filtro }}{% endif %}{% if usuario_filtro %}&usuario={{ usuario_filtro }}{% endif %}{% if data_inicio %}&data_inicio={{ data_inicio }}{% endif %}{% if data_fim %}&data_fim={{ data_fim }}{% endif %}"
+                               class="px-3 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+                                « Anterior
+                            </a>
+                        {% endif %}
+
+                        <span class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold text-sm">
+                            Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                        </span>
+
+                        {% if page_obj.has_next %}
+                            <a href="?page={{ page_obj.next_page_number }}{% if tipo_filtro %}&tipo={{ tipo_filtro }}{% endif %}{% if usuario_filtro %}&usuario={{ usuario_filtro }}{% endif %}{% if data_inicio %}&data_inicio={{ data_inicio }}{% endif %}{% if data_fim %}&data_fim={{ data_fim }}{% endif %}"
+                               class="px-3 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+                                Próxima »
+                            </a>
+                            <a href="?page={{ page_obj.paginator.num_pages }}{% if tipo_filtro %}&tipo={{ tipo_filtro }}{% endif %}{% if usuario_filtro %}&usuario={{ usuario_filtro }}{% endif %}{% if data_inicio %}&data_inicio={{ data_inicio }}{% endif %}{% if data_fim %}&data_fim={{ data_fim }}{% endif %}"
+                               class="px-3 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+                                »»
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+        {% else %}
+            <div class="p-12 text-center">
+                <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Nenhuma movimentação encontrada</h3>
+                <p class="text-gray-600">
+                    {% if tipo_filtro or usuario_filtro or data_inicio or data_fim %}
+                        Não foram encontradas movimentações com os filtros aplicados. Tente ajustar os filtros.
+                    {% else %}
+                        Este item ainda não possui histórico de movimentações.
+                    {% endif %}
+                </p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Botão Voltar -->
+    <div class="mt-6">
+        <a href="{% url 'gerenciar_item' item.pk %}" class="inline-flex items-center px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-semibold shadow-md">
+            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/>
+            </svg>
+            Voltar para Gerenciar Item
+        </a>
+    </div>
+
+</div>
+{% endblock %}
