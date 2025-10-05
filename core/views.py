@@ -1108,8 +1108,8 @@ def metricas_kanban(request):
     # Total de cards em andamento
     total_cards_andamento = Task.objects.filter(em_andamento=True, finalizado=False).count()
 
-    # Total de quantidade produzida
-    total_produzido = TaskQuantidadeFeita.objects.aggregate(total=Sum('quantidade'))['total'] or 0
+    # Total de quantidade produzida (soma quantidade_meta dos tasks)
+    total_produzido = Task.objects.aggregate(total=Sum('quantidade_meta'))['total'] or 0
 
     contexto = {
         'cards_por_usuario': cards_por_usuario,
