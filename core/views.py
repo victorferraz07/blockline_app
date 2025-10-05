@@ -1096,9 +1096,9 @@ def detalhe_tarefa(request, task_id):
 def metricas_kanban(request):
     from django.db.models import Count, Sum
 
-    # Cards finalizados por usuário (conta apenas uma vez por card finalizado)
+    # Cards finalizados por usuário
     cards_por_usuario = User.objects.annotate(
-        total_finalizados=Count('taskhistorico__task', filter=Q(taskhistorico__tipo_acao='finalizado'), distinct=True),
+        total_finalizados=Count('taskhistorico', filter=Q(taskhistorico__tipo_acao='finalizado')),
         total_quantidade_produzida=Sum('taskquantidadefeita__quantidade')
     ).filter(total_finalizados__gt=0).order_by('-total_finalizados')
 
