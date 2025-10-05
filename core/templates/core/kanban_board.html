@@ -44,7 +44,10 @@
         <!-- Column Header -->
         <div class="bg-white rounded-t-xl border border-gray-200 shadow-sm relative overflow-visible">
             <div class="flex items-center justify-between p-4 overflow-visible">
-                <div class="flex items-center gap-2 cursor-grab column-handle">
+                <div class="flex items-center gap-2 cursor-grab column-handle" title="Arraste para reordenar">
+                    <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M9 5h2v2H9V5zm0 4h2v2H9V9zm0 4h2v2H9v-2zm0 4h2v2H9v-2zm4-12h2v2h-2V5zm0 4h2v2h-2V9zm0 4h2v2h-2v-2zm0 4h2v2h-2v-2z"/>
+                    </svg>
                     <div class="w-3 h-3 rounded-full" style="background: {{ coluna.cor }};"></div>
                     <h2 class="font-semibold text-gray-900">{{ coluna.nome }}</h2>
                     <span class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{{ coluna.tasks.count }}</span>
@@ -353,16 +356,31 @@ document.addEventListener('DOMContentLoaded', function() {
     // Sortable para colunas (arrastar colunas)
     const board = document.querySelector('.flex.gap-4.overflow-x-auto');
     if (board) {
-        Sortable.create(board, {
+        const columnSortable = Sortable.create(board, {
             animation: 200,
-            ghostClass: 'opacity-30',
-            dragClass: 'rotate-2 scale-105',
+            ghostClass: 'sortable-ghost-column',
+            chosenClass: 'sortable-chosen-column',
+            dragClass: 'sortable-drag-column',
             handle: '.column-handle', // Arrasta apenas pela área do título
-            filter: '.add-column-btn', // Ignora o botão de adicionar coluna
+            filter: '.add-column-btn, button, a, input, textarea, select', // Ignora elementos interativos
+            preventOnFilter: false,
             draggable: '.kanban-column',
+            swapThreshold: 0.65,
+            onStart: function(evt) {
+                console.log('🚀 Começou a arrastar coluna:', evt.item.dataset.columnId);
+                evt.item.classList.add('is-dragging-column');
+            },
             onEnd: function(evt) {
+                evt.item.classList.remove('is-dragging-column');
                 const columnId = evt.item.dataset.columnId;
                 const newIndex = evt.newIndex;
+
+                console.log('🎯 Coluna arrastada:', { columnId, newIndex });
+
+                if (!columnId) {
+                    console.error('❌ columnId não encontrado');
+                    return;
+                }
 
                 // Atualiza a ordem no servidor
                 fetch(`/kanban/coluna/mover/${columnId}/`, {
@@ -372,9 +390,21 @@ document.addEventListener('DOMContentLoaded', function() {
                         'X-CSRFToken': csrftoken
                     },
                     body: `nova_ordem=${newIndex}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('✅ Coluna movida com sucesso!');
+                    } else {
+                        console.error('❌ Erro ao mover coluna:', data);
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Erro na requisição:', error);
                 });
             }
         });
+        console.log('✅ Sortable de colunas inicializado:', columnSortable);
     }
 
     // Sortable para cards dentro de cada coluna
@@ -452,7 +482,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
-/* Animações extras para drag and drop */
+/* Animações extras para drag and drop de cards */
 .sortable-ghost {
     opacity: 0.3 !important;
     background: rgba(99, 102, 241, 0.1) !important;
@@ -464,12 +494,44 @@ document.addEventListener('DOMContentLoaded', function() {
     cursor: grabbing !important;
 }
 
+/* Animações para drag and drop de colunas */
+.sortable-ghost-column {
+    opacity: 0.4 !important;
+}
+
+.sortable-chosen-column {
+    opacity: 0.8;
+}
+
+.sortable-drag-column {
+    transform: rotate(2deg) scale(1.02);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+    cursor: grabbing !important;
+    opacity: 0.9 !important;
+}
+
+.is-dragging-column {
+    cursor: grabbing !important;
+}
+
+.is-dragging-column * {
+    cursor: grabbing !important;
+    pointer-events: none;
+}
+
 .kanban-card:active {
     cursor: grabbing;
 }
 
 .kanban-column:active {
     cursor: grabbing;
+}
+
+.column-handle {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
 }
 
 .column-handle:active {
