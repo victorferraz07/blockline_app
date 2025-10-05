@@ -1261,8 +1261,22 @@ def mover_tarefa(request, task_id):
 def mover_coluna(request, coluna_id):
     coluna = get_object_or_404(KanbanColumn, id=coluna_id)
     nova_ordem = int(request.POST.get('nova_ordem', 0))
-    coluna.ordem = nova_ordem
-    coluna.save()
+    ordem_antiga = coluna.ordem
+
+    # Reordena todas as colunas
+    colunas = list(KanbanColumn.objects.all().order_by('ordem'))
+
+    # Remove a coluna da posição antiga
+    colunas.remove(coluna)
+
+    # Insere na nova posição
+    colunas.insert(nova_ordem, coluna)
+
+    # Atualiza a ordem de todas as colunas
+    for idx, col in enumerate(colunas):
+        col.ordem = idx
+        col.save()
+
     return JsonResponse({'success': True})
 
 @login_required
