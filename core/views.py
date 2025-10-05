@@ -1096,11 +1096,31 @@ def detalhe_tarefa(request, task_id):
 def metricas_kanban(request):
     from django.db.models import Count, Sum
 
-    # Cards finalizados por usuário
-    cards_por_usuario = User.objects.annotate(
-        total_finalizados=Count('taskhistorico', filter=Q(taskhistorico__tipo_acao='finalizado')),
-        total_quantidade_produzida=Sum('taskquantidadefeita__quantidade')
-    ).filter(total_finalizados__gt=0).order_by('-total_finalizados')
+    # Calcular cards finalizados e quantidade produzida por usuário SEPARADAMENTE
+    # para evitar duplicação de JOINs
+
+    # Passo 1: Pegar usuários que finalizaram cards
+    usuarios_finalizadores = User.objects.annotate(
+        total_finalizados=Count('taskhistorico__task', filter=Q(taskhistorico__tipo_acao='finalizado'), distinct=True)
+    ).filter(total_finalizados__gt=0)
+
+    # Passo 2: Para cada usuário, calcular quantidade produzida separadamente
+    cards_por_usuario_list = []
+    for user in usuarios_finalizadores:
+        qtd_produzida = TaskQuantidadeFeita.objects.filter(usuario=user).aggregate(
+            total=Sum('quantidade')
+        )['total'] or 0
+
+        cards_por_usuario_list.append({
+            'id': user.id,
+            'username': user.username,
+            'get_full_name': user.get_full_name(),
+            'total_finalizados': user.total_finalizados,
+            'total_quantidade_produzida': qtd_produzida
+        })
+
+    # Ordenar por total de finalizados
+    cards_por_usuario_list.sort(key=lambda x: x['total_finalizados'], reverse=True)
 
     # Total de cards finalizados
     total_cards_finalizados = Task.objects.filter(finalizado=True).count()
@@ -1108,8 +1128,7 @@ def metricas_kanban(request):
     # Total de cards em andamento
     total_cards_andamento = Task.objects.filter(em_andamento=True, finalizado=False).count()
 
-    # Total produzido: Para cada task, pegar a soma das suas TaskQuantidadeFeita
-    # Calcular manualmente iterando tasks para garantir precisão
+    # Total produzido
     all_tasks = Task.objects.prefetch_related('quantidades_feitas').all()
     total_produzido = 0
     for task in all_tasks:
@@ -1117,7 +1136,7 @@ def metricas_kanban(request):
         total_produzido += task_total
 
     contexto = {
-        'cards_por_usuario': cards_por_usuario,
+        'cards_por_usuario': cards_por_usuario_list,
         'total_cards_finalizados': total_cards_finalizados,
         'total_cards_andamento': total_cards_andamento,
         'total_produzido': total_produzido,
