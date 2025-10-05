@@ -1094,7 +1094,8 @@ def detalhe_tarefa(request, task_id):
 
 @login_required
 def metricas_kanban(request):
-    from django.db.models import Count, Sum
+    from django.db.models import Count, Sum, OuterRef, Subquery, DecimalField
+    from django.db.models.functions import Coalesce
 
     # Cards finalizados por usuário
     cards_por_usuario = User.objects.annotate(
@@ -1102,20 +1103,31 @@ def metricas_kanban(request):
         total_quantidade_produzida=Sum('taskquantidadefeita__quantidade')
     ).filter(total_finalizados__gt=0).order_by('-total_finalizados')
 
-    # Total de cards finalizados (baseado no status atual)
+    # Total de cards finalizados
     total_cards_finalizados = Task.objects.filter(finalizado=True).count()
 
     # Total de cards em andamento
     total_cards_andamento = Task.objects.filter(em_andamento=True, finalizado=False).count()
 
-    # Total de quantidade produzida (soma a quantidade_produzida de cada task)
-    total_produzido = sum(task.quantidade_produzida for task in Task.objects.all())
+    # Subquery para calcular quantidade produzida por task
+    quantidade_por_task = TaskQuantidadeFeita.objects.filter(
+        task=OuterRef('pk')
+    ).values('task').annotate(
+        total=Sum('quantidade')
+    ).values('total')
+
+    # Anota cada task com sua quantidade produzida e soma tudo
+    tasks_com_quantidade = Task.objects.annotate(
+        qtd_produzida=Coalesce(Subquery(quantidade_por_task), 0, output_field=DecimalField())
+    )
+
+    total_produzido = tasks_com_quantidade.aggregate(total=Sum('qtd_produzida'))['total'] or 0
 
     contexto = {
         'cards_por_usuario': cards_por_usuario,
         'total_cards_finalizados': total_cards_finalizados,
         'total_cards_andamento': total_cards_andamento,
-        'total_produzido': total_produzido,
+        'total_produzido': int(total_produzido),
     }
     return render(request, 'core/metricas_kanban.html', contexto)
 
