@@ -163,8 +163,8 @@
 
                     <!-- Actions e Form de Quantidade (Alpine.js) -->
                     <div x-data="{ editQty: false }">
-                        <!-- Actions (aparecem no hover) -->
-                        <div class="no-drag opacity-0 group-hover:opacity-100 transition-opacity pt-2 border-t border-gray-100 flex flex-wrap gap-2">
+                        <!-- Actions (sempre visíveis) -->
+                        <div class="no-drag pt-2 border-t border-gray-100 flex flex-wrap gap-2">
                             <a href="{% url 'detalhe_tarefa' task_id=task.id %}" class="no-drag text-xs px-3 py-1.5 rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-medium transition-colors">
                                 📋 Detalhes
                             </a>
@@ -201,10 +201,10 @@
                         </div>
 
                         <!-- Quick Add Quantity Form -->
-                        <form x-show="editQty" x-transition method="post" action="{% url 'registrar_quantidade' task_id=task.id %}" class="no-drag mt-3 flex gap-2 items-center pt-2 border-t border-gray-100">
+                        <form x-show="editQty" x-transition method="post" action="{% url 'registrar_quantidade' task_id=task.id %}" class="no-drag mt-3 flex gap-2 items-center pt-2 border-t border-gray-100" @click.stop>
                         {% csrf_token %}
-                        <input type="number" name="quantidade" min="1" class="no-drag flex-1 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Quantidade" required>
-                        <button type="submit" class="no-drag px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 font-medium transition-colors text-sm">
+                        <input type="number" name="quantidade" min="1" class="no-drag flex-1 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Quantidade" required @click.stop @mousedown.stop>
+                        <button type="submit" class="no-drag px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 font-medium transition-colors text-sm" @click.stop>
                             Salvar
                         </button>
                         </form>

@@ -507,7 +507,6 @@ def duplicar_item(request, pk):
 # --- Views de Recebimento ---
 
 @login_required
-@permission_required('core.view_recebimento', raise_exception=True)
 def lista_recebimentos(request):
     from datetime import timedelta
     from decimal import Decimal
@@ -1370,6 +1369,51 @@ def registrar_quantidade(request, task_id):
             descricao=f'{request.user.get_full_name() or request.user.username} produziu {quantidade} unidade(s). Total: {task.quantidade_produzida}/{task.quantidade_meta}'
         )
     return redirect('kanban_board')
+
+@login_required
+def editar_quantidade(request, qtd_id):
+    qtd = get_object_or_404(TaskQuantidadeFeita, id=qtd_id)
+    task = qtd.task
+
+    if request.method == 'POST':
+        nova_quantidade = int(request.POST.get('quantidade', 0))
+        if nova_quantidade > 0:
+            quantidade_antiga = qtd.quantidade
+            qtd.quantidade = nova_quantidade
+            qtd.save()
+
+            # Registra histórico
+            TaskHistorico.objects.create(
+                task=task,
+                usuario=request.user,
+                tipo_acao='editado',
+                descricao=f'{request.user.get_full_name() or request.user.username} editou quantidade de {quantidade_antiga} para {nova_quantidade} unidade(s)'
+            )
+            messages.success(request, 'Quantidade editada com sucesso!')
+        else:
+            messages.error(request, 'Quantidade deve ser maior que zero!')
+
+    return redirect('detalhe_tarefa', task_id=task.id)
+
+@login_required
+def excluir_quantidade(request, qtd_id):
+    qtd = get_object_or_404(TaskQuantidadeFeita, id=qtd_id)
+    task = qtd.task
+
+    if request.method == 'POST':
+        quantidade = qtd.quantidade
+        qtd.delete()
+
+        # Registra histórico
+        TaskHistorico.objects.create(
+            task=task,
+            usuario=request.user,
+            tipo_acao='editado',
+            descricao=f'{request.user.get_full_name() or request.user.username} removeu registro de {quantidade} unidade(s)'
+        )
+        messages.success(request, 'Registro de quantidade removido com sucesso!')
+
+    return redirect('detalhe_tarefa', task_id=task.id)
 
 # --- Views de Controle de Ponto ---
 
