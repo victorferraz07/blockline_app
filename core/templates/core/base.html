@@ -345,6 +345,11 @@
 
     {% block javascript %}{% endblock %}
 
+    <!-- PWA Features: Notifications, Camera, Geolocation -->
+    <script src="{% static 'pwa-notifications.js' %}"></script>
+    <script src="{% static 'pwa-camera-scanner.js' %}"></script>
+    <script src="{% static 'pwa-geolocation.js' %}"></script>
+
     <!-- PWA Service Worker Registration -->
     <script>
         // Registrar Service Worker

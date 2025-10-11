@@ -8,7 +8,7 @@ O Blockline agora é um **Progressive Web App (PWA)**! Isso significa que pode s
 
 ## ✨ Recursos PWA
 
-### ✅ Já Funcionando:
+### ✅ Fase 1 - Funcionando:
 - 📲 **Instalável** na tela inicial (Android e iOS)
 - 🔌 **Funciona offline** (cache inteligente)
 - 🎨 **Tema customizado** (barra indigo)
@@ -17,11 +17,18 @@ O Blockline agora é um **Progressive Web App (PWA)**! Isso significa que pode s
 - 🔄 **Atualização automática** (verifica a cada 1min)
 - 🌐 **Detecção online/offline**
 
-### 🚧 Próximas Melhorias (Fase 2):
-- 🔔 Notificações push
-- 📸 Acesso à câmera (scanner)
-- 📍 Geolocalização (ponto)
-- 💾 Sincronização offline avançada
+### ✅ Fase 2 - IMPLEMENTADO:
+- ✅ 🔔 **Notificações push** - Lembretes automáticos de ponto
+- ✅ 📸 **Acesso à câmera** - Scanner de códigos de barras/QR Code
+- ✅ 📍 **Geolocalização** - Validação de local ao bater ponto
+
+📖 **Documentação completa**: Veja [`PWA_FEATURES_README.md`](PWA_FEATURES_README.md)
+
+### 🚧 Próximas Melhorias (Fase 3):
+- 💾 Sincronização offline avançada (registrar ponto offline)
+- 🌐 Push notifications do servidor (Firebase Cloud Messaging)
+- 🎯 Scanner QR Code com detecção automática
+- 📊 Relatórios e mapas de localização
 
 ---
 

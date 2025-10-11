@@ -9,6 +9,51 @@
         <p class="text-gray-600 mt-2 text-lg">Visão geral do sistema de gerenciamento Blockline</p>
     </div>
 
+    <!-- PWA Features Banner -->
+    <div id="pwa-features-banner" class="mb-6 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl shadow-lg p-6 text-white" x-data="{ show: true, notificationsEnabled: false }" x-show="show">
+        <div class="flex items-start justify-between">
+            <div class="flex-1">
+                <h3 class="text-xl font-bold mb-2">🚀 Recursos PWA Disponíveis</h3>
+                <p class="text-indigo-100 mb-4">Ative os recursos do app para melhor experiência mobile</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <!-- Notificações -->
+                    <button onclick="enableNotifications()" class="bg-white/20 hover:bg-white/30 backdrop-blur rounded-lg p-4 text-left transition-all">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-2xl">🔔</span>
+                            <span class="font-semibold">Notificações</span>
+                        </div>
+                        <p class="text-sm text-indigo-100">Receba lembretes de ponto e alertas</p>
+                    </button>
+
+                    <!-- Câmera -->
+                    <button onclick="testCamera()" class="bg-white/20 hover:bg-white/30 backdrop-blur rounded-lg p-4 text-left transition-all">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-2xl">📸</span>
+                            <span class="font-semibold">Scanner</span>
+                        </div>
+                        <p class="text-sm text-indigo-100">Escanear códigos de barras</p>
+                    </button>
+
+                    <!-- Localização -->
+                    <button onclick="testLocation()" class="bg-white/20 hover:bg-white/30 backdrop-blur rounded-lg p-4 text-left transition-all">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-2xl">📍</span>
+                            <span class="font-semibold">Localização</span>
+                        </div>
+                        <p class="text-sm text-indigo-100">Validar local ao bater ponto</p>
+                    </button>
+                </div>
+            </div>
+
+            <button @click="show = false" class="ml-4 text-white/80 hover:text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
     <!-- Cards de Estatísticas Principais -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <!-- Total de Itens em Estoque -->
@@ -294,4 +339,96 @@
     </div>
 
 </div>
+
+{% block javascript %}
+<script>
+    // Funções para testar recursos PWA
+
+    // Ativar notificações
+    async function enableNotifications() {
+        if (!window.notificationManager || !window.notificationManager.isSupported()) {
+            alert('⚠️ Notificações não são suportadas neste navegador');
+            return;
+        }
+
+        const granted = await window.requestNotificationPermission();
+
+        if (granted) {
+            alert('✅ Notificações ativadas! Você receberá lembretes de ponto.');
+
+            // Enviar notificação de teste
+            window.sendNotification('🎉 Notificações Ativadas', {
+                body: 'Você receberá lembretes automáticos para bater ponto',
+                icon: '/static/icons/icon-192.png'
+            });
+        } else {
+            alert('❌ Permissão de notificações negada. Verifique as configurações do navegador.');
+        }
+    }
+
+    // Testar câmera/scanner
+    async function testCamera() {
+        if (!window.scannerUI) {
+            alert('⚠️ Sistema de câmera não carregado');
+            return;
+        }
+
+        if (!window.scannerUI.scanner.isSupported()) {
+            alert('⚠️ Câmera não é suportada neste dispositivo');
+            return;
+        }
+
+        // Abrir scanner com callback de exemplo
+        await window.openScanner((code) => {
+            console.log('Código escaneado:', code);
+            alert('Código detectado: ' + code);
+        });
+    }
+
+    // Testar localização
+    async function testLocation() {
+        if (!window.geolocationManager || !window.geolocationManager.isSupported()) {
+            alert('⚠️ Geolocalização não é suportada neste dispositivo');
+            return;
+        }
+
+        try {
+            const position = await window.getCurrentLocation();
+
+            const info = window.getLocationInfo();
+
+            alert(
+                '✅ Localização obtida!\n\n' +
+                `📍 Coordenadas: ${info.coordinates}\n` +
+                `🎯 Precisão: ${info.accuracy}\n` +
+                `🕐 Obtido em: ${info.timestamp}`
+            );
+
+            console.log('Localização completa:', position);
+        } catch (error) {
+            alert('❌ Erro ao obter localização: ' + error.message);
+        }
+    }
+
+    // Verificar se já tem permissões ativadas ao carregar
+    document.addEventListener('DOMContentLoaded', () => {
+        // Verificar permissão de notificações
+        if (Notification.permission === 'granted') {
+            console.log('✅ Notificações já estão ativadas');
+        }
+
+        // Ocultar banner se todas as permissões já foram concedidas
+        const allPermissionsGranted = Notification.permission === 'granted';
+
+        if (allPermissionsGranted) {
+            const banner = document.getElementById('pwa-features-banner');
+            if (banner) {
+                // Esconder após 3 segundos se já tem todas permissões
+                setTimeout(() => {
+                    banner.style.display = 'none';
+                }, 3000);
+            }
+        }
+    });
+</script>
 {% endblock %}
