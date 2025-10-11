@@ -4,27 +4,34 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
     <!-- Header -->
-    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-        <div>
+    <div class="mb-6">
+        <!-- Título e Descrição -->
+        <div class="mb-4">
             <h1 class="text-3xl font-bold text-gray-800">Recebimentos</h1>
             <p class="text-gray-600">Gerencie os recebimentos de materiais e produtos.</p>
         </div>
-        <div class="flex items-center space-x-4">
-            <a href="{% url 'registrar_recebimento' %}" class="bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap font-semibold flex items-center space-x-2">
+
+        <!-- Botão Registrar (sempre no topo, largura total em mobile) -->
+        <div class="mb-4">
+            <a href="{% url 'registrar_recebimento' %}" class="w-full md:w-auto inline-flex justify-center items-center bg-indigo-600 text-white py-3 px-6 rounded-lg hover:bg-indigo-700 transition-colors font-semibold shadow-md space-x-2">
                 <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
                 </svg>
                 <span>Registrar Recebimento</span>
             </a>
-            <form action="{% url 'lista_recebimentos' %}" method="GET" class="flex items-center space-x-2">
-                <input type="hidden" name="ordenar" value="{{ ordenacao|default:'data_desc' }}">
-                <input type="hidden" name="status" value="{{ status_filtro|default:'' }}">
-                <input type="text" name="q" value="{{ query|default:'' }}" placeholder="Buscar NF, fornecedor..." class="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <button type="submit" class="bg-gray-800 text-white py-2 px-4 rounded-lg hover:bg-gray-700 font-semibold">
-                    🔍 Buscar
-                </button>
-            </form>
         </div>
+
+        <!-- Campo de Busca (abaixo do botão, largura total) -->
+        <form action="{% url 'lista_recebimentos' %}" method="GET" class="w-full">
+            <input type="hidden" name="ordenar" value="{{ ordenacao|default:'data_desc' }}">
+            <input type="hidden" name="status" value="{{ status_filtro|default:'' }}">
+            <div class="flex flex-col sm:flex-row gap-2">
+                <input type="text" name="q" value="{{ query|default:'' }}" placeholder="🔍 Buscar por NF ou fornecedor..." class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm">
+                <button type="submit" class="sm:w-auto w-full bg-gray-800 text-white py-3 px-6 rounded-lg hover:bg-gray-700 font-semibold shadow-md transition-colors">
+                    Buscar
+                </button>
+            </div>
+        </form>
     </div>
 
     <!-- Estatísticas -->
@@ -79,33 +86,36 @@
     </div>
 
     <!-- Filtros e Ordenação -->
-    <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+    <div class="mb-6 space-y-4">
         <!-- Filtros por Status -->
-        <div class="flex items-center space-x-2">
-            <span class="text-sm font-medium text-gray-700">Filtrar por status:</span>
-            <div class="flex space-x-2">
+        <div class="w-full">
+            <label class="text-sm font-medium text-gray-700 mb-2 block">Filtrar por status:</label>
+            <div class="grid grid-cols-3 gap-2">
                 <a href="{% url 'lista_recebimentos' %}?q={{ query|default:'' }}&ordenar={{ ordenacao|default:'data_desc' }}"
-                   class="px-4 py-2 rounded-lg font-medium transition-colors {% if not status_filtro %}bg-indigo-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
-                    📦 Todos
+                   class="text-center px-3 py-3 rounded-lg font-medium transition-colors text-sm {% if not status_filtro %}bg-indigo-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                    <div class="text-lg mb-1">📦</div>
+                    <div>Todos</div>
                 </a>
                 <a href="{% url 'lista_recebimentos' %}?q={{ query|default:'' }}&ordenar={{ ordenacao|default:'data_desc' }}&status=aguardando"
-                   class="px-4 py-2 rounded-lg font-medium transition-colors {% if status_filtro == 'aguardando' %}bg-yellow-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
-                    ⏳ Aguardando
+                   class="text-center px-3 py-3 rounded-lg font-medium transition-colors text-sm {% if status_filtro == 'aguardando' %}bg-yellow-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                    <div class="text-lg mb-1">⏳</div>
+                    <div>Aguardando</div>
                 </a>
                 <a href="{% url 'lista_recebimentos' %}?q={{ query|default:'' }}&ordenar={{ ordenacao|default:'data_desc' }}&status=concluido"
-                   class="px-4 py-2 rounded-lg font-medium transition-colors {% if status_filtro == 'concluido' %}bg-green-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
-                    ✅ Concluído
+                   class="text-center px-3 py-3 rounded-lg font-medium transition-colors text-sm {% if status_filtro == 'concluido' %}bg-green-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                    <div class="text-lg mb-1">✅</div>
+                    <div>Concluído</div>
                 </a>
             </div>
         </div>
 
         <!-- Ordenação -->
-        <form action="{% url 'lista_recebimentos' %}" method="GET" class="flex items-center space-x-2">
+        <form action="{% url 'lista_recebimentos' %}" method="GET" class="w-full">
             <input type="hidden" name="q" value="{{ query|default:'' }}">
             <input type="hidden" name="status" value="{{ status_filtro|default:'' }}">
-            <label class="text-sm font-medium text-gray-700">Ordenar por:</label>
+            <label class="text-sm font-medium text-gray-700 mb-2 block">Ordenar por:</label>
             <select name="ordenar" onchange="this.form.submit()"
-                    class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white font-medium">
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white font-medium shadow-sm">
                 <option value="data_desc" {% if ordenacao == 'data_desc' %}selected{% endif %}>📅 Data (Mais Recentes)</option>
                 <option value="data_asc" {% if ordenacao == 'data_asc' %}selected{% endif %}>📅 Data (Mais Antigos)</option>
                 <option value="fornecedor" {% if ordenacao == 'fornecedor' %}selected{% endif %}>🏭 Fornecedor A-Z</option>
