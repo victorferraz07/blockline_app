@@ -1393,6 +1393,10 @@ def editar_quantidade(request, qtd_id):
         else:
             messages.error(request, 'Quantidade deve ser maior que zero!')
 
+    # Redireciona de volta para a página de origem (kanban ou detalhe)
+    next_url = request.POST.get('next', request.GET.get('next', 'detalhe_tarefa'))
+    if next_url == 'kanban_board':
+        return redirect('kanban_board')
     return redirect('detalhe_tarefa', task_id=task.id)
 
 @login_required
@@ -1413,6 +1417,10 @@ def excluir_quantidade(request, qtd_id):
         )
         messages.success(request, 'Registro de quantidade removido com sucesso!')
 
+    # Redireciona de volta para a página de origem (kanban ou detalhe)
+    next_url = request.POST.get('next', request.GET.get('next', 'detalhe_tarefa'))
+    if next_url == 'kanban_board':
+        return redirect('kanban_board')
     return redirect('detalhe_tarefa', task_id=task.id)
 
 # --- Views de Controle de Ponto ---
