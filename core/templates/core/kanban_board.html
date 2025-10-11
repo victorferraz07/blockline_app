@@ -6,10 +6,27 @@
 <div class="fixed inset-0 -z-10 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50"></div>
 
 <!-- Header moderno -->
-<div class="mb-6" x-data="{ showHistory: false, isFullscreen: false }">
+<div class="mb-6" x-data="{ showHistory: false, isFullscreen: false, zoomLevel: 100 }">
     <div class="flex items-center justify-between">
         <h1 class="text-3xl font-bold text-gray-900">Quadro Kanban</h1>
         <div class="flex gap-2">
+            <!-- Controles de Zoom -->
+            <div class="flex items-center gap-1 bg-white rounded-lg shadow-sm px-2 py-1">
+                <button @click="zoomOut()" class="p-1.5 hover:bg-gray-100 rounded transition-colors" title="Diminuir zoom (-)">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"/>
+                    </svg>
+                </button>
+                <span class="text-xs font-medium text-gray-600 min-w-[45px] text-center" x-text="zoomLevel + '%'">100%</span>
+                <button @click="zoomIn()" class="p-1.5 hover:bg-gray-100 rounded transition-colors" title="Aumentar zoom (+)">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/>
+                    </svg>
+                </button>
+                <button @click="resetZoom()" class="p-1.5 hover:bg-gray-100 rounded transition-colors text-xs" title="Resetar zoom (0)">
+                    ↺
+                </button>
+            </div>
             <button @click="toggleKanbanZoom()" class="px-4 py-2 rounded-lg bg-white shadow-sm hover:shadow-md transition-all duration-200 text-sm font-medium text-gray-700 hover:text-gray-900 flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
@@ -43,7 +60,8 @@
     </div>
 </div>
 
-<!-- Board Container com scroll horizontal suave -->
+<!-- Board Container com scroll horizontal suave e zoom -->
+<div id="kanban-board-wrapper" class="kanban-zoom-wrapper" style="transform-origin: top left; transition: transform 0.3s ease;">
 <div class="flex gap-4 overflow-x-auto pb-6 px-1 scrollbar-hide" style="scroll-behavior: smooth;">
     {% for coluna in colunas %}
     <div class="kanban-column flex-shrink-0 w-80" data-column-id="{{ coluna.id }}">
@@ -338,6 +356,7 @@
         </div>
     </div>
 </div>
+</div>
 
 <style>
 /* Hide elements with x-cloak before Alpine loads */
@@ -362,7 +381,6 @@
 .kanban-card {
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     user-select: none;
-    touch-action: none; /* Importante para mobile */
 }
 
 /* Melhora a área arrastável */
@@ -381,11 +399,23 @@
 .no-drag {
     cursor: auto !important;
     touch-action: auto !important;
+    pointer-events: auto !important;
 }
 
 .no-drag * {
     cursor: auto !important;
     touch-action: auto !important;
+    pointer-events: auto !important;
+}
+
+/* Inputs sempre devem funcionar */
+.kanban-card input[type="number"],
+.kanban-card input[type="text"],
+.kanban-card textarea,
+.kanban-card button,
+.kanban-card a {
+    touch-action: auto !important;
+    pointer-events: auto !important;
 }
 
 /* Line clamp para descrições */
@@ -795,6 +825,78 @@ body.kanban-fullscreen .kanban-column {
         if (e.key === 'Escape' && document.body.classList.contains('kanban-fullscreen')) {
             toggleKanbanZoom();
         }
+
+        // Atalhos de zoom com teclado
+        if ((e.ctrlKey || e.metaKey) && e.key === '+') {
+            e.preventDefault();
+            zoomIn();
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+            e.preventDefault();
+            zoomOut();
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+            e.preventDefault();
+            resetZoom();
+        }
     });
+
+    // Funções de zoom
+    function zoomIn() {
+        const alpineData = Alpine.$data(document.querySelector('[x-data]'));
+        if (alpineData && alpineData.zoomLevel < 200) {
+            alpineData.zoomLevel += 10;
+            applyZoom(alpineData.zoomLevel);
+        }
+    }
+
+    function zoomOut() {
+        const alpineData = Alpine.$data(document.querySelector('[x-data]'));
+        if (alpineData && alpineData.zoomLevel > 50) {
+            alpineData.zoomLevel -= 10;
+            applyZoom(alpineData.zoomLevel);
+        }
+    }
+
+    function resetZoom() {
+        const alpineData = Alpine.$data(document.querySelector('[x-data]'));
+        if (alpineData) {
+            alpineData.zoomLevel = 100;
+            applyZoom(100);
+        }
+    }
+
+    function applyZoom(level) {
+        const wrapper = document.getElementById('kanban-board-wrapper');
+        if (wrapper) {
+            const scale = level / 100;
+            wrapper.style.transform = `scale(${scale})`;
+
+            // Ajusta o container para compensar o zoom
+            const container = wrapper.parentElement;
+            if (container) {
+                // Calcula o espaço extra necessário
+                const extraHeight = wrapper.scrollHeight * (scale - 1);
+                const extraWidth = wrapper.scrollWidth * (scale - 1);
+                container.style.paddingBottom = `${Math.max(0, extraHeight)}px`;
+                container.style.paddingRight = `${Math.max(0, extraWidth)}px`;
+            }
+
+            console.log(`🔍 Zoom aplicado: ${level}%`);
+        }
+    }
+
+    // Zoom com scroll do mouse (Ctrl + Scroll)
+    document.addEventListener('wheel', (e) => {
+        if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -1 : 1;
+            if (delta > 0) {
+                zoomIn();
+            } else {
+                zoomOut();
+            }
+        }
+    }, { passive: false });
 </script>
 {% endblock %}
