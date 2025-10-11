@@ -192,20 +192,32 @@
                 {% endfor %}
             </div>
 
-            <button type="button"
-                    @click="
-                        let imgTemplate = document.getElementById('empty-image-form-template').innerHTML;
-                        let newImgForm = imgTemplate.replace(/__prefix__/g, imgCount);
-                        document.getElementById('image-formset').insertAdjacentHTML('beforeend', newImgForm);
-                        document.getElementById('id_imagens-TOTAL_FORMS').value = imgCount + 1;
-                        imgCount++;
-                    "
-                    class="mt-4 inline-flex items-center px-4 py-2 bg-indigo-100 text-indigo-700 font-semibold rounded-lg hover:bg-indigo-200 transition-colors">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
-                Adicionar Outra Foto
-            </button>
+            <div class="mt-4 flex gap-2">
+                <button type="button"
+                        @click="
+                            let imgTemplate = document.getElementById('empty-image-form-template').innerHTML;
+                            let newImgForm = imgTemplate.replace(/__prefix__/g, imgCount);
+                            document.getElementById('image-formset').insertAdjacentHTML('beforeend', newImgForm);
+                            document.getElementById('id_imagens-TOTAL_FORMS').value = imgCount + 1;
+                            imgCount++;
+                        "
+                        class="inline-flex items-center px-4 py-2 bg-indigo-100 text-indigo-700 font-semibold rounded-lg hover:bg-indigo-200 transition-colors">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Adicionar Outra Foto
+                </button>
+
+                <button type="button"
+                        onclick="openCameraForExpedicao()"
+                        class="inline-flex items-center px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    📸 Tirar Foto
+                </button>
+            </div>
 
             <template id="empty-image-form-template">
                 <div class="relative bg-gray-50 rounded-lg p-4 border-2 border-dashed border-gray-300 hover:border-indigo-400 transition-colors">
@@ -307,4 +319,81 @@
     </form>
 
 </div>
+
+{% block javascript %}
+<script>
+    // Converter Data URL para File
+    function dataURLtoFile(dataurl, filename) {
+        const arr = dataurl.split(',');
+        const mime = arr[0].match(/:(.*?);/)[1];
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while(n--){
+            u8arr[n] = bstr.charCodeAt(n);
+        }
+        return new File([u8arr], filename, {type:mime});
+    }
+
+    // Abrir câmera para foto da expedição
+    async function openCameraForExpedicao() {
+        await window.openScanner(async () => {
+            // Quando usuário captura a foto
+            const photoDataUrl = window.captureFromScanner();
+
+            if (photoDataUrl) {
+                // Encontrar o primeiro input vazio ou criar um novo
+                const imageFormset = document.getElementById('image-formset');
+                const inputs = imageFormset.querySelectorAll('input[type="file"]');
+
+                let targetInput = null;
+
+                // Procurar um input vazio
+                for (let input of inputs) {
+                    if (!input.files || input.files.length === 0) {
+                        targetInput = input;
+                        break;
+                    }
+                }
+
+                // Se não encontrou input vazio, criar um novo formset
+                if (!targetInput) {
+                    // Obter o evento Alpine.js para criar novo form
+                    const addButton = document.querySelector('button[\\@click*="imgCount"]');
+                    if (addButton) {
+                        addButton.click();
+
+                        // Aguardar um pouco para o DOM atualizar
+                        await new Promise(resolve => setTimeout(resolve, 100));
+
+                        // Pegar o último input criado
+                        const newInputs = imageFormset.querySelectorAll('input[type="file"]');
+                        targetInput = newInputs[newInputs.length - 1];
+                    }
+                }
+
+                if (targetInput) {
+                    // Converter para File e adicionar ao input
+                    const file = dataURLtoFile(photoDataUrl, 'expedicao_' + Date.now() + '.jpg');
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+
+                    targetInput.files = dataTransfer.files;
+
+                    // Disparar evento change para atualizar o Alpine.js preview
+                    const event = new Event('change', { bubbles: true });
+                    targetInput.dispatchEvent(event);
+                }
+
+                // Fechar scanner
+                window.closeScannerModal();
+
+                // Feedback visual
+                if (navigator.vibrate) {
+                    navigator.vibrate(200);
+                }
+            }
+        });
+    }
+</script>
 {% endblock %}

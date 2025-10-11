@@ -6,10 +6,16 @@
 <div class="fixed inset-0 -z-10 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50"></div>
 
 <!-- Header moderno -->
-<div class="mb-6" x-data="{ showHistory: false }">
+<div class="mb-6" x-data="{ showHistory: false, isFullscreen: false }">
     <div class="flex items-center justify-between">
         <h1 class="text-3xl font-bold text-gray-900">Quadro Kanban</h1>
         <div class="flex gap-2">
+            <button @click="toggleKanbanZoom()" class="px-4 py-2 rounded-lg bg-white shadow-sm hover:shadow-md transition-all duration-200 text-sm font-medium text-gray-700 hover:text-gray-900 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+                </svg>
+                <span x-text="isFullscreen ? 'Minimizar' : 'Tela Cheia'"></span>
+            </button>
             <a href="{% url 'metricas_kanban' %}" class="px-4 py-2 rounded-lg bg-white shadow-sm hover:shadow-md transition-all duration-200 text-sm font-medium text-gray-700 hover:text-gray-900">
                 📈 Métricas
             </a>
@@ -261,10 +267,10 @@
                         </div>
 
                         <!-- Quick Add Quantity Form -->
-                        <form x-show="editQty" x-transition method="post" action="{% url 'registrar_quantidade' task_id=task.id %}" class="no-drag mt-3 flex gap-2 items-center pt-2 border-t border-gray-100" @click.stop>
+                        <form x-show="editQty" x-transition method="post" action="{% url 'registrar_quantidade' task_id=task.id %}" class="no-drag mt-3 flex gap-2 items-center pt-2 border-t border-gray-100" @click.stop @touchstart.stop>
                         {% csrf_token %}
-                        <input type="number" name="quantidade" min="1" class="no-drag flex-1 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Quantidade" required @click.stop @mousedown.stop>
-                        <button type="submit" class="no-drag px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 font-medium transition-colors text-sm" @click.stop>
+                        <input type="number" name="quantidade" min="1" class="no-drag flex-1 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Quantidade" required @click.stop @mousedown.stop @touchstart.stop style="pointer-events: auto;">
+                        <button type="submit" class="no-drag px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 font-medium transition-colors text-sm" @click.stop @touchstart.stop>
                             Salvar
                         </button>
                         </form>
@@ -718,5 +724,77 @@ document.addEventListener('DOMContentLoaded', function() {
 .column-handle:active {
     cursor: grabbing !important;
 }
+
+/* Estilos para modo fullscreen/zoom */
+body.kanban-fullscreen {
+    overflow: hidden;
+}
+
+body.kanban-fullscreen main {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9998;
+    background: white;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+body.kanban-fullscreen nav {
+    display: none;
+}
+
+body.kanban-fullscreen .kanban-column {
+    width: 350px; /* Colunas um pouco mais largas em fullscreen */
+}
 </style>
+
+<script>
+    // Função para alternar modo fullscreen do Kanban
+    function toggleKanbanZoom() {
+        const body = document.body;
+        const main = document.querySelector('main');
+        const alpineData = Alpine.$data(document.querySelector('[x-data]'));
+
+        if (body.classList.contains('kanban-fullscreen')) {
+            // Sair do fullscreen
+            body.classList.remove('kanban-fullscreen');
+            if (alpineData) alpineData.isFullscreen = false;
+
+            // Restaurar scroll normal
+            document.body.style.overflow = '';
+
+            console.log('↙️ Saiu do modo tela cheia');
+        } else {
+            // Entrar em fullscreen
+            body.classList.add('kanban-fullscreen');
+            if (alpineData) alpineData.isFullscreen = true;
+
+            // Scroll para o topo
+            window.scrollTo(0, 0);
+
+            console.log('↗️ Entrou em modo tela cheia');
+
+            // Vibração se disponível
+            if (navigator.vibrate) {
+                navigator.vibrate(50);
+            }
+        }
+    }
+
+    // Atalho de teclado: F11 ou Ctrl/Cmd + Shift + F
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'F11' || (e.shiftKey && e.key === 'F' && (e.ctrlKey || e.metaKey))) {
+            e.preventDefault();
+            toggleKanbanZoom();
+        }
+
+        // ESC para sair do fullscreen
+        if (e.key === 'Escape' && document.body.classList.contains('kanban-fullscreen')) {
+            toggleKanbanZoom();
+        }
+    });
+</script>
 {% endblock %}

@@ -155,19 +155,33 @@
                                         {% endif %}
                                     </div>
 
-                                    <!-- Input de Upload -->
-                                    <div class="relative">
-                                        <input type="file"
-                                               name="{{ form.foto_documento.name }}"
-                                               id="{{ form.foto_documento.id_for_label }}"
-                                               accept="image/*"
-                                               class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
-                                               @change="const file = $event.target.files[0];
-                                                        if (file) {
-                                                            const reader = new FileReader();
-                                                            reader.onload = (e) => { previewDocumento = e.target.result; };
-                                                            reader.readAsDataURL(file);
-                                                        }">
+                                    <!-- Botões: Upload ou Câmera -->
+                                    <div class="flex gap-2">
+                                        <!-- Input de Upload -->
+                                        <div class="flex-1">
+                                            <input type="file"
+                                                   name="{{ form.foto_documento.name }}"
+                                                   id="{{ form.foto_documento.id_for_label }}"
+                                                   accept="image/*"
+                                                   class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
+                                                   @change="const file = $event.target.files[0];
+                                                            if (file) {
+                                                                const reader = new FileReader();
+                                                                reader.onload = (e) => { previewDocumento = e.target.result; };
+                                                                reader.readAsDataURL(file);
+                                                            }">
+                                        </div>
+
+                                        <!-- Botão Câmera -->
+                                        <button type="button"
+                                                onclick="openCameraForDocument()"
+                                                class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all font-semibold text-sm whitespace-nowrap flex items-center gap-2">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                            </svg>
+                                            📸 Câmera
+                                        </button>
                                     </div>
                                     <p class="text-xs text-gray-500">Foto da nota fiscal ou documento</p>
                                 </div>
@@ -189,19 +203,33 @@
                                         {% endif %}
                                     </div>
 
-                                    <!-- Input de Upload -->
-                                    <div class="relative">
-                                        <input type="file"
-                                               name="{{ form.foto_embalagem.name }}"
-                                               id="{{ form.foto_embalagem.id_for_label }}"
-                                               accept="image/*"
-                                               class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
-                                               @change="const file = $event.target.files[0];
-                                                        if (file) {
-                                                            const reader = new FileReader();
-                                                            reader.onload = (e) => { previewEmbalagem = e.target.result; };
-                                                            reader.readAsDataURL(file);
-                                                        }">
+                                    <!-- Botões: Upload ou Câmera -->
+                                    <div class="flex gap-2">
+                                        <!-- Input de Upload -->
+                                        <div class="flex-1">
+                                            <input type="file"
+                                                   name="{{ form.foto_embalagem.name }}"
+                                                   id="{{ form.foto_embalagem.id_for_label }}"
+                                                   accept="image/*"
+                                                   class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
+                                                   @change="const file = $event.target.files[0];
+                                                            if (file) {
+                                                                const reader = new FileReader();
+                                                                reader.onload = (e) => { previewEmbalagem = e.target.result; };
+                                                                reader.readAsDataURL(file);
+                                                            }">
+                                        </div>
+
+                                        <!-- Botão Câmera -->
+                                        <button type="button"
+                                                onclick="openCameraForPackage()"
+                                                class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all font-semibold text-sm whitespace-nowrap flex items-center gap-2">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                            </svg>
+                                            📸 Câmera
+                                        </button>
                                     </div>
                                     <p class="text-xs text-gray-500">Foto da embalagem do produto recebido</p>
                                 </div>
@@ -290,5 +318,86 @@
             new TomSelect(element, { create: true, sortField: { field: "text", direction: "asc" } });
         });
     });
+
+    // Funções para abrir câmera e capturar fotos
+
+    // Converter Data URL para File
+    function dataURLtoFile(dataurl, filename) {
+        const arr = dataurl.split(',');
+        const mime = arr[0].match(/:(.*?);/)[1];
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while(n--){
+            u8arr[n] = bstr.charCodeAt(n);
+        }
+        return new File([u8arr], filename, {type:mime});
+    }
+
+    // Abrir câmera para foto do documento
+    async function openCameraForDocument() {
+        await window.openScanner(async () => {
+            // Quando usuário captura a foto
+            const photoDataUrl = window.captureFromScanner();
+
+            if (photoDataUrl) {
+                // Atualizar preview
+                const previewEvent = new CustomEvent('update-preview-documento', {
+                    detail: { dataUrl: photoDataUrl }
+                });
+                window.dispatchEvent(previewEvent);
+
+                // Converter para File e adicionar ao input
+                const file = dataURLtoFile(photoDataUrl, 'documento_' + Date.now() + '.jpg');
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+
+                const input = document.getElementById('{{ form.foto_documento.id_for_label }}');
+                input.files = dataTransfer.files;
+
+                // Disparar evento change para atualizar o Alpine.js preview
+                const event = new Event('change', { bubbles: true });
+                input.dispatchEvent(event);
+
+                // Fechar scanner
+                window.closeScannerModal();
+
+                // Feedback visual
+                if (navigator.vibrate) {
+                    navigator.vibrate(200);
+                }
+            }
+        });
+    }
+
+    // Abrir câmera para foto da embalagem
+    async function openCameraForPackage() {
+        await window.openScanner(async () => {
+            // Quando usuário captura a foto
+            const photoDataUrl = window.captureFromScanner();
+
+            if (photoDataUrl) {
+                // Converter para File e adicionar ao input
+                const file = dataURLtoFile(photoDataUrl, 'embalagem_' + Date.now() + '.jpg');
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+
+                const input = document.getElementById('{{ form.foto_embalagem.id_for_label }}');
+                input.files = dataTransfer.files;
+
+                // Disparar evento change para atualizar o Alpine.js preview
+                const event = new Event('change', { bubbles: true });
+                input.dispatchEvent(event);
+
+                // Fechar scanner
+                window.closeScannerModal();
+
+                // Feedback visual
+                if (navigator.vibrate) {
+                    navigator.vibrate(200);
+                }
+            }
+        });
+    }
 </script>
 {% endblock %}

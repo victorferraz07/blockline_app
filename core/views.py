@@ -1698,6 +1698,8 @@ def bater_ponto(request):
     """Registra entrada, saída ou almoço"""
     tipo = request.POST.get('tipo')
     observacao = request.POST.get('observacao', '')
+    latitude = request.POST.get('latitude')
+    longitude = request.POST.get('longitude')
 
     if tipo not in ['entrada', 'saida', 'inicio_almoco', 'fim_almoco']:
         messages.error(request, 'Tipo de ponto inválido.')
@@ -1727,11 +1729,17 @@ def bater_ponto(request):
         messages.error(request, 'Você precisa registrar entrada/fim de almoço antes da saída.')
         return redirect('controle_ponto')
 
+    # Preparar dados de localização
+    localizacao_texto = None
+    if latitude and longitude:
+        localizacao_texto = f"{latitude},{longitude}"
+
     # Registra o ponto
-    RegistroPonto.objects.create(
+    ponto = RegistroPonto.objects.create(
         usuario=request.user,
         tipo=tipo,
-        observacao=observacao
+        observacao=observacao,
+        localizacao=localizacao_texto
     )
 
     # Mensagem de sucesso
@@ -1742,7 +1750,14 @@ def bater_ponto(request):
         'fim_almoco': 'Fim do Almoço'
     }
     tipo_texto = mensagens_tipo.get(tipo, tipo)
-    messages.success(request, f'{tipo_texto} registrado com sucesso às {timezone.now().strftime("%H:%M")}!')
+
+    # Usar o horário do ponto registrado (já no timezone correto)
+    hora_formatada = ponto.data_hora.strftime("%H:%M")
+
+    if localizacao_texto:
+        messages.success(request, f'{tipo_texto} registrado com sucesso às {hora_formatada}! 📍 Localização salva.')
+    else:
+        messages.success(request, f'{tipo_texto} registrado com sucesso às {hora_formatada}!')
 
     return redirect('controle_ponto')
 
