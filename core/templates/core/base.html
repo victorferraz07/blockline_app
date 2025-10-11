@@ -3,15 +3,48 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Sistema completo de gestão empresarial com controle de estoque, recebimento, expedição, kanban e ponto eletrônico">
+    <meta name="theme-color" content="#4F46E5">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Blockline">
+
+    <!-- Manifest -->
+    <link rel="manifest" href="{% static 'manifest.json' %}">
+
+    <!-- Icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="{% static 'icons/icon-192.png' %}">
+    <link rel="icon" type="image/png" sizes="512x512" href="{% static 'icons/icon-512.png' %}">
+    <link rel="apple-touch-icon" href="{% static 'icons/icon-192.png' %}">
+
+    <!-- External Scripts -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    
+
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 
     <title>Blockline - Gestão Empresarial</title>
+
+    <style>
+        /* PWA Splash Screen Support */
+        @media (display-mode: standalone) {
+            body {
+                -webkit-user-select: none;
+                -webkit-touch-callout: none;
+            }
+        }
+
+        /* Safe area insets for notch devices */
+        body {
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+    </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
 
@@ -104,5 +137,69 @@
     </main>
 
     {% block javascript %}{% endblock %}
+
+    <!-- PWA Service Worker Registration -->
+    <script>
+        // Registrar Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/sw.js')
+                    .then((registration) => {
+                        console.log('✅ Service Worker registrado com sucesso:', registration.scope);
+
+                        // Verificar atualizações periodicamente
+                        setInterval(() => {
+                            registration.update();
+                        }, 60000); // Verifica a cada 1 minuto
+                    })
+                    .catch((error) => {
+                        console.error('❌ Erro ao registrar Service Worker:', error);
+                    });
+            });
+
+            // Detectar quando há uma nova versão disponível
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                console.log('🔄 Nova versão do app disponível!');
+                // Opcional: Mostrar mensagem para o usuário recarregar
+            });
+        }
+
+        // PWA Install Prompt (botão "Adicionar à tela inicial")
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Previne o prompt automático
+            e.preventDefault();
+            deferredPrompt = e;
+
+            // Mostrar botão de instalação customizado (opcional)
+            console.log('📱 App pode ser instalado!');
+
+            // Você pode criar um botão customizado aqui
+            // Exemplo: mostrar banner "Adicionar à tela inicial"
+        });
+
+        // Detectar quando o app foi instalado
+        window.addEventListener('appinstalled', () => {
+            console.log('🎉 App instalado com sucesso!');
+            deferredPrompt = null;
+        });
+
+        // Detectar se está rodando como PWA (standalone mode)
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+            console.log('📱 Rodando como PWA');
+            document.body.classList.add('pwa-mode');
+        }
+
+        // Detectar mudança de status online/offline
+        window.addEventListener('online', () => {
+            console.log('🌐 Online');
+            // Opcional: Mostrar mensagem de reconexão
+        });
+
+        window.addEventListener('offline', () => {
+            console.log('📡 Offline');
+            // Opcional: Mostrar mensagem de modo offline
+        });
+    </script>
 </body>
 </html>

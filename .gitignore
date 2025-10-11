@@ -27,6 +27,13 @@ db.sqlite3-journal
 /staticfiles/
 static/
 
+# Exceções para PWA (arquivos essenciais)
+!core/static/manifest.json
+!core/static/sw.js
+!core/static/ICON_GENERATION.md
+!core/static/icons/
+!core/static/icons/PLACEHOLDER.txt
+
 # IDEs
 .vscode/
 .idea/
