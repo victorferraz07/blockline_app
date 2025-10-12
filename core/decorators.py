@@ -29,17 +29,22 @@ def get_user_empresa(user):
     """
     from core.models import Empresa
 
-    # Para superusuários, retorna todas as empresas
-    if user.is_superuser:
-        return Empresa.objects.all()
+    try:
+        # Para superusuários, retorna todas as empresas
+        if user.is_superuser:
+            return Empresa.objects.all()
 
-    # Para usuários normais, retorna empresas do perfil (futuro)
-    # Por enquanto, retorna a primeira empresa disponível
-    primeira_empresa = Empresa.objects.first()
-    if primeira_empresa:
-        return Empresa.objects.filter(pk=primeira_empresa.pk)
+        # Para usuários normais, retorna empresas do perfil (futuro)
+        # Por enquanto, retorna a primeira empresa disponível
+        primeira_empresa = Empresa.objects.first()
+        if primeira_empresa:
+            return Empresa.objects.filter(pk=primeira_empresa.pk)
 
-    return Empresa.objects.none()
+        return Empresa.objects.none()
+    except Exception as e:
+        # Em caso de erro (banco não inicializado, tabela não existe, etc)
+        # Retorna queryset vazio para evitar crash
+        return Empresa.objects.none()
 
 
 def filter_by_empresa(queryset, user, empresa_field='empresa'):

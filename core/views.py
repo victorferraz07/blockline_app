@@ -42,13 +42,77 @@ def get_empresas_permitidas(user):
 def dashboard(request):
     from django.db.models import Sum
     from datetime import datetime, timedelta
+    import logging
 
-    # Obter empresas do usuário
-    empresas = get_user_empresa(request.user)
+    logger = logging.getLogger(__name__)
 
-    # Verificar se o usuário tem acesso a alguma empresa
-    if not empresas.exists():
-        messages.warning(request, 'Nenhuma empresa cadastrada ou você não tem permissão para acessar dados.')
+    try:
+        # Obter empresas do usuário
+        empresas = get_user_empresa(request.user)
+
+        # Verificar se o usuário tem acesso a alguma empresa
+        if not empresas.exists():
+            messages.warning(request, 'Nenhuma empresa cadastrada ou você não tem permissão para acessar dados.')
+            contexto = {
+                'total_itens_estoque': 0,
+                'total_produtos_fabricados': 0,
+                'total_recebimentos': 0,
+                'total_expedicoes': 0,
+                'quantidade_total_estoque': 0,
+                'atividades': [],
+            }
+            return render(request, 'core/dashboard.html', contexto)
+
+        # Estatísticas gerais
+        total_itens_estoque = ItemEstoque.objects.count()
+        total_produtos_fabricados = ProdutoFabricado.objects.count()
+        total_recebimentos = Recebimento.objects.filter(empresa__in=empresas).count()
+        total_expedicoes = Expedicao.objects.filter(empresa__in=empresas).count()
+
+        # Quantidade total em estoque
+        quantidade_total_estoque = ItemEstoque.objects.aggregate(total=Sum('quantidade'))['total'] or 0
+
+        # Atividades recentes (filtradas por empresa)
+        ultimos_recebimentos = Recebimento.objects.filter(empresa__in=empresas).order_by('-data_recebimento')[:5]
+        ultimas_expedicoes = Expedicao.objects.filter(empresa__in=empresas).order_by('-data_expedicao')[:5]
+
+        # Combinar e ordenar atividades por data
+        atividades = []
+
+        for recebimento in ultimos_recebimentos:
+            atividades.append({
+                'tipo': 'recebimento',
+                'data': recebimento.data_recebimento,
+                'objeto': recebimento
+            })
+
+        for expedicao in ultimas_expedicoes:
+            atividades.append({
+                'tipo': 'expedicao',
+                'data': expedicao.data_expedicao,
+                'objeto': expedicao
+            })
+
+        # Ordenar por data (mais recente primeiro)
+        atividades.sort(key=lambda x: x['data'], reverse=True)
+        atividades = atividades[:10]  # Limitar a 10 atividades
+
+        contexto = {
+            'total_itens_estoque': total_itens_estoque,
+            'total_produtos_fabricados': total_produtos_fabricados,
+            'total_recebimentos': total_recebimentos,
+            'total_expedicoes': total_expedicoes,
+            'quantidade_total_estoque': quantidade_total_estoque,
+            'atividades': atividades,
+        }
+        return render(request, 'core/dashboard.html', contexto)
+
+    except Exception as e:
+        # Log do erro para debug
+        logger.error(f"Erro no dashboard: {str(e)}", exc_info=True)
+        messages.error(request, f'Erro ao carregar dashboard. Por favor, contate o administrador.')
+
+        # Retorna página com dados vazios em caso de erro
         contexto = {
             'total_itens_estoque': 0,
             'total_produtos_fabricados': 0,
@@ -58,50 +122,6 @@ def dashboard(request):
             'atividades': [],
         }
         return render(request, 'core/dashboard.html', contexto)
-
-    # Estatísticas gerais
-    total_itens_estoque = ItemEstoque.objects.count()
-    total_produtos_fabricados = ProdutoFabricado.objects.count()
-    total_recebimentos = Recebimento.objects.filter(empresa__in=empresas).count()
-    total_expedicoes = Expedicao.objects.filter(empresa__in=empresas).count()
-
-    # Quantidade total em estoque
-    quantidade_total_estoque = ItemEstoque.objects.aggregate(total=Sum('quantidade'))['total'] or 0
-
-    # Atividades recentes (filtradas por empresa)
-    ultimos_recebimentos = Recebimento.objects.filter(empresa__in=empresas).order_by('-data_recebimento')[:5]
-    ultimas_expedicoes = Expedicao.objects.filter(empresa__in=empresas).order_by('-data_expedicao')[:5]
-
-    # Combinar e ordenar atividades por data
-    atividades = []
-
-    for recebimento in ultimos_recebimentos:
-        atividades.append({
-            'tipo': 'recebimento',
-            'data': recebimento.data_recebimento,
-            'objeto': recebimento
-        })
-
-    for expedicao in ultimas_expedicoes:
-        atividades.append({
-            'tipo': 'expedicao',
-            'data': expedicao.data_expedicao,
-            'objeto': expedicao
-        })
-
-    # Ordenar por data (mais recente primeiro)
-    atividades.sort(key=lambda x: x['data'], reverse=True)
-    atividades = atividades[:10]  # Limitar a 10 atividades
-
-    contexto = {
-        'total_itens_estoque': total_itens_estoque,
-        'total_produtos_fabricados': total_produtos_fabricados,
-        'total_recebimentos': total_recebimentos,
-        'total_expedicoes': total_expedicoes,
-        'quantidade_total_estoque': quantidade_total_estoque,
-        'atividades': atividades,
-    }
-    return render(request, 'core/dashboard.html', contexto)
 
 # --- Views de Estoque ---
 @login_required
