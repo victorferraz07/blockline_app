@@ -43,18 +43,34 @@ def dashboard(request):
     from django.db.models import Sum
     from datetime import datetime, timedelta
 
+    # Obter empresas do usuário
+    empresas = get_user_empresa(request.user)
+
+    # Verificar se o usuário tem acesso a alguma empresa
+    if not empresas.exists():
+        messages.warning(request, 'Nenhuma empresa cadastrada ou você não tem permissão para acessar dados.')
+        contexto = {
+            'total_itens_estoque': 0,
+            'total_produtos_fabricados': 0,
+            'total_recebimentos': 0,
+            'total_expedicoes': 0,
+            'quantidade_total_estoque': 0,
+            'atividades': [],
+        }
+        return render(request, 'core/dashboard.html', contexto)
+
     # Estatísticas gerais
     total_itens_estoque = ItemEstoque.objects.count()
     total_produtos_fabricados = ProdutoFabricado.objects.count()
-    total_recebimentos = Recebimento.objects.count()
-    total_expedicoes = Expedicao.objects.count()
+    total_recebimentos = Recebimento.objects.filter(empresa__in=empresas).count()
+    total_expedicoes = Expedicao.objects.filter(empresa__in=empresas).count()
 
     # Quantidade total em estoque
     quantidade_total_estoque = ItemEstoque.objects.aggregate(total=Sum('quantidade'))['total'] or 0
 
-    # Atividades recentes
-    ultimos_recebimentos = Recebimento.objects.order_by('-data_recebimento')[:5]
-    ultimas_expedicoes = Expedicao.objects.order_by('-data_expedicao')[:5]
+    # Atividades recentes (filtradas por empresa)
+    ultimos_recebimentos = Recebimento.objects.filter(empresa__in=empresas).order_by('-data_recebimento')[:5]
+    ultimas_expedicoes = Expedicao.objects.filter(empresa__in=empresas).order_by('-data_expedicao')[:5]
 
     # Combinar e ordenar atividades por data
     atividades = []
