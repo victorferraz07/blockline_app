@@ -2,13 +2,10 @@
 .env
 .env.local
 .env.*.local
-.env.*
-!.env.example
 
 # Python
 __pycache__/
 *.py[cod]
-*.sqlite3
 *$py.class
 *.so
 .Python
@@ -16,7 +13,6 @@ venv/
 env/
 ENV/
 /bin/
-.envrc
 
 # Django
 *.log
@@ -25,14 +21,6 @@ db.sqlite3
 db.sqlite3-journal
 /media/
 /staticfiles/
-static/
-
-# Exceções para PWA (arquivos essenciais)
-!core/static/manifest.json
-!core/static/sw.js
-!core/static/ICON_GENERATION.md
-!core/static/icons/
-!core/static/icons/PLACEHOLDER.txt
 
 # IDEs
 .vscode/
@@ -44,3 +32,13 @@ static/
 # OS
 .DS_Store
 Thumbs.db
+
+# Django
+/static/
+/media/
+venv/
+*.sqlite3
+__pycache__/
+
+# Secrets
+.env

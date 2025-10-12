@@ -28,174 +28,64 @@ from .forms import (
 from .decorators import superuser_required, filter_by_empresa, get_user_empresa
 
 def get_empresas_permitidas(user):
+    if user.is_superuser:
+        return Empresa.objects.all()
     try:
-        if user.is_superuser:
-            return Empresa.objects.all()
-        try:
-            if hasattr(user, 'perfil'):
-                return user.perfil.empresas_permitidas.all()
-        except PerfilUsuario.DoesNotExist:
-            pass
-        except Exception:
-            pass
-        return Empresa.objects.none()
-    except Exception:
-        # Fallback absoluto: retorna queryset vazio
-        try:
-            return Empresa.objects.none()
-        except:
-            return []
+        if hasattr(user, 'perfil'):
+            return user.perfil.empresas_permitidas.all()
+    except PerfilUsuario.DoesNotExist:
+        pass
+    return Empresa.objects.none()
 
 # core/views.py
 @login_required
 def dashboard(request):
-    """View do dashboard - versão ultra-robusta que NUNCA falha"""
+    from django.db.models import Sum
+    from datetime import datetime, timedelta
 
-    # Contexto padrão vazio (usado em caso de qualquer erro)
-    contexto_vazio = {
-        'total_itens_estoque': 0,
-        'total_produtos_fabricados': 0,
-        'total_recebimentos': 0,
-        'total_expedicoes': 0,
-        'quantidade_total_estoque': 0,
-        'atividades': [],
+    # Estatísticas gerais
+    total_itens_estoque = ItemEstoque.objects.count()
+    total_produtos_fabricados = ProdutoFabricado.objects.count()
+    total_recebimentos = Recebimento.objects.count()
+    total_expedicoes = Expedicao.objects.count()
+
+    # Quantidade total em estoque
+    quantidade_total_estoque = ItemEstoque.objects.aggregate(total=Sum('quantidade'))['total'] or 0
+
+    # Atividades recentes
+    ultimos_recebimentos = Recebimento.objects.order_by('-data_recebimento')[:5]
+    ultimas_expedicoes = Expedicao.objects.order_by('-data_expedicao')[:5]
+
+    # Combinar e ordenar atividades por data
+    atividades = []
+
+    for recebimento in ultimos_recebimentos:
+        atividades.append({
+            'tipo': 'recebimento',
+            'data': recebimento.data_recebimento,
+            'objeto': recebimento
+        })
+
+    for expedicao in ultimas_expedicoes:
+        atividades.append({
+            'tipo': 'expedicao',
+            'data': expedicao.data_expedicao,
+            'objeto': expedicao
+        })
+
+    # Ordenar por data (mais recente primeiro)
+    atividades.sort(key=lambda x: x['data'], reverse=True)
+    atividades = atividades[:10]  # Limitar a 10 atividades
+
+    contexto = {
+        'total_itens_estoque': total_itens_estoque,
+        'total_produtos_fabricados': total_produtos_fabricados,
+        'total_recebimentos': total_recebimentos,
+        'total_expedicoes': total_expedicoes,
+        'quantidade_total_estoque': quantidade_total_estoque,
+        'atividades': atividades,
     }
-
-    try:
-        from django.db.models import Sum
-        from datetime import datetime, timedelta
-        import logging
-
-        logger = logging.getLogger(__name__)
-
-        try:
-            # Obter empresas do usuário com proteção
-            try:
-                empresas = get_user_empresa(request.user)
-            except Exception as e:
-                logger.error(f"Erro ao obter empresas: {str(e)}")
-                empresas = None
-
-            # Se não conseguiu obter empresas, retorna página vazia
-            if empresas is None or (hasattr(empresas, 'exists') and not empresas.exists()):
-                messages.warning(request, 'Nenhuma empresa cadastrada. Dashboard em modo visualização.')
-                return render(request, 'core/dashboard.html', contexto_vazio)
-
-            # Estatísticas gerais com proteção individual
-            total_itens_estoque = 0
-            total_produtos_fabricados = 0
-            total_recebimentos = 0
-            total_expedicoes = 0
-            quantidade_total_estoque = 0
-            atividades = []
-
-            try:
-                total_itens_estoque = ItemEstoque.objects.count()
-            except Exception as e:
-                logger.error(f"Erro ao contar itens estoque: {str(e)}")
-
-            try:
-                total_produtos_fabricados = ProdutoFabricado.objects.count()
-            except Exception as e:
-                logger.error(f"Erro ao contar produtos: {str(e)}")
-
-            try:
-                total_recebimentos = Recebimento.objects.filter(empresa__in=empresas).count()
-            except Exception as e:
-                logger.error(f"Erro ao contar recebimentos: {str(e)}")
-                try:
-                    # Fallback: tenta sem filtro
-                    total_recebimentos = Recebimento.objects.count()
-                except:
-                    pass
-
-            try:
-                total_expedicoes = Expedicao.objects.filter(empresa__in=empresas).count()
-            except Exception as e:
-                logger.error(f"Erro ao contar expedições: {str(e)}")
-                try:
-                    # Fallback: tenta sem filtro
-                    total_expedicoes = Expedicao.objects.count()
-                except:
-                    pass
-
-            try:
-                quantidade_total_estoque = ItemEstoque.objects.aggregate(total=Sum('quantidade'))['total'] or 0
-            except Exception as e:
-                logger.error(f"Erro ao agregar quantidade: {str(e)}")
-
-            # Atividades recentes com proteção máxima
-            try:
-                ultimos_recebimentos = list(Recebimento.objects.filter(empresa__in=empresas).order_by('-data_recebimento')[:5])
-            except Exception as e:
-                logger.error(f"Erro ao buscar recebimentos: {str(e)}")
-                ultimos_recebimentos = []
-
-            try:
-                ultimas_expedicoes = list(Expedicao.objects.filter(empresa__in=empresas).order_by('-data_expedicao')[:5])
-            except Exception as e:
-                logger.error(f"Erro ao buscar expedições: {str(e)}")
-                ultimas_expedicoes = []
-
-            # Combinar atividades com proteção
-            try:
-                for recebimento in ultimos_recebimentos:
-                    try:
-                        atividades.append({
-                            'tipo': 'recebimento',
-                            'data': recebimento.data_recebimento,
-                            'objeto': recebimento
-                        })
-                    except Exception as e:
-                        logger.error(f"Erro ao processar recebimento: {str(e)}")
-
-                for expedicao in ultimas_expedicoes:
-                    try:
-                        atividades.append({
-                            'tipo': 'expedicao',
-                            'data': expedicao.data_expedicao,
-                            'objeto': expedicao
-                        })
-                    except Exception as e:
-                        logger.error(f"Erro ao processar expedição: {str(e)}")
-
-                # Ordenar com proteção
-                try:
-                    atividades.sort(key=lambda x: x['data'], reverse=True)
-                    atividades = atividades[:10]
-                except Exception as e:
-                    logger.error(f"Erro ao ordenar atividades: {str(e)}")
-                    atividades = []
-            except Exception as e:
-                logger.error(f"Erro ao combinar atividades: {str(e)}")
-                atividades = []
-
-            contexto = {
-                'total_itens_estoque': total_itens_estoque,
-                'total_produtos_fabricados': total_produtos_fabricados,
-                'total_recebimentos': total_recebimentos,
-                'total_expedicoes': total_expedicoes,
-                'quantidade_total_estoque': quantidade_total_estoque,
-                'atividades': atividades,
-            }
-            return render(request, 'core/dashboard.html', contexto)
-
-        except Exception as e:
-            logger.error(f"Erro no dashboard (camada 2): {str(e)}", exc_info=True)
-            messages.error(request, 'Erro ao carregar dashboard.')
-            return render(request, 'core/dashboard.html', contexto_vazio)
-
-    except Exception as e:
-        # Fallback absoluto - captura até erro no import
-        try:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"Erro crítico no dashboard: {str(e)}", exc_info=True)
-        except:
-            pass
-
-        # Retorna página básica SEM mensagem (para evitar erro no messages)
-        return render(request, 'core/dashboard.html', contexto_vazio)
+    return render(request, 'core/dashboard.html', contexto)
 
 # --- Views de Estoque ---
 @login_required
@@ -307,11 +197,8 @@ def gerenciar_item(request, pk):
     total_entradas = movimentacoes_recentes.filter(tipo='entrada').aggregate(total=Sum('quantidade'))['total'] or 0
     total_saidas = movimentacoes_recentes.filter(tipo='saida').aggregate(total=Sum('quantidade'))['total'] or 0
 
-    # 4. Histórico com opção de carregar mais
-    limite = int(request.GET.get('limite', 10))  # Padrão: 10, aumenta ao clicar "Carregar Mais"
-    historico_movimentacoes = item.movimentacoes.all()[:limite]
-    total_movimentacoes = item.movimentacoes.count()
-    tem_mais = total_movimentacoes > limite
+    # 4. Histórico completo
+    historico_movimentacoes = item.movimentacoes.all()[:20]  # Últimas 20 movimentações
 
     # 5. Galeria de imagens
     galeria_imagens = item.imagens.all()
@@ -347,154 +234,11 @@ def gerenciar_item(request, pk):
         'total_saidas_30d': total_saidas,
         # Histórico e galeria
         'historico_movimentacoes': historico_movimentacoes,
-        'total_movimentacoes': total_movimentacoes,
-        'tem_mais': tem_mais,
-        'limite_atual': limite,
         'galeria_imagens': galeria_imagens,
         # Gráfico (convertido para JSON)
         'evolucao_estoque': json.dumps(evolucao_estoque),
     }
     return render(request, 'core/gerenciar_item.html', contexto)
-
-@login_required
-def historico_geral_estoque(request):
-    """View para exibir o histórico geral de movimentações de TODOS os itens"""
-    from django.core.paginator import Paginator
-    from datetime import datetime, timedelta
-
-    # Obter todas as movimentações de todos os itens
-    movimentacoes = MovimentacaoEstoque.objects.all()
-
-    # Aplicar filtros
-    item_filtro = request.GET.get('item', '')
-    tipo_filtro = request.GET.get('tipo', '')
-    usuario_filtro = request.GET.get('usuario', '')
-    data_inicio = request.GET.get('data_inicio', '')
-    data_fim = request.GET.get('data_fim', '')
-
-    if item_filtro:
-        movimentacoes = movimentacoes.filter(item__id=item_filtro)
-
-    if tipo_filtro:
-        movimentacoes = movimentacoes.filter(tipo=tipo_filtro)
-
-    if usuario_filtro:
-        movimentacoes = movimentacoes.filter(usuario__id=usuario_filtro)
-
-    if data_inicio:
-        try:
-            data_inicio_obj = datetime.strptime(data_inicio, '%Y-%m-%d')
-            movimentacoes = movimentacoes.filter(data_hora__gte=data_inicio_obj)
-        except ValueError:
-            pass
-
-    if data_fim:
-        try:
-            data_fim_obj = datetime.strptime(data_fim, '%Y-%m-%d')
-            data_fim_obj = data_fim_obj + timedelta(days=1)
-            movimentacoes = movimentacoes.filter(data_hora__lt=data_fim_obj)
-        except ValueError:
-            pass
-
-    # Estatísticas do período filtrado
-    total_entradas = movimentacoes.filter(tipo='entrada').aggregate(total=Sum('quantidade'))['total'] or 0
-    total_saidas = movimentacoes.filter(tipo='saida').aggregate(total=Sum('quantidade'))['total'] or 0
-    saldo_periodo = total_entradas - total_saidas
-
-    # Paginação (50 itens por página)
-    paginator = Paginator(movimentacoes, 50)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-
-    # Obter listas para filtros
-    itens = ItemEstoque.objects.all().order_by('nome')
-    usuarios = User.objects.filter(movimentacaoestoque__isnull=False).distinct().order_by('username')
-
-    contexto = {
-        'page_obj': page_obj,
-        'itens': itens,
-        'usuarios': usuarios,
-        'item_filtro': item_filtro,
-        'tipo_filtro': tipo_filtro,
-        'usuario_filtro': usuario_filtro,
-        'data_inicio': data_inicio,
-        'data_fim': data_fim,
-        'total_entradas': total_entradas,
-        'total_saidas': total_saidas,
-        'saldo_periodo': saldo_periodo,
-        'total_registros': movimentacoes.count(),
-    }
-
-    return render(request, 'core/historico_geral_estoque.html', contexto)
-
-@login_required
-def historico_completo_item(request, pk):
-    """View para exibir o histórico completo de movimentações de um item com filtros e paginação"""
-    from django.core.paginator import Paginator
-    from datetime import datetime
-
-    item = get_object_or_404(ItemEstoque, pk=pk)
-
-    # Obter todas as movimentações do item
-    movimentacoes = item.movimentacoes.all()
-
-    # Aplicar filtros
-    tipo_filtro = request.GET.get('tipo', '')
-    usuario_filtro = request.GET.get('usuario', '')
-    data_inicio = request.GET.get('data_inicio', '')
-    data_fim = request.GET.get('data_fim', '')
-
-    if tipo_filtro:
-        movimentacoes = movimentacoes.filter(tipo=tipo_filtro)
-
-    if usuario_filtro:
-        movimentacoes = movimentacoes.filter(usuario__id=usuario_filtro)
-
-    if data_inicio:
-        try:
-            data_inicio_obj = datetime.strptime(data_inicio, '%Y-%m-%d')
-            movimentacoes = movimentacoes.filter(data_hora__gte=data_inicio_obj)
-        except ValueError:
-            pass
-
-    if data_fim:
-        try:
-            data_fim_obj = datetime.strptime(data_fim, '%Y-%m-%d')
-            # Adicionar 1 dia para incluir todo o dia final
-            from datetime import timedelta
-            data_fim_obj = data_fim_obj + timedelta(days=1)
-            movimentacoes = movimentacoes.filter(data_hora__lt=data_fim_obj)
-        except ValueError:
-            pass
-
-    # Estatísticas do período filtrado
-    total_entradas = movimentacoes.filter(tipo='entrada').aggregate(total=Sum('quantidade'))['total'] or 0
-    total_saidas = movimentacoes.filter(tipo='saida').aggregate(total=Sum('quantidade'))['total'] or 0
-    saldo_periodo = total_entradas - total_saidas
-
-    # Paginação (50 itens por página)
-    paginator = Paginator(movimentacoes, 50)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-
-    # Obter lista de usuários que fizeram movimentações para o filtro
-    usuarios = User.objects.filter(movimentacoes_estoque__item=item).distinct().order_by('username')
-
-    contexto = {
-        'item': item,
-        'page_obj': page_obj,
-        'usuarios': usuarios,
-        'tipo_filtro': tipo_filtro,
-        'usuario_filtro': usuario_filtro,
-        'data_inicio': data_inicio,
-        'data_fim': data_fim,
-        'total_entradas': total_entradas,
-        'total_saidas': total_saidas,
-        'saldo_periodo': saldo_periodo,
-        'total_registros': movimentacoes.count(),
-    }
-
-    return render(request, 'core/historico_movimentacoes.html', contexto)
 
 @login_required
 def retirar_item(request, pk):
@@ -617,6 +361,7 @@ def duplicar_item(request, pk):
 # --- Views de Recebimento ---
 
 @login_required
+@permission_required('core.view_recebimento', raise_exception=True)
 def lista_recebimentos(request):
     from datetime import timedelta
     from decimal import Decimal
@@ -1205,31 +950,11 @@ def detalhe_tarefa(request, task_id):
 def metricas_kanban(request):
     from django.db.models import Count, Sum
 
-    # Calcular cards finalizados e quantidade produzida por usuário SEPARADAMENTE
-    # para evitar duplicação de JOINs
-
-    # Passo 1: Pegar usuários que finalizaram cards
-    usuarios_finalizadores = User.objects.annotate(
-        total_finalizados=Count('taskhistorico__task', filter=Q(taskhistorico__tipo_acao='finalizado'), distinct=True)
-    ).filter(total_finalizados__gt=0)
-
-    # Passo 2: Para cada usuário, calcular quantidade produzida separadamente
-    cards_por_usuario_list = []
-    for user in usuarios_finalizadores:
-        qtd_produzida = TaskQuantidadeFeita.objects.filter(usuario=user).aggregate(
-            total=Sum('quantidade')
-        )['total'] or 0
-
-        cards_por_usuario_list.append({
-            'id': user.id,
-            'username': user.username,
-            'get_full_name': user.get_full_name(),
-            'total_finalizados': user.total_finalizados,
-            'total_quantidade_produzida': qtd_produzida
-        })
-
-    # Ordenar por total de finalizados
-    cards_por_usuario_list.sort(key=lambda x: x['total_finalizados'], reverse=True)
+    # Cards finalizados por usuário
+    cards_por_usuario = User.objects.annotate(
+        total_finalizados=Count('taskhistorico', filter=Q(taskhistorico__tipo_acao='finalizado')),
+        total_quantidade_produzida=Sum('taskquantidadefeita__quantidade')
+    ).filter(total_finalizados__gt=0).order_by('-total_finalizados')
 
     # Total de cards finalizados
     total_cards_finalizados = Task.objects.filter(finalizado=True).count()
@@ -1237,15 +962,11 @@ def metricas_kanban(request):
     # Total de cards em andamento
     total_cards_andamento = Task.objects.filter(em_andamento=True, finalizado=False).count()
 
-    # Total produzido
-    all_tasks = Task.objects.prefetch_related('quantidades_feitas').all()
-    total_produzido = 0
-    for task in all_tasks:
-        task_total = task.quantidades_feitas.aggregate(soma=Sum('quantidade'))['soma'] or 0
-        total_produzido += task_total
+    # Total de quantidade produzida
+    total_produzido = TaskQuantidadeFeita.objects.aggregate(total=Sum('quantidade'))['total'] or 0
 
     contexto = {
-        'cards_por_usuario': cards_por_usuario_list,
+        'cards_por_usuario': cards_por_usuario,
         'total_cards_finalizados': total_cards_finalizados,
         'total_cards_andamento': total_cards_andamento,
         'total_produzido': total_produzido,
@@ -1394,22 +1115,8 @@ def mover_tarefa(request, task_id):
 def mover_coluna(request, coluna_id):
     coluna = get_object_or_404(KanbanColumn, id=coluna_id)
     nova_ordem = int(request.POST.get('nova_ordem', 0))
-    ordem_antiga = coluna.ordem
-
-    # Reordena todas as colunas
-    colunas = list(KanbanColumn.objects.all().order_by('ordem'))
-
-    # Remove a coluna da posição antiga
-    colunas.remove(coluna)
-
-    # Insere na nova posição
-    colunas.insert(nova_ordem, coluna)
-
-    # Atualiza a ordem de todas as colunas
-    for idx, col in enumerate(colunas):
-        col.ordem = idx
-        col.save()
-
+    coluna.ordem = nova_ordem
+    coluna.save()
     return JsonResponse({'success': True})
 
 @login_required
@@ -1480,110 +1187,27 @@ def registrar_quantidade(request, task_id):
         )
     return redirect('kanban_board')
 
-@login_required
-def editar_quantidade(request, qtd_id):
-    qtd = get_object_or_404(TaskQuantidadeFeita, id=qtd_id)
-    task = qtd.task
-
-    if request.method == 'POST':
-        nova_quantidade = int(request.POST.get('quantidade', 0))
-        if nova_quantidade > 0:
-            quantidade_antiga = qtd.quantidade
-            qtd.quantidade = nova_quantidade
-            qtd.save()
-
-            # Registra histórico
-            TaskHistorico.objects.create(
-                task=task,
-                usuario=request.user,
-                tipo_acao='editado',
-                descricao=f'{request.user.get_full_name() or request.user.username} editou quantidade de {quantidade_antiga} para {nova_quantidade} unidade(s)'
-            )
-            messages.success(request, 'Quantidade editada com sucesso!')
-        else:
-            messages.error(request, 'Quantidade deve ser maior que zero!')
-
-    # Redireciona de volta para a página de origem (kanban ou detalhe)
-    next_url = request.POST.get('next', request.GET.get('next', 'detalhe_tarefa'))
-    if next_url == 'kanban_board':
-        return redirect('kanban_board')
-    return redirect('detalhe_tarefa', task_id=task.id)
-
-@login_required
-def excluir_quantidade(request, qtd_id):
-    qtd = get_object_or_404(TaskQuantidadeFeita, id=qtd_id)
-    task = qtd.task
-
-    if request.method == 'POST':
-        quantidade = qtd.quantidade
-        qtd.delete()
-
-        # Registra histórico
-        TaskHistorico.objects.create(
-            task=task,
-            usuario=request.user,
-            tipo_acao='editado',
-            descricao=f'{request.user.get_full_name() or request.user.username} removeu registro de {quantidade} unidade(s)'
-        )
-        messages.success(request, 'Registro de quantidade removido com sucesso!')
-
-    # Redireciona de volta para a página de origem (kanban ou detalhe)
-    next_url = request.POST.get('next', request.GET.get('next', 'detalhe_tarefa'))
-    if next_url == 'kanban_board':
-        return redirect('kanban_board')
-    return redirect('detalhe_tarefa', task_id=task.id)
-
 # --- Views de Controle de Ponto ---
 
 @login_required
 def controle_ponto(request):
-    """View principal do controle de ponto - versão ultra-robusta"""
+    """View principal do controle de ponto"""
     from datetime import datetime, timedelta
     from django.db.models import Sum, Count
     import calendar
-    import logging
 
-    logger = logging.getLogger(__name__)
+    # Verifica se é superusuário ou o próprio usuário
+    usuario_id = request.GET.get('usuario_id')
+    if usuario_id and request.user.is_superuser:
+        usuario = get_object_or_404(User, id=usuario_id)
+    else:
+        usuario = request.user
 
-    # Contexto mínimo em caso de erro total
-    contexto_erro = {
-        'horas_trabalhadas': 0,
-        'horas_abonadas': 0,
-        'horas_esperadas': 0,
-        'saldo_horas': 0,
-        'dias_trabalhados': 0,
-        'dias_falta': 0,
-        'ultimo_ponto_hoje': None,
-        'presenca_ultimos_30': [],
-        'usuarios': [],
-        'abonos_mes': [],
-        'primeiro_dia': datetime.now().replace(day=1),
-        'ultimo_dia': datetime.now(),
-        'pontos_mes': [],
-    }
-
-    try:
-        # Verifica se é superusuário ou o próprio usuário
-        try:
-            usuario_id = request.GET.get('usuario_id')
-            if usuario_id and request.user.is_superuser:
-                usuario = get_object_or_404(User, id=usuario_id)
-            else:
-                usuario = request.user
-        except Exception as e:
-            logger.error(f"Erro ao identificar usuário: {str(e)}")
-            usuario = request.user
-
-        # Criar jornada se não existir
-        try:
-            jornada, created = JornadaTrabalho.objects.get_or_create(
-                usuario=usuario,
-                defaults={'horas_diarias': 9.0, 'horas_sexta': 8.0, 'intervalo_almoco': 1.0}
-            )
-        except Exception as e:
-            logger.error(f"Erro ao criar jornada: {str(e)}")
-            messages.error(request, 'Erro ao carregar configurações de jornada.')
-            return render(request, 'core/controle_ponto.html', contexto_erro)
+    # Criar jornada se não existir
+    jornada, created = JornadaTrabalho.objects.get_or_create(
+        usuario=usuario,
+        defaults={'horas_diarias': 9.0, 'horas_sexta': 8.0, 'intervalo_almoco': 1.0}
+    )
 
     # Dados do mês atual (usando período personalizado do funcionário)
     now = datetime.now()
@@ -1830,13 +1454,7 @@ def controle_ponto(request):
         'ultimo_dia': ultimo_dia,
     }
 
-        return render(request, 'core/controle_ponto.html', contexto)
-
-    except Exception as e:
-        # Fallback absoluto para qualquer erro
-        logger.error(f"Erro crítico no controle de ponto: {str(e)}", exc_info=True)
-        messages.error(request, 'Erro ao carregar controle de ponto.')
-        return render(request, 'core/controle_ponto.html', contexto_erro)
+    return render(request, 'core/controle_ponto.html', contexto)
 
 @login_required
 @require_POST
@@ -1844,8 +1462,6 @@ def bater_ponto(request):
     """Registra entrada, saída ou almoço"""
     tipo = request.POST.get('tipo')
     observacao = request.POST.get('observacao', '')
-    latitude = request.POST.get('latitude')
-    longitude = request.POST.get('longitude')
 
     if tipo not in ['entrada', 'saida', 'inicio_almoco', 'fim_almoco']:
         messages.error(request, 'Tipo de ponto inválido.')
@@ -1875,17 +1491,11 @@ def bater_ponto(request):
         messages.error(request, 'Você precisa registrar entrada/fim de almoço antes da saída.')
         return redirect('controle_ponto')
 
-    # Preparar dados de localização
-    localizacao_texto = None
-    if latitude and longitude:
-        localizacao_texto = f"{latitude},{longitude}"
-
     # Registra o ponto
-    ponto = RegistroPonto.objects.create(
+    RegistroPonto.objects.create(
         usuario=request.user,
         tipo=tipo,
-        observacao=observacao,
-        localizacao=localizacao_texto
+        observacao=observacao
     )
 
     # Mensagem de sucesso
@@ -1896,14 +1506,7 @@ def bater_ponto(request):
         'fim_almoco': 'Fim do Almoço'
     }
     tipo_texto = mensagens_tipo.get(tipo, tipo)
-
-    # Usar o horário do ponto registrado (já no timezone correto)
-    hora_formatada = ponto.data_hora.strftime("%H:%M")
-
-    if localizacao_texto:
-        messages.success(request, f'{tipo_texto} registrado com sucesso às {hora_formatada}! 📍 Localização salva.')
-    else:
-        messages.success(request, f'{tipo_texto} registrado com sucesso às {hora_formatada}!')
+    messages.success(request, f'{tipo_texto} registrado com sucesso às {timezone.now().strftime("%H:%M")}!')
 
     return redirect('controle_ponto')
 

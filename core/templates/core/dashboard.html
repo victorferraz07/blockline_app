@@ -9,51 +9,6 @@
         <p class="text-gray-600 mt-2 text-lg">Visão geral do sistema de gerenciamento Blockline</p>
     </div>
 
-    <!-- PWA Features Banner -->
-    <div id="pwa-features-banner" class="mb-6 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl shadow-lg p-6 text-white" x-data="{ show: true, notificationsEnabled: false }" x-show="show">
-        <div class="flex items-start justify-between">
-            <div class="flex-1">
-                <h3 class="text-xl font-bold mb-2">🚀 Recursos PWA Disponíveis</h3>
-                <p class="text-indigo-100 mb-4">Ative os recursos do app para melhor experiência mobile</p>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <!-- Notificações -->
-                    <button onclick="enableNotifications()" class="bg-white/20 hover:bg-white/30 backdrop-blur rounded-lg p-4 text-left transition-all">
-                        <div class="flex items-center gap-2 mb-2">
-                            <span class="text-2xl">🔔</span>
-                            <span class="font-semibold">Notificações</span>
-                        </div>
-                        <p class="text-sm text-indigo-100">Receba lembretes de ponto e alertas</p>
-                    </button>
-
-                    <!-- Câmera -->
-                    <button onclick="testCamera()" class="bg-white/20 hover:bg-white/30 backdrop-blur rounded-lg p-4 text-left transition-all">
-                        <div class="flex items-center gap-2 mb-2">
-                            <span class="text-2xl">📸</span>
-                            <span class="font-semibold">Scanner</span>
-                        </div>
-                        <p class="text-sm text-indigo-100">Escanear códigos de barras</p>
-                    </button>
-
-                    <!-- Localização -->
-                    <button onclick="testLocation()" class="bg-white/20 hover:bg-white/30 backdrop-blur rounded-lg p-4 text-left transition-all">
-                        <div class="flex items-center gap-2 mb-2">
-                            <span class="text-2xl">📍</span>
-                            <span class="font-semibold">Localização</span>
-                        </div>
-                        <p class="text-sm text-indigo-100">Validar local ao bater ponto</p>
-                    </button>
-                </div>
-            </div>
-
-            <button @click="show = false" class="ml-4 text-white/80 hover:text-white">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-            </button>
-        </div>
-    </div>
-
     <!-- Cards de Estatísticas Principais -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <!-- Total de Itens em Estoque -->
@@ -66,7 +21,7 @@
                 </div>
                 <div class="bg-blue-400 bg-opacity-30 rounded-full p-3">
                     <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                     </svg>
                 </div>
             </div>
@@ -82,7 +37,7 @@
                 </div>
                 <div class="bg-purple-400 bg-opacity-30 rounded-full p-3">
                     <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
                     </svg>
                 </div>
             </div>
@@ -97,8 +52,8 @@
                     <p class="text-green-100 text-xs mt-1">Total de registros</p>
                 </div>
                 <div class="bg-green-400 bg-opacity-30 rounded-full p-3">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-8">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
                     </svg>
                 </div>
             </div>
@@ -113,8 +68,8 @@
                     <p class="text-red-100 text-xs mt-1">Total de saídas</p>
                 </div>
                 <div class="bg-red-400 bg-opacity-30 rounded-full p-3">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-8">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6"/>
                     </svg>
                 </div>
             </div>
@@ -142,9 +97,9 @@
                             <div class="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                                 {% if atividade.tipo == 'recebimento' %}
                                     <!-- Ícone de Recebimento -->
-                                    <div class="flex-shrink-0 bg-green-100 text-green-600 rounded-full p-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-6">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+                                    <div class="flex-shrink-0 bg-green-100 rounded-full p-2">
+                                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
                                         </svg>
                                     </div>
                                     <div class="flex-1 min-w-0">
@@ -172,9 +127,9 @@
                                     </a>
                                 {% else %}
                                     <!-- Ícone de Expedição -->
-                                    <div class="flex-shrink-0 bg-red-100 text-red-600 rounded-full p-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-6">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
+                                    <div class="flex-shrink-0 bg-red-100 rounded-full p-2">
+                                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6"/>
                                         </svg>
                                     </div>
                                     <div class="flex-1 min-w-0">
@@ -339,96 +294,4 @@
     </div>
 
 </div>
-
-{% block javascript %}
-<script>
-    // Funções para testar recursos PWA
-
-    // Ativar notificações
-    async function enableNotifications() {
-        if (!window.notificationManager || !window.notificationManager.isSupported()) {
-            alert('⚠️ Notificações não são suportadas neste navegador');
-            return;
-        }
-
-        const granted = await window.requestNotificationPermission();
-
-        if (granted) {
-            alert('✅ Notificações ativadas! Você receberá lembretes de ponto.');
-
-            // Enviar notificação de teste
-            window.sendNotification('🎉 Notificações Ativadas', {
-                body: 'Você receberá lembretes automáticos para bater ponto',
-                icon: '/static/icons/icon-192.png'
-            });
-        } else {
-            alert('❌ Permissão de notificações negada. Verifique as configurações do navegador.');
-        }
-    }
-
-    // Testar câmera/scanner
-    async function testCamera() {
-        if (!window.scannerUI) {
-            alert('⚠️ Sistema de câmera não carregado');
-            return;
-        }
-
-        if (!window.scannerUI.scanner.isSupported()) {
-            alert('⚠️ Câmera não é suportada neste dispositivo');
-            return;
-        }
-
-        // Abrir scanner com callback de exemplo
-        await window.openScanner((code) => {
-            console.log('Código escaneado:', code);
-            alert('Código detectado: ' + code);
-        });
-    }
-
-    // Testar localização
-    async function testLocation() {
-        if (!window.geolocationManager || !window.geolocationManager.isSupported()) {
-            alert('⚠️ Geolocalização não é suportada neste dispositivo');
-            return;
-        }
-
-        try {
-            const position = await window.getCurrentLocation();
-
-            const info = window.getLocationInfo();
-
-            alert(
-                '✅ Localização obtida!\n\n' +
-                `📍 Coordenadas: ${info.coordinates}\n` +
-                `🎯 Precisão: ${info.accuracy}\n` +
-                `🕐 Obtido em: ${info.timestamp}`
-            );
-
-            console.log('Localização completa:', position);
-        } catch (error) {
-            alert('❌ Erro ao obter localização: ' + error.message);
-        }
-    }
-
-    // Verificar se já tem permissões ativadas ao carregar
-    document.addEventListener('DOMContentLoaded', () => {
-        // Verificar permissão de notificações
-        if (Notification.permission === 'granted') {
-            console.log('✅ Notificações já estão ativadas');
-        }
-
-        // Ocultar banner se todas as permissões já foram concedidas
-        const allPermissionsGranted = Notification.permission === 'granted';
-
-        if (allPermissionsGranted) {
-            const banner = document.getElementById('pwa-features-banner');
-            if (banner) {
-                // Esconder após 3 segundos se já tem todas permissões
-                setTimeout(() => {
-                    banner.style.display = 'none';
-                }, 3000);
-            }
-        }
-    });
-</script>
 {% endblock %}

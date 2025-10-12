@@ -6,10 +6,8 @@ urlpatterns = [
     
     # --- Rotas de Estoque ---
     path('estoque/', views.lista_estoque, name='lista_estoque'),
-    path('estoque/historico/', views.historico_geral_estoque, name='historico_geral_estoque'),
     path('estoque/adicionar/', views.adicionar_item, name='adicionar_item'),
     path('estoque/<int:pk>/gerenciar/', views.gerenciar_item, name='gerenciar_item'),
-    path('estoque/<int:pk>/historico/', views.historico_completo_item, name='historico_completo_item'),
     path('estoque/<int:pk>/retirar/', views.retirar_item, name='retirar_item'),
     path('estoque/<int:pk>/adicionar-estoque/', views.adicionar_estoque, name='adicionar_estoque'),
     path('estoque/<int:pk>/duplicar/', views.duplicar_item, name='duplicar_item'),
@@ -53,8 +51,6 @@ urlpatterns = [
     path('kanban/finalizar/<int:task_id>/', views.finalizar, name='finalizar'),
     path('kanban/desfinalizar/<int:task_id>/', views.desfinalizar, name='desfinalizar'),
     path('kanban/registrar_quantidade/<int:task_id>/', views.registrar_quantidade, name='registrar_quantidade'),
-    path('kanban/editar_quantidade/<int:qtd_id>/', views.editar_quantidade, name='editar_quantidade'),
-    path('kanban/excluir_quantidade/<int:qtd_id>/', views.excluir_quantidade, name='excluir_quantidade'),
 
     # --- Rotas de Controle de Ponto ---
     path('ponto/', views.controle_ponto, name='controle_ponto'),

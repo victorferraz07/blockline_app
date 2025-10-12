@@ -101,21 +101,17 @@
                 {% endif %}
 
                 <div class="grid grid-cols-2 gap-4">
-                    <form id="form-entrada" method="post" action="{% url 'bater_ponto' %}">
+                    <form method="post" action="{% url 'bater_ponto' %}">
                         {% csrf_token %}
                         <input type="hidden" name="tipo" value="entrada">
-                        <input type="hidden" name="latitude" id="lat-entrada">
-                        <input type="hidden" name="longitude" id="lon-entrada">
                         <button type="submit" class="w-full px-6 py-4 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold text-lg hover:from-green-600 hover:to-emerald-700 transition-all shadow-lg">
                             🟢 Entrada
                         </button>
                     </form>
 
-                    <form id="form-saida" method="post" action="{% url 'bater_ponto' %}">
+                    <form method="post" action="{% url 'bater_ponto' %}">
                         {% csrf_token %}
                         <input type="hidden" name="tipo" value="saida">
-                        <input type="hidden" name="latitude" id="lat-saida">
-                        <input type="hidden" name="longitude" id="lon-saida">
                         <button type="submit" class="w-full px-6 py-4 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 text-white font-bold text-lg hover:from-red-600 hover:to-rose-700 transition-all shadow-lg">
                             🔴 Saída
                         </button>
@@ -123,33 +119,21 @@
                 </div>
 
                 <div class="grid grid-cols-2 gap-4 mt-4">
-                    <form id="form-inicio-almoco" method="post" action="{% url 'bater_ponto' %}">
+                    <form method="post" action="{% url 'bater_ponto' %}">
                         {% csrf_token %}
                         <input type="hidden" name="tipo" value="inicio_almoco">
-                        <input type="hidden" name="latitude" id="lat-inicio-almoco">
-                        <input type="hidden" name="longitude" id="lon-inicio-almoco">
                         <button type="submit" class="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-orange-400 to-amber-500 text-white font-semibold hover:from-orange-500 hover:to-amber-600 transition-all shadow">
                             🍽️ Início Almoço
                         </button>
                     </form>
 
-                    <form id="form-fim-almoco" method="post" action="{% url 'bater_ponto' %}">
+                    <form method="post" action="{% url 'bater_ponto' %}">
                         {% csrf_token %}
                         <input type="hidden" name="tipo" value="fim_almoco">
-                        <input type="hidden" name="latitude" id="lat-fim-almoco">
-                        <input type="hidden" name="longitude" id="lon-fim-almoco">
                         <button type="submit" class="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-blue-400 to-cyan-500 text-white font-semibold hover:from-blue-500 hover:to-cyan-600 transition-all shadow">
                             ☕ Fim Almoço
                         </button>
                     </form>
-                </div>
-
-                <!-- Indicador de localização -->
-                <div id="location-status" class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-900 hidden">
-                    <div class="flex items-center gap-2">
-                        <span class="text-lg">📍</span>
-                        <span id="location-text">Obtendo localização...</span>
-                    </div>
                 </div>
             </div>
             {% endif %}
@@ -390,39 +374,25 @@
 
                 <div class="space-y-3">
                     {% for ponto in pontos_mes %}
-                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                        <div class="flex items-center gap-3 flex-1">
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-full
                                 {% if ponto.tipo == 'entrada' %}bg-green-100 text-green-600
                                 {% elif ponto.tipo == 'saida' %}bg-red-100 text-red-600
                                 {% elif ponto.tipo == 'inicio_almoco' %}bg-orange-100 text-orange-600
                                 {% else %}bg-blue-100 text-blue-600{% endif %}
-                                flex items-center justify-center font-bold text-lg flex-shrink-0">
+                                flex items-center justify-center font-bold text-lg">
                                 {% if ponto.tipo == 'entrada' %}🟢
                                 {% elif ponto.tipo == 'saida' %}🔴
                                 {% elif ponto.tipo == 'inicio_almoco' %}🍽️
                                 {% else %}☕{% endif %}
                             </div>
-                            <div class="flex-1 min-w-0">
+                            <div>
                                 <p class="font-semibold text-gray-900">{{ ponto.get_tipo_display }}</p>
                                 <p class="text-xs text-gray-500">{{ ponto.data_hora|date:'d/m/Y' }}</p>
-                                {% if ponto.localizacao %}
-                                <div class="flex items-center gap-1 mt-1">
-                                    <svg class="w-3 h-3 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
-                                    </svg>
-                                    <a href="https://www.google.com/maps?q={{ ponto.localizacao }}"
-                                       target="_blank"
-                                       class="text-xs text-blue-600 hover:text-blue-800 hover:underline truncate">
-                                        Ver localização
-                                    </a>
-                                </div>
-                                {% else %}
-                                <p class="text-xs text-gray-400 mt-1">📍 Sem localização</p>
-                                {% endif %}
                             </div>
                         </div>
-                        <div class="text-right flex-shrink-0 ml-3">
+                        <div class="text-right">
                             <p class="text-lg font-bold text-gray-900">{{ ponto.data_hora|date:'H:i' }}</p>
                         </div>
                     </div>
@@ -517,120 +487,4 @@
     </div>
 </div>
 
-{% block javascript %}
-<script>
-    // Integração de geolocalização com sistema de ponto
-
-    // Configurar locais da empresa (AJUSTE AQUI COM AS COORDENADAS REAIS)
-    if (window.pontoGeolocation) {
-        window.pontoGeolocation.geo.setAllowedLocations([
-            {
-                name: 'Escritório Principal',
-                lat: -23.550520,  // ⚠️ SUBSTITUA pela latitude real
-                lon: -46.633308,  // ⚠️ SUBSTITUA pela longitude real
-                radius: 100       // Raio de 100 metros
-            },
-            // Adicione mais locais se necessário
-        ]);
-    }
-
-    // Interceptar envio dos formulários de ponto
-    const pontoForms = [
-        'form-entrada',
-        'form-saida',
-        'form-inicio-almoco',
-        'form-fim-almoco'
-    ];
-
-    pontoForms.forEach(formId => {
-        const form = document.getElementById(formId);
-        if (!form) return;
-
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            // Mostrar indicador de carregamento
-            const locationStatus = document.getElementById('location-status');
-            const locationText = document.getElementById('location-text');
-
-            if (locationStatus) {
-                locationStatus.classList.remove('hidden');
-                locationText.textContent = 'Obtendo localização...';
-            }
-
-            try {
-                // Obter localização atual
-                const position = await window.getCurrentLocation();
-
-                // Preencher campos ocultos do formulário
-                const tipo = form.querySelector('input[name="tipo"]').value;
-                const latInput = form.querySelector('input[name="latitude"]');
-                const lonInput = form.querySelector('input[name="longitude"]');
-
-                if (latInput && lonInput) {
-                    latInput.value = position.latitude;
-                    lonInput.value = position.longitude;
-                }
-
-                // Validar se está em local permitido (opcional - pode desabilitar se quiser)
-                const validation = await window.validatePontoLocation();
-
-                if (locationStatus) {
-                    if (validation.valid) {
-                        locationStatus.className = 'mt-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-900';
-                        locationText.textContent = validation.message;
-                    } else {
-                        locationStatus.className = 'mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-900';
-                        locationText.textContent = validation.message;
-
-                        // Permitir continuar mesmo fora do local (você pode mudar isso se quiser bloquear)
-                        const confirmContinue = confirm(
-                            validation.message + '\n\n' +
-                            'Deseja continuar mesmo assim?'
-                        );
-
-                        if (!confirmContinue) {
-                            return;
-                        }
-                    }
-                }
-
-                // Vibrar se disponível (feedback tátil)
-                if (navigator.vibrate) {
-                    navigator.vibrate(50);
-                }
-
-                // Submeter formulário
-                setTimeout(() => {
-                    form.submit();
-                }, 500);
-
-            } catch (error) {
-                console.error('Erro ao obter localização:', error);
-
-                if (locationStatus) {
-                    locationStatus.className = 'mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-900';
-                    locationText.textContent = '⚠️ Não foi possível obter localização. Continuando sem validação...';
-                }
-
-                // Continuar sem localização após 2 segundos
-                setTimeout(() => {
-                    form.submit();
-                }, 2000);
-            }
-        });
-    });
-
-    // Obter localização ao carregar a página (pre-load)
-    document.addEventListener('DOMContentLoaded', async () => {
-        if (window.geolocationManager && window.geolocationManager.isSupported()) {
-            try {
-                await window.getCurrentLocation();
-                console.log('✅ Localização pré-carregada');
-            } catch (error) {
-                console.log('⚠️ Não foi possível pré-carregar localização:', error.message);
-            }
-        }
-    });
-</script>
 {% endblock %}

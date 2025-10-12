@@ -139,13 +139,6 @@ class ItemEstoque(models.Model):
     data_criacao = models.DateTimeField(auto_now_add=True, verbose_name="Data de Criação")
     data_atualizacao = models.DateTimeField(auto_now=True, verbose_name="Última Atualização")
 
-    def save(self, *args, **kwargs):
-        # Comprime foto_principal antes de salvar
-        if self.foto_principal:
-            from .utils import compress_image
-            self.foto_principal = compress_image(self.foto_principal)
-        super().save(*args, **kwargs)
-
     def __str__(self): return f"{self.nome} ({self.quantidade} em estoque)"
 
 class MovimentacaoEstoque(models.Model):
@@ -189,29 +182,12 @@ class Recebimento(models.Model):
 
     STATUS_CHOICES = [('aguardando', 'Aguardando'), ('entregue', 'Entregue'),]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='aguardando')
-
-    def save(self, *args, **kwargs):
-        # Comprime imagens antes de salvar
-        if self.foto_documento:
-            from .utils import compress_image
-            self.foto_documento = compress_image(self.foto_documento)
-        if self.foto_embalagem:
-            from .utils import compress_image
-            self.foto_embalagem = compress_image(self.foto_embalagem)
-        super().save(*args, **kwargs)
-
+    
     def __str__(self): return f"Nota Fiscal {self.numero_nota_fiscal or 'N/A'}"
 
 class ImagemItemEstoque(models.Model):
     item = models.ForeignKey(ItemEstoque, related_name='imagens', on_delete=models.CASCADE)
     imagem = models.ImageField(upload_to='imagens_itens/')
-
-    def save(self, *args, **kwargs):
-        # Comprime imagem antes de salvar
-        if self.imagem:
-            from .utils import compress_image
-            self.imagem = compress_image(self.imagem)
-        super().save(*args, **kwargs)
 
     def __str__(self): return f"Imagem de {self.item.nome}"
 
@@ -221,13 +197,6 @@ class ProdutoFabricado(models.Model):
     descricao = models.TextField(blank=True, null=True, verbose_name="Descrição do Produto")
     foto_principal = models.ImageField(upload_to='fotos_produtos/', blank=True, null=True, verbose_name="Foto Principal")
     componentes = models.ManyToManyField(ItemEstoque, through='Componente', related_name='produtos_fabricados', verbose_name="Lista de Componentes")
-
-    def save(self, *args, **kwargs):
-        # Comprime foto_principal antes de salvar
-        if self.foto_principal:
-            from .utils import compress_image
-            self.foto_principal = compress_image(self.foto_principal)
-        super().save(*args, **kwargs)
 
     def __str__(self): return self.nome
 
@@ -241,14 +210,6 @@ class DocumentoProdutoFabricado(models.Model):
 class ImagemProdutoFabricado(models.Model):
     produto = models.ForeignKey(ProdutoFabricado, related_name='imagens', on_delete=models.CASCADE)
     imagem = models.ImageField(upload_to='imagens_produtos/')
-
-    def save(self, *args, **kwargs):
-        # Comprime imagem antes de salvar
-        if self.imagem:
-            from .utils import compress_image
-            self.imagem = compress_image(self.imagem)
-        super().save(*args, **kwargs)
-
     def __str__(self): return f"Imagem de {self.produto.nome}"
 
 class Componente(models.Model):
@@ -294,13 +255,6 @@ class DocumentoExpedicao(models.Model):
 class ImagemExpedicao(models.Model):
     expedicao = models.ForeignKey(Expedicao, on_delete=models.CASCADE, related_name='imagens')
     imagem = models.ImageField(upload_to='imagens_expedicao/')
-
-    def save(self, *args, **kwargs):
-        # Comprime imagem antes de salvar
-        if self.imagem:
-            from .utils import compress_image
-            self.imagem = compress_image(self.imagem)
-        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Imagem para a Expedição #{self.expedicao.pk}"

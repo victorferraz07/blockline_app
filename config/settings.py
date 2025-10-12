@@ -1,25 +1,25 @@
-from decouple import config
+# config/settings.py
 from pathlib import Path
+from decouple import config, Csv
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
+# --- Paths ---
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
+# --- Segurança / Debug ---
 SECRET_KEY = config('SECRET_KEY')
+DEBUG = config('DEBUG', default=False, cast=bool)
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+# Domínios permitidos
+ALLOWED_HOSTS = ['picsart.com.br', 'www.picsart.com.br', '168.231.92.3', 'srv1043318.hstgr.cloud']
 
-ALLOWED_HOSTS = ['168.231.92.3', 'srv1043318.hstgr.cloud', 'picsart.com.br', 'www.picsart.com.br']
+# Confiar no host/protocolo repassado pelo Nginx (proxy)
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
+# CSRF confia em seus domínios HTTPS
+CSRF_TRUSTED_ORIGINS = ['https://picsart.com.br', 'https://www.picsart.com.br']
 
-
-# Application definition
-
+# --- Apps ---
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "core",
 ]
 
+# --- Middleware ---
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -42,6 +43,7 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "config.urls"
 
+# --- Templates ---
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -59,72 +61,51 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
+# --- Banco de Dados (PostgreSQL via .env) ---
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': config('DB_NAME'),
         'USER': config('DB_USER'),
         'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST'),
-        'PORT': config('DB_PORT'),
+        'HOST': config('DB_HOST', default='127.0.0.1'),
+        'PORT': config('DB_PORT', default='5432'),
     }
 }
 
-# Password validation
-# https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
-
+# --- Senhas ---
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
-    },
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-
-# Internationalization
-# https://docs.djangoproject.com/en/5.2/topics/i18n/
-
+# --- i18n / tz ---
 LANGUAGE_CODE = "pt-br"
-
 TIME_ZONE = "America/Sao_Paulo"
-
 USE_I18N = True
-
 USE_TZ = True
 
+# --- App sob /blockline (subcaminho) ---
+FORCE_SCRIPT_NAME = '/blockline'
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
+# --- Arquivos estáticos e mídia sob /blockline ---
+STATIC_URL  = '/blockline/static/'
+STATIC_ROOT = BASE_DIR / 'static'
 
-STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / 'static'  # 🔑 adicionado para produção
+MEDIA_URL   = '/blockline/media/'
+MEDIA_ROOT  = BASE_DIR / 'media'
 
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
+# --- Auth (URLs sob /blockline) ---
+LOGIN_URL = '/blockline/accounts/login/'
+LOGIN_REDIRECT_URL = '/blockline/'
+LOGOUT_REDIRECT_URL = '/blockline/'
 
+# --- Primary key padrão ---
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Configuração de Arquivos de Mídia
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+# --- Cookies seguros quando atrás de HTTPS ---
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
 
-LOGIN_REDIRECT_URL = '/'
-LOGOUT_REDIRECT_URL = '/'
-LOGIN_URL = 'login'
-
-
-# atrás do Nginx/HTTPS
-USE_X_FORWARDED_HOST = True
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

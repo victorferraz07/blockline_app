@@ -6,33 +6,10 @@
 <div class="fixed inset-0 -z-10 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50"></div>
 
 <!-- Header moderno -->
-<div class="mb-6" x-data="{ showHistory: false, isFullscreen: false, zoomLevel: 100 }">
+<div class="mb-6" x-data="{ showHistory: false }">
     <div class="flex items-center justify-between">
         <h1 class="text-3xl font-bold text-gray-900">Quadro Kanban</h1>
         <div class="flex gap-2">
-            <!-- Controles de Zoom -->
-            <div class="flex items-center gap-1 bg-white rounded-lg shadow-sm px-2 py-1">
-                <button @click="zoomOut()" class="p-1.5 hover:bg-gray-100 rounded transition-colors" title="Diminuir zoom (-)">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"/>
-                    </svg>
-                </button>
-                <span class="text-xs font-medium text-gray-600 min-w-[45px] text-center" x-text="zoomLevel + '%'">100%</span>
-                <button @click="zoomIn()" class="p-1.5 hover:bg-gray-100 rounded transition-colors" title="Aumentar zoom (+)">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/>
-                    </svg>
-                </button>
-                <button @click="resetZoom()" class="p-1.5 hover:bg-gray-100 rounded transition-colors text-xs" title="Resetar zoom (0)">
-                    ↺
-                </button>
-            </div>
-            <button @click="toggleKanbanZoom()" class="px-4 py-2 rounded-lg bg-white shadow-sm hover:shadow-md transition-all duration-200 text-sm font-medium text-gray-700 hover:text-gray-900 flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
-                </svg>
-                <span x-text="isFullscreen ? 'Minimizar' : 'Tela Cheia'"></span>
-            </button>
             <a href="{% url 'metricas_kanban' %}" class="px-4 py-2 rounded-lg bg-white shadow-sm hover:shadow-md transition-all duration-200 text-sm font-medium text-gray-700 hover:text-gray-900">
                 📈 Métricas
             </a>
@@ -60,18 +37,14 @@
     </div>
 </div>
 
-<!-- Board Container com scroll horizontal suave e zoom -->
-<div id="kanban-board-wrapper" class="kanban-zoom-wrapper" style="transform-origin: top left; transition: transform 0.3s ease;">
+<!-- Board Container com scroll horizontal suave -->
 <div class="flex gap-4 overflow-x-auto pb-6 px-1 scrollbar-hide" style="scroll-behavior: smooth;">
     {% for coluna in colunas %}
     <div class="kanban-column flex-shrink-0 w-80" data-column-id="{{ coluna.id }}">
         <!-- Column Header -->
         <div class="bg-white rounded-t-xl border border-gray-200 shadow-sm relative overflow-visible">
             <div class="flex items-center justify-between p-4 overflow-visible">
-                <div class="flex items-center gap-2 cursor-grab column-handle" title="Arraste para reordenar">
-                    <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M9 5h2v2H9V5zm0 4h2v2H9V9zm0 4h2v2H9v-2zm0 4h2v2H9v-2zm4-12h2v2h-2V5zm0 4h2v2h-2V9zm0 4h2v2h-2v-2zm0 4h2v2h-2v-2z"/>
-                    </svg>
+                <div class="flex items-center gap-2">
                     <div class="w-3 h-3 rounded-full" style="background: {{ coluna.cor }};"></div>
                     <h2 class="font-semibold text-gray-900">{{ coluna.nome }}</h2>
                     <span class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{{ coluna.tasks.count }}</span>
@@ -185,70 +158,10 @@
                         {% endif %}
                     </div>
 
-                    <!-- Quantidades Registradas (Expandível) -->
-                    {% if task.quantidades_feitas.all %}
-                    <div class="mb-2" x-data="{ showQtds: false }">
-                        <button @click="showQtds = !showQtds" class="no-drag w-full text-left text-xs text-gray-600 hover:text-gray-900 py-1 flex items-center justify-between">
-                            <span class="font-medium">📊 Ver registros de quantidade ({{ task.quantidades_feitas.count }})</span>
-                            <svg class="w-4 h-4 transition-transform" :class="showQtds ? 'rotate-180' : ''" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                            </svg>
-                        </button>
-
-                        <div x-show="showQtds" x-transition class="no-drag mt-2 space-y-2 max-h-48 overflow-y-auto">
-                            {% for qtd in task.quantidades_feitas.all %}
-                            <div class="bg-gray-50 rounded p-2 text-xs" x-data="{ editandoQtd: false }">
-                                <div class="flex items-center justify-between" x-show="!editandoQtd">
-                                    <div class="flex items-center gap-2">
-                                        <div class="w-6 h-6 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white text-xs font-bold">
-                                            {{ qtd.usuario.username|slice:":1"|upper }}
-                                        </div>
-                                        <div>
-                                            <p class="font-semibold text-gray-900">{{ qtd.usuario.get_full_name|default:qtd.usuario.username }}</p>
-                                            <p class="text-gray-500">{{ qtd.data|date:'d/m H:i' }}</p>
-                                        </div>
-                                    </div>
-                                    <div class="flex items-center gap-1">
-                                        <span class="text-green-600 font-bold">+{{ qtd.quantidade }}</span>
-                                        <button @click="editandoQtd = true" class="p-1 hover:bg-gray-200 rounded" title="Editar">
-                                            <svg class="w-3 h-3 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
-                                            </svg>
-                                        </button>
-                                        <form method="post" action="{% url 'excluir_quantidade' qtd_id=qtd.id %}" onsubmit="return confirm('Excluir este registro?')" class="inline">
-                                            {% csrf_token %}
-                                            <input type="hidden" name="next" value="kanban_board">
-                                            <button type="submit" class="p-1 hover:bg-red-100 rounded" title="Excluir">
-                                                <svg class="w-3 h-3 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                                                </svg>
-                                            </button>
-                                        </form>
-                                    </div>
-                                </div>
-
-                                <!-- Form de edição -->
-                                <form x-show="editandoQtd" x-transition method="post" action="{% url 'editar_quantidade' qtd_id=qtd.id %}" class="flex gap-1" @click.stop>
-                                    {% csrf_token %}
-                                    <input type="hidden" name="next" value="kanban_board">
-                                    <input type="number" name="quantidade" min="1" value="{{ qtd.quantidade }}" class="flex-1 border border-gray-300 rounded px-2 py-1 text-xs" required @click.stop @mousedown.stop>
-                                    <button type="submit" class="px-2 py-1 bg-indigo-600 text-white rounded text-xs" @click.stop>
-                                        Salvar
-                                    </button>
-                                    <button type="button" @click="editandoQtd = false" class="px-2 py-1 bg-gray-200 text-gray-700 rounded text-xs" @click.stop>
-                                        ✕
-                                    </button>
-                                </form>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    {% endif %}
-
                     <!-- Actions e Form de Quantidade (Alpine.js) -->
                     <div x-data="{ editQty: false }">
-                        <!-- Actions (sempre visíveis) -->
-                        <div class="no-drag pt-2 border-t border-gray-100 flex flex-wrap gap-2">
+                        <!-- Actions (aparecem no hover) -->
+                        <div class="no-drag opacity-0 group-hover:opacity-100 transition-opacity pt-2 border-t border-gray-100 flex flex-wrap gap-2">
                             <a href="{% url 'detalhe_tarefa' task_id=task.id %}" class="no-drag text-xs px-3 py-1.5 rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-medium transition-colors">
                                 📋 Detalhes
                             </a>
@@ -285,10 +198,10 @@
                         </div>
 
                         <!-- Quick Add Quantity Form -->
-                        <form x-show="editQty" x-transition method="post" action="{% url 'registrar_quantidade' task_id=task.id %}" class="no-drag mt-3 flex gap-2 items-center pt-2 border-t border-gray-100" @click.stop @touchstart.stop>
+                        <form x-show="editQty" x-transition method="post" action="{% url 'registrar_quantidade' task_id=task.id %}" class="no-drag mt-3 flex gap-2 items-center pt-2 border-t border-gray-100">
                         {% csrf_token %}
-                        <input type="number" name="quantidade" min="1" class="no-drag flex-1 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Quantidade" required @click.stop @mousedown.stop @touchstart.stop style="pointer-events: auto;">
-                        <button type="submit" class="no-drag px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 font-medium transition-colors text-sm" @click.stop @touchstart.stop>
+                        <input type="number" name="quantidade" min="1" class="no-drag flex-1 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Quantidade" required>
+                        <button type="submit" class="no-drag px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 font-medium transition-colors text-sm">
                             Salvar
                         </button>
                         </form>
@@ -330,13 +243,13 @@
     {% endfor %}
 
     <!-- Add Column Card -->
-    <div class="flex-shrink-0 w-80 add-column-btn" x-data="{ addingColumn: false }">
+    <div class="flex-shrink-0 w-80" x-data="{ addingColumn: false }">
         <button @click="addingColumn = true" x-show="!addingColumn" class="w-full h-full min-h-[120px] bg-white/60 backdrop-blur-sm hover:bg-white/80 border-2 border-dashed border-gray-300 rounded-xl transition-all duration-200 text-gray-600 hover:text-gray-900 hover:border-gray-400 font-medium">
             + Adicionar coluna
         </button>
 
         <!-- Add Column Form -->
-        <div x-show="addingColumn" x-transition class="bg-white rounded-xl shadow-lg border border-gray-200 p-4" @click.stop>
+        <div x-show="addingColumn" x-transition class="bg-white rounded-xl shadow-lg border border-gray-200 p-4">
             <form method="post" action="{% url 'criar_coluna' %}" class="space-y-3">
                 {% csrf_token %}
                 <input type="text" name="nome" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Nome da coluna" required autofocus>
@@ -355,7 +268,6 @@
             </form>
         </div>
     </div>
-</div>
 </div>
 
 <style>
@@ -398,24 +310,10 @@
 /* Elementos não arrastáveis */
 .no-drag {
     cursor: auto !important;
-    touch-action: auto !important;
-    pointer-events: auto !important;
 }
 
 .no-drag * {
     cursor: auto !important;
-    touch-action: auto !important;
-    pointer-events: auto !important;
-}
-
-/* Inputs sempre devem funcionar */
-.kanban-card input[type="number"],
-.kanban-card input[type="text"],
-.kanban-card textarea,
-.kanban-card button,
-.kanban-card a {
-    touch-action: auto !important;
-    pointer-events: auto !important;
 }
 
 /* Line clamp para descrições */
@@ -424,59 +322,6 @@
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
-}
-
-/* ===== ESTILOS MOBILE OTIMIZADOS ===== */
-@media (max-width: 768px) {
-    /* Cards maiores e mais fáceis de arrastar no mobile */
-    .kanban-card {
-        min-height: 120px;
-        padding: 1rem !important;
-    }
-
-    /* Área de arrasto mais visível */
-    .kanban-card::before {
-        content: '⋮⋮';
-        position: absolute;
-        top: 50%;
-        left: 4px;
-        transform: translateY(-50%);
-        color: rgba(0, 0, 0, 0.15);
-        font-size: 1.2rem;
-        line-height: 0.8;
-        pointer-events: none;
-    }
-
-    /* Colunas com scroll otimizado */
-    .kanban-column {
-        -webkit-overflow-scrolling: touch;
-    }
-}
-
-/* Animação de sucesso após mover card */
-@keyframes cardMoved {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.03); }
-}
-
-.card-moved-success {
-    animation: cardMoved 0.6s ease-in-out;
-    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.3) !important;
-}
-
-/* Fallback class para mobile drag */
-.sortable-fallback {
-    opacity: 0.8 !important;
-    transform: scale(1.05) rotate(3deg) !important;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
-    z-index: 9999 !important;
-}
-
-/* Ghost melhorado */
-.sortable-ghost {
-    opacity: 0.2 !important;
-    background: rgba(99, 102, 241, 0.15) !important;
-    border: 2px dashed rgba(99, 102, 241, 0.5) !important;
 }
 </style>
 
@@ -508,31 +353,15 @@ document.addEventListener('DOMContentLoaded', function() {
     // Sortable para colunas (arrastar colunas)
     const board = document.querySelector('.flex.gap-4.overflow-x-auto');
     if (board) {
-        const columnSortable = Sortable.create(board, {
+        Sortable.create(board, {
             animation: 200,
-            ghostClass: 'sortable-ghost-column',
-            chosenClass: 'sortable-chosen-column',
-            dragClass: 'sortable-drag-column',
-            handle: '.column-handle', // Arrasta apenas pela área do título
-            filter: '.add-column-btn, button, a, input, textarea, select', // Ignora elementos interativos
-            preventOnFilter: false,
+            ghostClass: 'opacity-30',
+            dragClass: 'rotate-2 scale-105',
+            filter: '.flex-shrink-0:last-child', // Ignora o botão de adicionar coluna
             draggable: '.kanban-column',
-            swapThreshold: 0.65,
-            onStart: function(evt) {
-                console.log('🚀 Começou a arrastar coluna:', evt.item.dataset.columnId);
-                evt.item.classList.add('is-dragging-column');
-            },
             onEnd: function(evt) {
-                evt.item.classList.remove('is-dragging-column');
                 const columnId = evt.item.dataset.columnId;
                 const newIndex = evt.newIndex;
-
-                console.log('🎯 Coluna arrastada:', { columnId, newIndex });
-
-                if (!columnId) {
-                    console.error('❌ columnId não encontrado');
-                    return;
-                }
 
                 // Atualiza a ordem no servidor
                 fetch(`/kanban/coluna/mover/${columnId}/`, {
@@ -542,29 +371,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         'X-CSRFToken': csrftoken
                     },
                     body: `nova_ordem=${newIndex}`
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        console.log('✅ Coluna movida com sucesso!');
-                    } else {
-                        console.error('❌ Erro ao mover coluna:', data);
-                    }
-                })
-                .catch(error => {
-                    console.error('❌ Erro na requisição:', error);
                 });
             }
         });
-        console.log('✅ Sortable de colunas inicializado:', columnSortable);
     }
-
-    // Detectar se é mobile/touch device
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-                     ('ontouchstart' in window) ||
-                     (navigator.maxTouchPoints > 0);
-
-    console.log('📱 Dispositivo mobile detectado:', isMobile);
 
     // Sortable para cards dentro de cada coluna
     const columns = document.querySelectorAll('.kanban-column > div.space-y-3');
@@ -580,47 +390,8 @@ document.addEventListener('DOMContentLoaded', function() {
             draggable: '.kanban-card', // Define o que é arrastável
             filter: '.no-drag', // Ignora elementos com classe no-drag
             preventOnFilter: true,
-
-            // ===== OTIMIZAÇÕES PARA MOBILE =====
-            // Delay para evitar conflito com scroll em mobile
-            delay: isMobile ? 150 : 0,
-            delayOnTouchOnly: true, // Delay apenas em touch devices
-
-            // Sensibilidade e área de toque
-            touchStartThreshold: isMobile ? 10 : 5, // Mais tolerante no mobile (em pixels)
-            forceFallback: isMobile, // Usa fallback em mobile para melhor controle
-
-            // Feedback visual
-            fallbackClass: 'sortable-fallback',
-            fallbackOnBody: true,
-            fallbackTolerance: isMobile ? 10 : 0,
-
-            // Scroll automático suave
-            scroll: true,
-            scrollSensitivity: isMobile ? 60 : 30,
-            scrollSpeed: 15,
-            bubbleScroll: true,
-
-            // Swap suave
-            swapThreshold: isMobile ? 0.5 : 0.65,
-            invertSwap: false,
-
-            // Direção preferencial
-            direction: 'vertical',
-
             onStart: function(evt) {
                 console.log('🚀 Começou a arrastar card:', evt.item.dataset.taskId);
-
-                // Adiciona feedback visual em mobile
-                if (isMobile) {
-                    evt.item.style.transform = 'scale(1.05)';
-                    evt.item.style.opacity = '0.9';
-
-                    // Vibração suave se disponível
-                    if (navigator.vibrate) {
-                        navigator.vibrate(50);
-                    }
-                }
             },
             onEnd: function(evt) {
                 const taskCard = evt.item;
@@ -630,17 +401,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 const newIndex = evt.newIndex;
 
                 console.log('🎯 Card arrastado:', { taskId, newColumnId, newIndex });
-
-                // Remove estilos temporários do mobile
-                if (isMobile) {
-                    taskCard.style.transform = '';
-                    taskCard.style.opacity = '';
-
-                    // Vibração de confirmação
-                    if (navigator.vibrate) {
-                        navigator.vibrate(100);
-                    }
-                }
 
                 if (taskId && newColumnId) {
                     // Atualiza no servidor
@@ -659,14 +419,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             console.log('✅ Card movido com sucesso!');
                             // Atualiza contadores de cards nas colunas
                             updateColumnCounts();
-
-                            // Animação de sucesso em mobile
-                            if (isMobile) {
-                                taskCard.classList.add('card-moved-success');
-                                setTimeout(() => {
-                                    taskCard.classList.remove('card-moved-success');
-                                }, 600);
-                            }
                         } else {
                             console.error('❌ Servidor retornou erro:', data);
                         }
@@ -699,7 +451,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
-/* Animações extras para drag and drop de cards */
+/* Animações extras para drag and drop */
 .sortable-ghost {
     opacity: 0.3 !important;
     background: rgba(99, 102, 241, 0.1) !important;
@@ -711,31 +463,6 @@ document.addEventListener('DOMContentLoaded', function() {
     cursor: grabbing !important;
 }
 
-/* Animações para drag and drop de colunas */
-.sortable-ghost-column {
-    opacity: 0.4 !important;
-}
-
-.sortable-chosen-column {
-    opacity: 0.8;
-}
-
-.sortable-drag-column {
-    transform: rotate(2deg) scale(1.02);
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
-    cursor: grabbing !important;
-    opacity: 0.9 !important;
-}
-
-.is-dragging-column {
-    cursor: grabbing !important;
-}
-
-.is-dragging-column * {
-    cursor: grabbing !important;
-    pointer-events: none;
-}
-
 .kanban-card:active {
     cursor: grabbing;
 }
@@ -743,160 +470,5 @@ document.addEventListener('DOMContentLoaded', function() {
 .kanban-column:active {
     cursor: grabbing;
 }
-
-.column-handle {
-    user-select: none;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-}
-
-.column-handle:active {
-    cursor: grabbing !important;
-}
-
-/* Estilos para modo fullscreen/zoom */
-body.kanban-fullscreen {
-    overflow: hidden;
-}
-
-body.kanban-fullscreen main {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 9998;
-    background: white;
-    overflow-y: auto;
-    padding: 1rem;
-}
-
-body.kanban-fullscreen nav {
-    display: none;
-}
-
-body.kanban-fullscreen .kanban-column {
-    width: 350px; /* Colunas um pouco mais largas em fullscreen */
-}
 </style>
-
-<script>
-    // Função para alternar modo fullscreen do Kanban
-    function toggleKanbanZoom() {
-        const body = document.body;
-        const main = document.querySelector('main');
-        const alpineData = Alpine.$data(document.querySelector('[x-data]'));
-
-        if (body.classList.contains('kanban-fullscreen')) {
-            // Sair do fullscreen
-            body.classList.remove('kanban-fullscreen');
-            if (alpineData) alpineData.isFullscreen = false;
-
-            // Restaurar scroll normal
-            document.body.style.overflow = '';
-
-            console.log('↙️ Saiu do modo tela cheia');
-        } else {
-            // Entrar em fullscreen
-            body.classList.add('kanban-fullscreen');
-            if (alpineData) alpineData.isFullscreen = true;
-
-            // Scroll para o topo
-            window.scrollTo(0, 0);
-
-            console.log('↗️ Entrou em modo tela cheia');
-
-            // Vibração se disponível
-            if (navigator.vibrate) {
-                navigator.vibrate(50);
-            }
-        }
-    }
-
-    // Atalho de teclado: F11 ou Ctrl/Cmd + Shift + F
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'F11' || (e.shiftKey && e.key === 'F' && (e.ctrlKey || e.metaKey))) {
-            e.preventDefault();
-            toggleKanbanZoom();
-        }
-
-        // ESC para sair do fullscreen
-        if (e.key === 'Escape' && document.body.classList.contains('kanban-fullscreen')) {
-            toggleKanbanZoom();
-        }
-
-        // Atalhos de zoom com teclado
-        if ((e.ctrlKey || e.metaKey) && e.key === '+') {
-            e.preventDefault();
-            zoomIn();
-        }
-        if ((e.ctrlKey || e.metaKey) && e.key === '-') {
-            e.preventDefault();
-            zoomOut();
-        }
-        if ((e.ctrlKey || e.metaKey) && e.key === '0') {
-            e.preventDefault();
-            resetZoom();
-        }
-    });
-
-    // Funções de zoom
-    function zoomIn() {
-        const alpineData = Alpine.$data(document.querySelector('[x-data]'));
-        if (alpineData && alpineData.zoomLevel < 200) {
-            alpineData.zoomLevel += 10;
-            applyZoom(alpineData.zoomLevel);
-        }
-    }
-
-    function zoomOut() {
-        const alpineData = Alpine.$data(document.querySelector('[x-data]'));
-        if (alpineData && alpineData.zoomLevel > 50) {
-            alpineData.zoomLevel -= 10;
-            applyZoom(alpineData.zoomLevel);
-        }
-    }
-
-    function resetZoom() {
-        const alpineData = Alpine.$data(document.querySelector('[x-data]'));
-        if (alpineData) {
-            alpineData.zoomLevel = 100;
-            applyZoom(100);
-        }
-    }
-
-    function applyZoom(level) {
-        const wrapper = document.getElementById('kanban-board-wrapper');
-        if (wrapper) {
-            const scale = level / 100;
-            wrapper.style.transform = `scale(${scale})`;
-
-            // Ajusta o container para compensar o zoom
-            const container = wrapper.parentElement;
-            if (container) {
-                // Calcula o espaço extra necessário
-                const extraHeight = wrapper.scrollHeight * (scale - 1);
-                const extraWidth = wrapper.scrollWidth * (scale - 1);
-                container.style.paddingBottom = `${Math.max(0, extraHeight)}px`;
-                container.style.paddingRight = `${Math.max(0, extraWidth)}px`;
-            }
-
-            console.log(`🔍 Zoom aplicado: ${level}%`);
-        }
-    }
-
-    // Zoom com scroll do mouse (Ctrl + Scroll)
-    document.addEventListener('wheel', (e) => {
-        if (e.ctrlKey || e.metaKey) {
-            e.preventDefault();
-            const delta = e.deltaY > 0 ? -1 : 1;
-            if (delta > 0) {
-                zoomIn();
-            } else {
-                zoomOut();
-            }
-        }
-    }, { passive: false });
-</script>
 {% endblock %}
