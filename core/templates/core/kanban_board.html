@@ -428,7 +428,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const newIndex = evt.newIndex;
 
                 // Atualiza a ordem no servidor
-                fetch(`/kanban/coluna/mover/${columnId}/`, {
+                fetch(`{{ request.scheme }}://{{ request.get_host }}{% url 'mover_coluna' coluna_id=0 %}`.replace('/0/', `/${columnId}/`), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
@@ -469,7 +469,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (taskId && newColumnId) {
                     // Atualiza no servidor
                     console.log('📤 Enviando para servidor...');
-                    fetch(`/kanban/tarefa/mover/${taskId}/`, {
+                    fetch(`{{ request.scheme }}://{{ request.get_host }}{% url 'mover_tarefa' task_id=0 %}`.replace('/0/', `/${taskId}/`), {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/x-www-form-urlencoded',
