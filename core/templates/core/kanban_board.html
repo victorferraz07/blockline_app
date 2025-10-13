@@ -200,44 +200,44 @@
 
                     <!-- Actions e Form de Quantidade (Alpine.js) -->
                     <div x-data="{ editQty: false }">
-                        <!-- Actions (sempre visíveis) -->
-                        <div class="no-drag pt-2 border-t border-gray-100 flex flex-wrap gap-1 sm:gap-2">
-                            <a href="{% url 'detalhe_tarefa' task_id=task.id %}" class="no-drag text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-medium transition-colors">
+                        <!-- Actions (sempre visíveis) - Botões maiores para mobile -->
+                        <div class="no-drag pt-2 border-t border-gray-100 flex flex-wrap gap-1.5 sm:gap-2">
+                            <a href="{% url 'detalhe_tarefa' task_id=task.id %}" class="no-drag btn-mobile text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-medium transition-colors tap-feedback">
                                 <span class="hidden sm:inline">📋 Detalhes</span>
                                 <span class="sm:hidden">📋</span>
                             </a>
                             {% if not task.finalizado %}
                             <form method="post" action="{% url 'marcar_andamento' task_id=task.id %}" class="inline no-drag">
                                 {% csrf_token %}
-                                <button type="submit" class="no-drag text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium transition-colors">
+                                <button type="submit" class="no-drag btn-mobile text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium transition-colors tap-feedback">
                                     <span class="hidden sm:inline">▶️ Iniciar</span>
                                     <span class="sm:hidden">▶️</span>
                                 </button>
                             </form>
                             <form method="post" action="{% url 'finalizar' task_id=task.id %}" class="inline no-drag" onsubmit="return confirm('Tem certeza que deseja finalizar este card? Esta ação marcará o card como concluído.')">
                                 {% csrf_token %}
-                                <button type="submit" class="no-drag text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-md bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-medium transition-colors">
+                                <button type="submit" class="no-drag btn-mobile text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-medium transition-colors tap-feedback">
                                     <span class="hidden sm:inline">✓ Finalizar</span>
                                     <span class="sm:hidden">✓</span>
                                 </button>
                             </form>
-                            <button @click="editQty = !editQty" class="no-drag text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-md bg-purple-50 text-purple-700 hover:bg-purple-100 font-medium transition-colors">
+                            <button @click="editQty = !editQty" class="no-drag btn-mobile text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 font-medium transition-colors tap-feedback">
                                 <span class="hidden sm:inline">+ Qtd</span>
                                 <span class="sm:hidden">+</span>
                             </button>
-                            <a href="{% url 'detalhe_tarefa' task_id=task.id %}#historico" class="no-drag text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-md bg-amber-50 text-amber-700 hover:bg-amber-100 font-medium transition-colors" title="Ver/Editar histórico de quantidades">
+                            <a href="{% url 'detalhe_tarefa' task_id=task.id %}#historico" class="no-drag btn-mobile text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 font-medium transition-colors tap-feedback" title="Ver/Editar histórico de quantidades">
                                 <span class="hidden sm:inline">📊 Hist</span>
                                 <span class="sm:hidden">📊</span>
                             </a>
-                            <a href="{% url 'editar_tarefa' task_id=task.id %}" class="no-drag text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-md bg-gray-50 text-gray-700 hover:bg-gray-100 font-medium transition-colors">
+                            <a href="{% url 'editar_tarefa' task_id=task.id %}" class="no-drag btn-mobile text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-gray-50 text-gray-700 hover:bg-gray-100 font-medium transition-colors tap-feedback">
                                 ✏️
                             </a>
                             {% else %}
-                            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2 w-full">
-                                <span class="text-[10px] sm:text-xs text-green-600 font-medium">Finalizado</span>
+                            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full">
+                                <span class="text-xs sm:text-sm text-green-600 font-semibold">✓ Finalizado</span>
                                 <form method="post" action="{% url 'desfinalizar' task_id=task.id %}" class="inline no-drag" onsubmit="return confirm('Deseja reabrir este card?')">
                                     {% csrf_token %}
-                                    <button type="submit" class="no-drag text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-md bg-yellow-50 text-yellow-700 hover:bg-yellow-100 font-medium transition-colors">
+                                    <button type="submit" class="no-drag btn-mobile text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-yellow-50 text-yellow-700 hover:bg-yellow-100 font-medium transition-colors tap-feedback">
                                         <span class="hidden sm:inline">↩️ Reabrir</span>
                                         <span class="sm:hidden">↩️</span>
                                     </button>
@@ -246,11 +246,11 @@
                             {% endif %}
                         </div>
 
-                        <!-- Quick Add Quantity Form -->
-                        <form x-show="editQty" x-transition method="post" action="{% url 'registrar_quantidade' task_id=task.id %}" class="no-drag mt-2 sm:mt-3 flex gap-2 items-center pt-2 border-t border-gray-100">
+                        <!-- Quick Add Quantity Form - Inputs maiores para mobile -->
+                        <form x-show="editQty" x-transition method="post" action="{% url 'registrar_quantidade' task_id=task.id %}" class="no-drag mt-3 flex gap-2 items-center pt-3 border-t border-gray-100">
                         {% csrf_token %}
-                        <input type="number" name="quantidade" min="1" class="no-drag flex-1 border border-gray-300 rounded-md px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Qtd" required>
-                        <button type="submit" class="no-drag px-2 sm:px-3 py-1 sm:py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 font-medium transition-colors text-xs sm:text-sm">
+                        <input type="number" name="quantidade" min="1" class="no-drag flex-1 border-2 border-gray-300 rounded-lg px-3 py-2.5 text-sm sm:text-base focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" placeholder="Quantidade" required>
+                        <button type="submit" class="no-drag btn-mobile px-4 py-2.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 font-semibold transition-colors text-sm sm:text-base tap-feedback">
                             Salvar
                         </button>
                         </form>
