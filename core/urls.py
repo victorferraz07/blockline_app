@@ -51,6 +51,8 @@ urlpatterns = [
     path('kanban/finalizar/<int:task_id>/', views.finalizar, name='finalizar'),
     path('kanban/desfinalizar/<int:task_id>/', views.desfinalizar, name='desfinalizar'),
     path('kanban/registrar_quantidade/<int:task_id>/', views.registrar_quantidade, name='registrar_quantidade'),
+    path('kanban/quantidade/<int:quantidade_id>/editar/', views.editar_quantidade_feita, name='editar_quantidade_feita'),
+    path('kanban/quantidade/<int:quantidade_id>/excluir/', views.excluir_quantidade_feita, name='excluir_quantidade_feita'),
 
     # --- Rotas de Controle de Ponto ---
     path('ponto/', views.controle_ponto, name='controle_ponto'),
@@ -72,4 +74,7 @@ urlpatterns = [
     path('fornecedores/<int:pk>/', views.detalhe_fornecedor, name='detalhe_fornecedor'),
     path('fornecedores/<int:pk>/editar/', views.editar_fornecedor, name='editar_fornecedor'),
     path('fornecedores/<int:pk>/excluir/', views.excluir_fornecedor, name='excluir_fornecedor'),
+
+    # --- PWA ---
+    path('manifest.json', views.manifest_json, name='manifest_json'),
 ]

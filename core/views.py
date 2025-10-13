@@ -1907,3 +1907,97 @@ def excluir_fornecedor(request, pk):
         messages.success(request, f'Fornecedor "{nome}" excluído com sucesso!')
         return redirect('lista_fornecedores')
     return redirect('detalhe_fornecedor', pk=pk)
+
+# === PWA MANIFEST DINÂMICO ===
+
+def manifest_json(request):
+    """Gera manifest.json dinâmico com URLs corretas para FORCE_SCRIPT_NAME"""
+    from django.conf import settings
+    from django.templatetags.static import static
+
+    # Pega o prefixo base (FORCE_SCRIPT_NAME)
+    base_url = settings.FORCE_SCRIPT_NAME if hasattr(settings, 'FORCE_SCRIPT_NAME') else ''
+
+    manifest = {
+        "name": "Blockline - Gestão Empresarial",
+        "short_name": "Blockline",
+        "description": "Sistema completo de gestão empresarial com controle de estoque, recebimento, expedição, kanban e ponto eletrônico",
+        "start_url": f"{base_url}/",
+        "display": "standalone",
+        "background_color": "#ffffff",
+        "theme_color": "#4F46E5",
+        "orientation": "portrait-primary",
+        "scope": f"{base_url}/",
+        "lang": "pt-BR",
+        "dir": "ltr",
+        "icons": [
+            {
+                "src": request.build_absolute_uri(static('icons/icon-72.png')),
+                "sizes": "72x72",
+                "type": "image/png",
+                "purpose": "any"
+            },
+            {
+                "src": request.build_absolute_uri(static('icons/icon-96.png')),
+                "sizes": "96x96",
+                "type": "image/png",
+                "purpose": "any"
+            },
+            {
+                "src": request.build_absolute_uri(static('icons/icon-128.png')),
+                "sizes": "128x128",
+                "type": "image/png",
+                "purpose": "any"
+            },
+            {
+                "src": request.build_absolute_uri(static('icons/icon-144.png')),
+                "sizes": "144x144",
+                "type": "image/png",
+                "purpose": "any"
+            },
+            {
+                "src": request.build_absolute_uri(static('icons/icon-152.png')),
+                "sizes": "152x152",
+                "type": "image/png",
+                "purpose": "any"
+            },
+            {
+                "src": request.build_absolute_uri(static('icons/icon-192.png')),
+                "sizes": "192x192",
+                "type": "image/png",
+                "purpose": "any maskable"
+            },
+            {
+                "src": request.build_absolute_uri(static('icons/icon-512.png')),
+                "sizes": "512x512",
+                "type": "image/png",
+                "purpose": "any maskable"
+            }
+        ],
+        "shortcuts": [
+            {
+                "name": "Bater Ponto",
+                "short_name": "Ponto",
+                "description": "Registrar ponto rapidamente",
+                "url": f"{base_url}/ponto/",
+                "icons": [{"src": request.build_absolute_uri(static('icons/icon-192.png')), "sizes": "192x192"}]
+            },
+            {
+                "name": "Kanban",
+                "short_name": "Kanban",
+                "description": "Ver quadro Kanban",
+                "url": f"{base_url}/kanban/",
+                "icons": [{"src": request.build_absolute_uri(static('icons/icon-192.png')), "sizes": "192x192"}]
+            },
+            {
+                "name": "Estoque",
+                "short_name": "Estoque",
+                "description": "Ver estoque",
+                "url": f"{base_url}/estoque/",
+                "icons": [{"src": request.build_absolute_uri(static('icons/icon-192.png')), "sizes": "192x192"}]
+            }
+        ],
+        "prefer_related_applications": False
+    }
+
+    return JsonResponse(manifest, content_type='application/manifest+json')
