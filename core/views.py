@@ -361,7 +361,6 @@ def duplicar_item(request, pk):
 # --- Views de Recebimento ---
 
 @login_required
-@permission_required('core.view_recebimento', raise_exception=True)
 def lista_recebimentos(request):
     from datetime import timedelta
     from decimal import Decimal
@@ -470,7 +469,6 @@ def registrar_recebimento(request):
     return render(request, 'core/registrar_recebimento.html', contexto)
 
 @login_required
-@permission_required('core.view_recebimento', raise_exception=True)
 def detalhe_recebimento(request, pk):
     empresas_permitidas = get_empresas_permitidas(request.user)
     recebimento = get_object_or_404(Recebimento, pk=pk)
@@ -479,7 +477,6 @@ def detalhe_recebimento(request, pk):
     return render(request, 'core/detalhe_recebimento.html', contexto)
 
 @login_required
-@permission_required('core.change_recebimento', raise_exception=True)
 def editar_recebimento(request, pk):
     recebimento = get_object_or_404(Recebimento, pk=pk)
     if request.method == 'POST':
@@ -878,7 +875,6 @@ def editar_expedicao(request, pk):
     return render(request, 'core/editar_expedicao.html', contexto)
 
 @login_required
-@permission_required('core.delete_recebimento', raise_exception=True)
 def excluir_recebimento(request, pk):
     recebimento = get_object_or_404(Recebimento, pk=pk)
     if request.method == 'POST':
