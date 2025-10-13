@@ -7,7 +7,7 @@
 <div class="max-w-2xl mx-auto mt-10">
   <!-- Header com botão voltar -->
   <div class="flex items-center gap-3 mb-6">
-    <a href="/kanban/" class="p-2 rounded-lg bg-white shadow-sm hover:shadow-md transition-all duration-200">
+    <a href="{% url 'kanban_board' %}" class="p-2 rounded-lg bg-white shadow-sm hover:shadow-md transition-all duration-200">
       <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
       </svg>
@@ -103,7 +103,7 @@
           💾 Salvar Tarefa
         </button>
         <a
-          href="/kanban/"
+          href="{% url 'kanban_board' %}"
           class="px-6 py-3 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 font-semibold transition-all duration-200"
         >
           Cancelar
@@ -115,7 +115,7 @@
   <!-- Dica de Deletar (se estiver editando) -->
   {% if task %}
   <div class="mt-4 text-center">
-    <form method="post" action="/kanban/tarefa/{{ task.id }}/excluir/" onsubmit="return confirm('Tem certeza que deseja excluir esta tarefa?')">
+    <form method="post" action="{% url 'excluir_tarefa' task.id %}"  onsubmit="return confirm('Tem certeza que deseja excluir esta tarefa?')">
       {% csrf_token %}
       <button type="submit" class="text-sm text-red-600 hover:text-red-700 underline">
         🗑️ Excluir esta tarefa

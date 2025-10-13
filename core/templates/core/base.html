@@ -2,107 +2,178 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    
-    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <title>Blockline - Gestão Empresarial</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+
+  <title>Blockline - Gestão Empresarial</title>
 </head>
 <body class="bg-gray-50 text-gray-800">
+{% comment %}
+  prefix = "" em dev local, "/blockline" em prod,
+  "/blockline-dev" no ambiente de desenvolvimento da VPS.
+{% endcomment %}
+{% with prefix=request.META.SCRIPT_NAME|default:"" %}
 
-    <nav class="bg-white/90 shadow-md sticky top-0 z-50">
-      <div class="w-full px-0">
-        <div class="flex items-center justify-between h-16 w-full">
-          <!-- Logo à esquerda, com padding visual -->
-          <div class="flex-shrink-0 flex items-center pl-4 ml-0">
-            <a href="/" class="flex items-center gap-2">
-              <span class="font-bold text-2xl text-indigo-700 tracking-tight">Blockline</span>
-            </a>
-          </div>
-          <!-- Menu centralizado -->
-          <div class="hidden md:flex flex-1 justify-center space-x-6">
-            <a href="/" class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if request.path == '/' %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">Dashboard</a>
-            <a href="/recebimento/" class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/recebimento/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">Recebimento</a>
-            <a href="/estoque/" class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/estoque/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">Estoque</a>
-            <a href="/produtos/" class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/produtos/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">Produtos</a>
-            <a href="/expedicao/" class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/expedicao/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">Expedição</a>
-            <a href="/clientes/" class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/clientes/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">Clientes</a>
-            <a href="/fornecedores/" class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/fornecedores/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">Fornecedores</a>
-            <a href="/kanban/" class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/kanban/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">Kanban</a>
-            <a href="{% url 'controle_ponto' %}" class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/ponto/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">⏰ Ponto</a>
-          </div>
-          <!-- Login/Perfil à direita, com padding -->
-          <div class="flex items-center space-x-4 pr-4 mr-0">
-            {% if user.is_authenticated %}
-              <span class="hidden md:inline text-gray-700">Olá, <span class="font-semibold">{{ user.get_full_name|default:user.username }}</span></span>
-              <form method="post" action="{% url 'logout' %}" class="inline">
-                {% csrf_token %}
-                <button type="submit" class="py-2 px-3 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 font-semibold transition">Sair</button>
-              </form>
-            {% else %}
-              <a href="/accounts/login/" class="py-2 px-3 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 font-semibold transition">Entrar</a>
-            {% endif %}
-          </div>
-          <!-- Mobile menu button -->
-          <div class="md:hidden flex items-center ml-2">
-            <button id="menu-toggle" class="text-indigo-700 focus:outline-none">
-              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-            </button>
-          </div>
+  <nav class="bg-white/90 shadow-md sticky top-0 z-50">
+    <div class="w-full px-0">
+      <div class="flex items-center justify-between h-16 w-full">
+
+        <!-- Logo -->
+        <div class="flex-shrink-0 flex items-center pl-4 ml-0">
+          <a href="{% url 'dashboard' %}" class="flex items-center gap-2">
+            <span class="font-bold text-2xl text-indigo-700 tracking-tight">Blockline</span>
+          </a>
         </div>
-        <!-- Mobile menu -->
-        <div id="mobile-menu" class="md:hidden hidden flex-col space-y-2 mt-2 pb-4">
-          <a href="/" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Dashboard</a>
-          <a href="/recebimento/" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Recebimento</a>
-          <a href="/estoque/" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Estoque</a>
-          <a href="/produtos/" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Produtos</a>
-          <a href="/expedicao/" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Expedição</a>
-          <a href="/clientes/" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Clientes</a>
-          <a href="/fornecedores/" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Fornecedores</a>
-          <a href="/kanban/" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Kanban</a>
-          <a href="{% url 'controle_ponto' %}" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">⏰ Ponto</a>
+
+        <!-- Menu (desktop) -->
+        <div class="hidden md:flex flex-1 justify-center space-x-6">
+          <a href="{% url 'dashboard' %}"
+             class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if request.path == prefix|add:'/' %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
+            Dashboard
+          </a>
+
+          <a href="{% url 'lista_recebimentos' %}"
+             class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/recebimento/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
+            Recebimento
+          </a>
+
+          <a href="{% url 'lista_estoque' %}"
+             class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/estoque/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
+            Estoque
+          </a>
+
+          <a href="{% url 'lista_produtos' %}"
+             class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/produtos/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
+            Produtos
+          </a>
+
+          <a href="{% url 'lista_expedicoes' %}"
+             class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/expedicao/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
+            Expedição
+          </a>
+
+          <a href="{{ prefix }}/clientes/"
+             class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/clientes/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
+            Clientes
+          </a>
+
+          <a href="{{ prefix }}/fornecedores/"
+             class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/fornecedores/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
+            Fornecedores
+          </a>
+
+          <a href="{% url 'kanban_board' %}"
+             class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/kanban/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
+            Kanban
+          </a>
+
+          <a href="{% url 'controle_ponto' %}"
+             class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/ponto/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
+            ⏰ Ponto
+          </a>
+        </div>
+
+        <!-- Login/Perfil -->
+        <div class="flex items-center space-x-4 pr-4 mr-0">
           {% if user.is_authenticated %}
-            <span class="block py-2 px-3 text-gray-700">Olá, <span class="font-semibold">{{ user.get_full_name|default:user.username }}</span></span>
-            <form method="post" action="{% url 'logout' %}" class="block">
+            <span class="hidden md:inline text-gray-700">
+              Olá, <span class="font-semibold">{{ user.get_full_name|default:user.username }}</span>
+            </span>
+            <form method="post" action="{% url 'logout' %}" class="inline">
               {% csrf_token %}
-              <button type="submit" class="w-full text-left py-2 px-3 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 font-semibold transition">Sair</button>
+              <button type="submit" class="py-2 px-3 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 font-semibold transition">
+                Sair
+              </button>
             </form>
           {% else %}
-            <a href="/accounts/login/" class="block py-2 px-3 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 font-semibold transition">Entrar</a>
+            <a href="{% url 'login' %}"
+               class="py-2 px-3 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 font-semibold transition">
+              Entrar
+            </a>
           {% endif %}
         </div>
-      </div>
-    </nav>
-    <script>
-      const menuToggle = document.getElementById('menu-toggle');
-      const mobileMenu = document.getElementById('mobile-menu');
-      if(menuToggle && mobileMenu) {
-        menuToggle.addEventListener('click', () => {
-          mobileMenu.classList.toggle('hidden');
-        });
-      }
-    </script>
 
-    {% if messages %}
-        <div class="container mx-auto mt-4 px-4 sm:px-8">
-            {% for message in messages %}
-                <div class="p-4 mb-4 text-sm rounded-lg {% if message.tags == 'success' %} bg-green-100 text-green-800 {% elif message.tags == 'error' %} bg-red-100 text-red-800 {% else %} bg-blue-100 text-blue-800 {% endif %}" role="alert">
-                    {{ message }}
-                </div>
-            {% endfor %}
+        <!-- Mobile menu button -->
+        <div class="md:hidden flex items-center ml-2">
+          <button id="menu-toggle" class="text-indigo-700 focus:outline-none" aria-label="Abrir menu">
+            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                 xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
+          </button>
         </div>
-    {% endif %}
+      </div>
 
-    <main class="p-4 sm:p-8">
-        {% block content %}
-        {% endblock %}
-    </main>
+      <!-- Mobile menu -->
+      <div id="mobile-menu" class="md:hidden hidden flex-col space-y-2 mt-2 pb-4">
+        <a href="{% url 'dashboard' %}" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Dashboard</a>
+        <a href="{% url 'lista_recebimentos' %}" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Recebimento</a>
+        <a href="{% url 'lista_estoque' %}" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Estoque</a>
+        <a href="{% url 'lista_produtos' %}" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Produtos</a>
+        <a href="{% url 'lista_expedicoes' %}" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Expedição</a>
+        <a href="{{ prefix }}/clientes/" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Clientes</a>
+        <a href="{{ prefix }}/fornecedores/" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Fornecedores</a>
+        <a href="{% url 'kanban_board' %}" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Kanban</a>
+        <a href="{% url 'controle_ponto' %}" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">⏰ Ponto</a>
 
-    {% block javascript %}{% endblock %}
+        {% if user.is_authenticated %}
+          <span class="block py-2 px-3 text-gray-700">
+            Olá, <span class="font-semibold">{{ user.get_full_name|default:user.username }}</span>
+          </span>
+          <form method="post" action="{% url 'logout' %}" class="block">
+            {% csrf_token %}
+            <button type="submit"
+                    class="w-full text-left py-2 px-3 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 font-semibold transition">
+              Sair
+            </button>
+          </form>
+        {% else %}
+          <a href="{% url 'login' %}"
+             class="block py-2 px-3 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 font-semibold transition">
+            Entrar
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </nav>
+
+  <script>
+    const menuToggle = document.getElementById('menu-toggle');
+    const mobileMenu = document.getElementById('mobile-menu');
+    if (menuToggle && mobileMenu) {
+      menuToggle.addEventListener('click', () => {
+        mobileMenu.classList.toggle('hidden');
+      });
+    }
+  </script>
+
+  {% if messages %}
+    <div class="container mx-auto mt-4 px-4 sm:px-8">
+      {% for message in messages %}
+        <div class="p-4 mb-4 text-sm rounded-lg
+                    {% if message.tags == 'success' %} bg-green-100 text-green-800
+                    {% elif message.tags == 'error' %} bg-red-100 text-red-800
+                    {% else %} bg-blue-100 text-blue-800 {% endif %}"
+             role="alert">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <main class="p-4 sm:p-8">
+    {% block content %}{% endblock %}
+  </main>
+
+  {% block javascript %}{% endblock %}
+
+{% endwith %}
 </body>
 </html>

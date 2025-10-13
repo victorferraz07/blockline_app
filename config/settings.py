@@ -1,4 +1,5 @@
 # config/settings.py
+import os
 from pathlib import Path
 from decouple import config, Csv
 
@@ -88,19 +89,19 @@ USE_I18N = True
 USE_TZ = True
 
 # --- App sob /blockline (subcaminho) ---
-FORCE_SCRIPT_NAME = '/blockline'
+FORCE_SCRIPT_NAME = os.getenv('SCRIPT_NAME', '/blockline')
 
 # --- Arquivos estáticos e mídia sob /blockline ---
-STATIC_URL  = '/blockline/static/'
+STATIC_URL = f"{FORCE_SCRIPT_NAME}/static/"
 STATIC_ROOT = BASE_DIR / 'static'
 
-MEDIA_URL   = '/blockline/media/'
+MEDIA_URL  = f"{FORCE_SCRIPT_NAME}/media/"
 MEDIA_ROOT  = BASE_DIR / 'media'
 
-# --- Auth (URLs sob /blockline) ---
-LOGIN_URL = '/blockline/accounts/login/'
-LOGIN_REDIRECT_URL = '/blockline/'
-LOGOUT_REDIRECT_URL = '/blockline/'
+# --- Auth (URLs sob /blockline) --
+LOGIN_URL = f"{FORCE_SCRIPT_NAME}/accounts/login/"
+LOGIN_REDIRECT_URL = f"{FORCE_SCRIPT_NAME}/"
+LOGOUT_REDIRECT_URL = f"{FORCE_SCRIPT_NAME}/"
 
 # --- Primary key padrão ---
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
