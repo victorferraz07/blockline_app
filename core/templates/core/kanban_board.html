@@ -6,18 +6,38 @@
 <div class="fixed inset-0 -z-10 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50"></div>
 
 <!-- Header moderno -->
-<div class="mb-6" x-data="{ showHistory: false }">
-    <div class="flex items-center justify-between">
-        <h1 class="text-3xl font-bold text-gray-900">Quadro Kanban</h1>
-        <div class="flex gap-2">
-            <a href="{% url 'metricas_kanban' %}" class="px-4 py-2 rounded-lg bg-white shadow-sm hover:shadow-md transition-all duration-200 text-sm font-medium text-gray-700 hover:text-gray-900">
+<div class="mb-6" x-data="{ showHistory: false, zoomLevel: 100 }">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Quadro Kanban</h1>
+        <div class="flex flex-wrap gap-2 w-full sm:w-auto">
+            <a href="{% url 'metricas_kanban' %}" class="flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-lg bg-white shadow-sm hover:shadow-md transition-all duration-200 text-xs sm:text-sm font-medium text-gray-700 hover:text-gray-900 text-center">
                 📈 Métricas
             </a>
-            <button @click="showHistory = !showHistory" class="px-4 py-2 rounded-lg bg-white shadow-sm hover:shadow-md transition-all duration-200 text-sm font-medium text-gray-700 hover:text-gray-900">
-                <span x-show="!showHistory">📊 Ver Histórico</span>
-                <span x-show="showHistory">✕ Fechar Histórico</span>
+            <button @click="showHistory = !showHistory" class="flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-lg bg-white shadow-sm hover:shadow-md transition-all duration-200 text-xs sm:text-sm font-medium text-gray-700 hover:text-gray-900">
+                <span x-show="!showHistory">📊 Histórico</span>
+                <span x-show="showHistory">✕ Fechar</span>
             </button>
         </div>
+    </div>
+
+    <!-- Controle de Zoom Flutuante (canto inferior direito) -->
+    <div class="fixed bottom-6 right-6 z-50 flex flex-col items-center gap-2 px-3 py-3 rounded-xl bg-white shadow-lg border border-gray-200 hover:shadow-xl transition-shadow">
+        <button @click="zoomLevel = Math.min(150, zoomLevel + 10); document.querySelector('.kanban-board-container').style.transform = `scale(${zoomLevel / 100})`"
+                class="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-lg bg-gradient-to-br from-indigo-50 to-indigo-100 hover:from-indigo-100 hover:to-indigo-200 transition-all text-indigo-700 font-bold text-lg sm:text-xl"
+                title="Aumentar zoom">
+            +
+        </button>
+        <span class="text-xs sm:text-sm font-bold text-gray-700 min-w-[45px] text-center py-1" x-text="zoomLevel + '%'"></span>
+        <button @click="zoomLevel = Math.max(50, zoomLevel - 10); document.querySelector('.kanban-board-container').style.transform = `scale(${zoomLevel / 100})`"
+                class="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 transition-all text-gray-700 font-bold text-lg sm:text-xl"
+                title="Diminuir zoom">
+            −
+        </button>
+        <button @click="zoomLevel = 100; document.querySelector('.kanban-board-container').style.transform = 'scale(1)'"
+                class="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-lg bg-gradient-to-br from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 transition-all text-purple-700 font-medium text-xs"
+                title="Resetar zoom">
+            100%
+        </button>
     </div>
 
     <!-- Histórico Slide Down -->
@@ -25,10 +45,28 @@
         <h2 class="text-lg font-bold mb-4 text-gray-900">📈 Histórico de Produção</h2>
         <ul class="divide-y divide-gray-100">
             {% for q in historico %}
-            <li class="py-3 flex flex-col md:flex-row md:items-center md:gap-4 hover:bg-gray-50 rounded-lg px-2 transition-colors">
-                <span class="font-semibold text-gray-900">{{ q.task.titulo }}</span>
-                <span class="text-emerald-600 font-medium">+{{ q.quantidade }}</span>
-                <span class="text-gray-500 text-sm">por {{ q.usuario.get_full_name|default:q.usuario.username }} • {{ q.data|date:'d/m/Y H:i' }}</span>
+            <li class="py-3 flex flex-col md:flex-row md:items-center md:gap-4 hover:bg-gray-50 rounded-lg px-2 transition-colors" x-data="{ editingQty: false, newQty: {{ q.quantidade }} }">
+                <span class="font-semibold text-gray-900 flex-shrink-0">{{ q.task.titulo }}</span>
+                <span class="text-emerald-600 font-medium flex-shrink-0" x-show="!editingQty">+{{ q.quantidade }}</span>
+
+                <!-- Form de edição inline -->
+                <form x-show="editingQty" x-transition method="post" action="{% url 'editar_quantidade_feita' quantidade_id=q.id %}" class="flex items-center gap-2">
+                    {% csrf_token %}
+                    <input type="number" name="quantidade" x-model="newQty" min="1" class="w-20 border border-gray-300 rounded px-2 py-1 text-sm" required>
+                    <button type="submit" class="px-2 py-1 rounded bg-green-500 text-white hover:bg-green-600 text-xs">Salvar</button>
+                    <button type="button" @click="editingQty = false; newQty = {{ q.quantidade }}" class="px-2 py-1 rounded bg-gray-300 text-gray-700 hover:bg-gray-400 text-xs">Cancelar</button>
+                </form>
+
+                <span class="text-gray-500 text-sm flex-grow">por {{ q.usuario.get_full_name|default:q.usuario.username }} • {{ q.data|date:'d/m/Y H:i' }}</span>
+
+                <!-- Botões de ação -->
+                <div class="flex gap-1 flex-shrink-0" x-show="!editingQty">
+                    <button @click="editingQty = true" class="px-2 py-1 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-medium">✏️ Editar</button>
+                    <form method="post" action="{% url 'excluir_quantidade_feita' quantidade_id=q.id %}" class="inline" onsubmit="return confirm('Tem certeza que deseja excluir este registro de {{ q.quantidade }} unidades?')">
+                        {% csrf_token %}
+                        <button type="submit" class="px-2 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100 text-xs font-medium">🗑️ Excluir</button>
+                    </form>
+                </div>
             </li>
             {% empty %}
             <li class="text-gray-400 italic py-4 text-center">Nenhum registro ainda.</li>
@@ -37,17 +75,18 @@
     </div>
 </div>
 
-<!-- Board Container com scroll horizontal suave -->
-<div class="flex gap-4 overflow-x-auto pb-6 px-1 scrollbar-hide" style="scroll-behavior: smooth;">
+<!-- Board Container com scroll horizontal suave e zoom -->
+<div class="kanban-board-container transition-transform duration-200" style="transform-origin: top left;">
+<div class="flex gap-3 sm:gap-4 overflow-x-auto pb-6 px-1 scrollbar-hide" style="scroll-behavior: smooth;">
     {% for coluna in colunas %}
-    <div class="kanban-column flex-shrink-0 w-80" data-column-id="{{ coluna.id }}">
+    <div class="kanban-column flex-shrink-0 w-72 sm:w-80" data-column-id="{{ coluna.id }}">
         <!-- Column Header -->
         <div class="bg-white rounded-t-xl border border-gray-200 shadow-sm relative overflow-visible">
-            <div class="flex items-center justify-between p-4 overflow-visible">
+            <div class="flex items-center justify-between p-3 sm:p-4 overflow-visible">
                 <div class="flex items-center gap-2">
                     <div class="w-3 h-3 rounded-full" style="background: {{ coluna.cor }};"></div>
-                    <h2 class="font-semibold text-gray-900">{{ coluna.nome }}</h2>
-                    <span class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{{ coluna.tasks.count }}</span>
+                    <h2 class="font-semibold text-sm sm:text-base text-gray-900 truncate max-w-[140px] sm:max-w-none">{{ coluna.nome }}</h2>
+                    <span class="text-xs text-gray-500 bg-gray-100 px-1.5 sm:px-2 py-0.5 rounded-full">{{ coluna.tasks.count }}</span>
                 </div>
                 <div class="relative" x-data="{ open: false }">
                     <button @click="open = !open" class="p-1 hover:bg-gray-100 rounded transition-colors">
@@ -83,58 +122,59 @@
         </div>
 
         <!-- Cards Container -->
-        <div class="backdrop-blur-sm rounded-b-xl border-x border-b border-gray-200 shadow-sm p-3 min-h-[200px] space-y-3"
+        <div class="backdrop-blur-sm rounded-b-xl border-x border-b border-gray-200 shadow-sm p-2 sm:p-3 min-h-[200px] space-y-2 sm:space-y-3"
              style="background: linear-gradient(to bottom, {{ coluna.cor }}50, {{ coluna.cor }}10);">
             {% for task in coluna.tasks.all %}
-                <div class="kanban-card group bg-white rounded-lg shadow-sm hover:shadow-md border border-gray-200 p-4 cursor-grab active:cursor-grabbing transition-all duration-200 hover:-translate-y-0.5 {% if task.finalizado %}ring-2 ring-green-400 bg-green-50{% endif %}"
+                <div class="kanban-card group bg-white rounded-lg shadow-sm hover:shadow-md border border-gray-200 p-3 sm:p-4 cursor-grab active:cursor-grabbing transition-all duration-200 hover:-translate-y-0.5 {% if task.finalizado %}ring-2 ring-green-400 bg-green-50{% endif %}"
                      data-task-id="{{ task.id }}">
 
                     <!-- Card Header -->
                     <div class="flex items-start justify-between gap-2 mb-2">
-                        <h3 class="font-medium text-gray-900 flex-1 leading-snug">{{ task.titulo }}</h3>
+                        <h3 class="font-medium text-sm sm:text-base text-gray-900 flex-1 leading-snug">{{ task.titulo }}</h3>
                         <div class="flex flex-col gap-1">
                             {% if task.finalizado %}
-                            <span class="flex-shrink-0 text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium">✓ Finalizado</span>
+                            <span class="flex-shrink-0 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 bg-green-100 text-green-700 rounded-full font-medium whitespace-nowrap">✓</span>
                             {% elif task.em_andamento %}
-                            <span class="flex-shrink-0 text-xs px-2 py-1 bg-amber-100 text-amber-700 rounded-full font-medium">⚡ Ativo</span>
+                            <span class="flex-shrink-0 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 bg-amber-100 text-amber-700 rounded-full font-medium whitespace-nowrap">⚡</span>
                             {% endif %}
                         </div>
                     </div>
 
                     <!-- Card Description -->
                     {% if task.descricao %}
-                    <p class="text-sm text-gray-600 mb-3 line-clamp-2">{{ task.descricao }}</p>
+                    <p class="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-3 line-clamp-2">{{ task.descricao }}</p>
                     {% endif %}
 
                     <!-- Quantidade Badge com Progresso -->
-                    <div class="mb-3 space-y-2">
-                        <div class="flex items-center justify-between text-xs">
+                    <div class="mb-2 sm:mb-3 space-y-1.5 sm:space-y-2">
+                        <div class="flex items-center justify-between text-[10px] sm:text-xs">
                             <span class="text-gray-600 font-medium">Progresso:</span>
                             <span class="font-bold text-indigo-700">{{ task.quantidade_produzida }}/{{ task.quantidade_meta }}</span>
                         </div>
                         <!-- Barra de Progresso -->
-                        <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                            <div class="bg-gradient-to-r from-indigo-500 to-purple-600 h-2.5 rounded-full transition-all duration-300"
+                        <div class="w-full bg-gray-200 rounded-full h-2 sm:h-2.5 overflow-hidden">
+                            <div class="bg-gradient-to-r from-indigo-500 to-purple-600 h-2 sm:h-2.5 rounded-full transition-all duration-300"
                                  style="width: {{ task.percentual_completo }}%"></div>
                         </div>
-                        <div class="flex items-center gap-2 text-xs">
-                            <span class="text-emerald-600 font-semibold">✓ {{ task.quantidade_produzida }} feitas</span>
+                        <div class="flex flex-wrap items-center gap-1 sm:gap-2 text-[10px] sm:text-xs">
+                            <span class="text-emerald-600 font-semibold">✓ {{ task.quantidade_produzida }}</span>
                             {% if task.quantidade_restante > 0 %}
-                            <span class="text-orange-600 font-semibold">• {{ task.quantidade_restante }} restantes</span>
+                            <span class="text-orange-600 font-semibold">• {{ task.quantidade_restante }} rest.</span>
                             {% endif %}
                         </div>
                     </div>
 
                     <!-- Responsáveis & Usuários que trabalharam -->
-                    <div class="mb-3">
+                    <div class="mb-2 sm:mb-3">
                         {% if task.responsaveis.all %}
-                        <div class="flex flex-wrap gap-1.5 mb-2">
+                        <div class="flex flex-wrap gap-1 sm:gap-1.5 mb-2">
                             {% for user in task.responsaveis.all %}
-                            <div class="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-1 rounded-md text-xs font-medium">
-                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <div class="flex items-center gap-0.5 sm:gap-1 bg-blue-50 text-blue-700 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md text-[10px] sm:text-xs font-medium">
+                                <svg class="w-2.5 h-2.5 sm:w-3 sm:h-3" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
                                 </svg>
-                                {{ user.get_full_name|default:user.username }}
+                                <span class="hidden sm:inline">{{ user.get_full_name|default:user.username }}</span>
+                                <span class="sm:hidden">{{ user.username|slice:":8" }}</span>
                             </div>
                             {% endfor %}
                         </div>
@@ -144,11 +184,11 @@
                         {% regroup task.quantidades_feitas.all by usuario as usuarios_trabalharam %}
                         {% if usuarios_trabalharam %}
                         <div class="flex items-center gap-1">
-                            <span class="text-xs text-gray-500">Trabalharam:</span>
-                            <div class="flex -space-x-2">
+                            <span class="text-[10px] sm:text-xs text-gray-500">Trab.:</span>
+                            <div class="flex -space-x-1 sm:-space-x-2">
                                 {% for grupo in usuarios_trabalharam %}
                                 {% if grupo.grouper %}
-                                <div class="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold border-2 border-white" title="{{ grupo.grouper.get_full_name|default:grupo.grouper.username }}">
+                                <div class="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-[10px] sm:text-xs font-bold border-2 border-white" title="{{ grupo.grouper.get_full_name|default:grupo.grouper.username }}">
                                     {{ grupo.grouper.username|slice:":1"|upper }}
                                 </div>
                                 {% endif %}
@@ -160,37 +200,46 @@
 
                     <!-- Actions e Form de Quantidade (Alpine.js) -->
                     <div x-data="{ editQty: false }">
-                        <!-- Actions (aparecem no hover) -->
-                        <div class="no-drag opacity-0 group-hover:opacity-100 transition-opacity pt-2 border-t border-gray-100 flex flex-wrap gap-2">
-                            <a href="{% url 'detalhe_tarefa' task_id=task.id %}" class="no-drag text-xs px-3 py-1.5 rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-medium transition-colors">
-                                📋 Detalhes
+                        <!-- Actions (sempre visíveis) -->
+                        <div class="no-drag pt-2 border-t border-gray-100 flex flex-wrap gap-1 sm:gap-2">
+                            <a href="{% url 'detalhe_tarefa' task_id=task.id %}" class="no-drag text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-medium transition-colors">
+                                <span class="hidden sm:inline">📋 Detalhes</span>
+                                <span class="sm:hidden">📋</span>
                             </a>
                             {% if not task.finalizado %}
                             <form method="post" action="{% url 'marcar_andamento' task_id=task.id %}" class="inline no-drag">
                                 {% csrf_token %}
-                                <button type="submit" class="no-drag text-xs px-3 py-1.5 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium transition-colors">
-                                    ▶️ Iniciar
+                                <button type="submit" class="no-drag text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium transition-colors">
+                                    <span class="hidden sm:inline">▶️ Iniciar</span>
+                                    <span class="sm:hidden">▶️</span>
                                 </button>
                             </form>
                             <form method="post" action="{% url 'finalizar' task_id=task.id %}" class="inline no-drag" onsubmit="return confirm('Tem certeza que deseja finalizar este card? Esta ação marcará o card como concluído.')">
                                 {% csrf_token %}
-                                <button type="submit" class="no-drag text-xs px-3 py-1.5 rounded-md bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-medium transition-colors">
-                                    ✓ Finalizar
+                                <button type="submit" class="no-drag text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-md bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-medium transition-colors">
+                                    <span class="hidden sm:inline">✓ Finalizar</span>
+                                    <span class="sm:hidden">✓</span>
                                 </button>
                             </form>
-                            <button @click="editQty = !editQty" class="no-drag text-xs px-3 py-1.5 rounded-md bg-purple-50 text-purple-700 hover:bg-purple-100 font-medium transition-colors">
-                                + Qtd
+                            <button @click="editQty = !editQty" class="no-drag text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-md bg-purple-50 text-purple-700 hover:bg-purple-100 font-medium transition-colors">
+                                <span class="hidden sm:inline">+ Qtd</span>
+                                <span class="sm:hidden">+</span>
                             </button>
-                            <a href="{% url 'editar_tarefa' task_id=task.id %}" class="no-drag text-xs px-3 py-1.5 rounded-md bg-gray-50 text-gray-700 hover:bg-gray-100 font-medium transition-colors">
+                            <a href="{% url 'detalhe_tarefa' task_id=task.id %}#historico" class="no-drag text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-md bg-amber-50 text-amber-700 hover:bg-amber-100 font-medium transition-colors" title="Ver/Editar histórico de quantidades">
+                                <span class="hidden sm:inline">📊 Hist</span>
+                                <span class="sm:hidden">📊</span>
+                            </a>
+                            <a href="{% url 'editar_tarefa' task_id=task.id %}" class="no-drag text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-md bg-gray-50 text-gray-700 hover:bg-gray-100 font-medium transition-colors">
                                 ✏️
                             </a>
                             {% else %}
-                            <div class="flex items-center gap-2">
-                                <span class="text-xs text-green-600 font-medium">Finalizado em {{ task.data_finalizacao|date:'d/m/Y H:i' }}</span>
+                            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2 w-full">
+                                <span class="text-[10px] sm:text-xs text-green-600 font-medium">Finalizado</span>
                                 <form method="post" action="{% url 'desfinalizar' task_id=task.id %}" class="inline no-drag" onsubmit="return confirm('Deseja reabrir este card?')">
                                     {% csrf_token %}
-                                    <button type="submit" class="no-drag text-xs px-3 py-1.5 rounded-md bg-yellow-50 text-yellow-700 hover:bg-yellow-100 font-medium transition-colors">
-                                        ↩️ Reabrir
+                                    <button type="submit" class="no-drag text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-md bg-yellow-50 text-yellow-700 hover:bg-yellow-100 font-medium transition-colors">
+                                        <span class="hidden sm:inline">↩️ Reabrir</span>
+                                        <span class="sm:hidden">↩️</span>
                                     </button>
                                 </form>
                             </div>
@@ -198,10 +247,10 @@
                         </div>
 
                         <!-- Quick Add Quantity Form -->
-                        <form x-show="editQty" x-transition method="post" action="{% url 'registrar_quantidade' task_id=task.id %}" class="no-drag mt-3 flex gap-2 items-center pt-2 border-t border-gray-100">
+                        <form x-show="editQty" x-transition method="post" action="{% url 'registrar_quantidade' task_id=task.id %}" class="no-drag mt-2 sm:mt-3 flex gap-2 items-center pt-2 border-t border-gray-100">
                         {% csrf_token %}
-                        <input type="number" name="quantidade" min="1" class="no-drag flex-1 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Quantidade" required>
-                        <button type="submit" class="no-drag px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 font-medium transition-colors text-sm">
+                        <input type="number" name="quantidade" min="1" class="no-drag flex-1 border border-gray-300 rounded-md px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Qtd" required>
+                        <button type="submit" class="no-drag px-2 sm:px-3 py-1 sm:py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 font-medium transition-colors text-xs sm:text-sm">
                             Salvar
                         </button>
                         </form>
@@ -243,9 +292,9 @@
     {% endfor %}
 
     <!-- Add Column Card -->
-    <div class="flex-shrink-0 w-80" x-data="{ addingColumn: false }">
-        <button @click="addingColumn = true" x-show="!addingColumn" class="w-full h-full min-h-[120px] bg-white/60 backdrop-blur-sm hover:bg-white/80 border-2 border-dashed border-gray-300 rounded-xl transition-all duration-200 text-gray-600 hover:text-gray-900 hover:border-gray-400 font-medium">
-            + Adicionar coluna
+    <div class="flex-shrink-0 w-72 sm:w-80" x-data="{ addingColumn: false }">
+        <button @click="addingColumn = true" x-show="!addingColumn" class="w-full h-full min-h-[120px] bg-white/60 backdrop-blur-sm hover:bg-white/80 border-2 border-dashed border-gray-300 rounded-xl transition-all duration-200 text-xs sm:text-base text-gray-600 hover:text-gray-900 hover:border-gray-400 font-medium">
+            + <span class="hidden sm:inline">Adicionar coluna</span><span class="sm:hidden">Coluna</span>
         </button>
 
         <!-- Add Column Form -->
@@ -269,6 +318,8 @@
         </div>
     </div>
 </div>
+</div>
+<!-- Fim do container de zoom -->
 
 <style>
 /* Hide elements with x-cloak before Alpine loads */
@@ -314,6 +365,19 @@
 
 .no-drag * {
     cursor: auto !important;
+}
+
+/* Garante que inputs, textareas e selects sejam sempre clicáveis e editáveis */
+.no-drag input,
+.no-drag textarea,
+.no-drag select {
+    pointer-events: auto !important;
+    cursor: text !important;
+}
+
+.no-drag button {
+    pointer-events: auto !important;
+    cursor: pointer !important;
 }
 
 /* Line clamp para descrições */
@@ -377,7 +441,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Sortable para cards dentro de cada coluna
-    const columns = document.querySelectorAll('.kanban-column > div.space-y-3');
+    const columns = document.querySelectorAll('.kanban-column > div[class*="space-y"]');
     console.log('🔧 Colunas encontradas para drag:', columns.length);
     console.log('🎴 Cards totais na página:', document.querySelectorAll('.kanban-card').length);
 
@@ -388,8 +452,8 @@ document.addEventListener('DOMContentLoaded', function() {
             ghostClass: 'sortable-ghost',
             dragClass: 'sortable-drag',
             draggable: '.kanban-card', // Define o que é arrastável
-            filter: '.no-drag', // Ignora elementos com classe no-drag
-            preventOnFilter: true,
+            filter: 'input, textarea, select, button, a', // Ignora elementos interativos
+            preventOnFilter: false,
             onStart: function(evt) {
                 console.log('🚀 Começou a arrastar card:', evt.item.dataset.taskId);
             },
@@ -439,9 +503,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Atualiza contadores de cards em cada coluna
     function updateColumnCounts() {
         document.querySelectorAll('.kanban-column').forEach(column => {
-            const counter = column.querySelector('.bg-gray-100.px-2.py-0\\.5.rounded-full');
-            const cardsContainer = column.querySelector('.space-y-3');
-            const cardCount = cardsContainer.querySelectorAll('.kanban-card').length;
+            const counter = column.querySelector('[class*="bg-gray-100"][class*="rounded-full"]');
+            const cardsContainer = column.querySelector('[class*="space-y"]');
+            const cardCount = cardsContainer ? cardsContainer.querySelectorAll('.kanban-card').length : 0;
             if (counter) {
                 counter.textContent = cardCount;
             }

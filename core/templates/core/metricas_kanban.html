@@ -91,11 +91,11 @@
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="flex items-center gap-3">
                                 <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-bold">
-                                    {{ user.username|slice:":1"|upper }}
+                                    {{ user.user.username|slice:":1"|upper }}
                                 </div>
                                 <div>
-                                    <p class="font-semibold text-gray-900">{{ user.get_full_name|default:user.username }}</p>
-                                    <p class="text-xs text-gray-500">@{{ user.username }}</p>
+                                    <p class="font-semibold text-gray-900">{{ user.user.get_full_name|default:user.user.username }}</p>
+                                    <p class="text-xs text-gray-500">@{{ user.user.username }}</p>
                                 </div>
                             </div>
                         </td>
@@ -104,7 +104,7 @@
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
-                                {{ user.total_finalizados }}
+                                {{ user.total_finalizados|floatformat:2 }}
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-center">
@@ -118,7 +118,7 @@
                         <td class="px-6 py-4 whitespace-nowrap text-center">
                             {% if user.total_finalizados > 0 and user.total_quantidade_produzida %}
                             <span class="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full font-semibold">
-                                {{ user.total_quantidade_produzida|divisibleby:user.total_finalizados|floatformat:1 }}
+                                {{ user.media_por_card|floatformat:1 }}
                             </span>
                             {% else %}
                             <span class="text-gray-400">-</span>

@@ -948,15 +948,60 @@ def detalhe_tarefa(request, task_id):
 
 @login_required
 def metricas_kanban(request):
-    from django.db.models import Count, Sum
+    from django.db.models import Count, Sum, Q
 
-    # Cards finalizados por usuário
-    cards_por_usuario = User.objects.annotate(
-        total_finalizados=Count('taskhistorico', filter=Q(taskhistorico__tipo_acao='finalizado')),
+    # Cards finalizados por usuário - conta apenas cards ATUALMENTE finalizados
+    # Para cada usuário, busca o último histórico de finalização/reabertura de cada card
+    # e conta apenas se o último registro for de finalização
+
+    # Cálculo proporcional: cada usuário recebe crédito fracionado baseado em sua contribuição
+    # Exemplo: Card de 100 unidades - User A produziu 60 (0.6 cards) + User B produziu 40 (0.4 cards)
+
+    from decimal import Decimal
+
+    # Primeiro, pegamos todos os usuários que produziram algo
+    usuarios = User.objects.annotate(
         total_quantidade_produzida=Sum('taskquantidadefeita__quantidade')
-    ).filter(total_finalizados__gt=0).order_by('-total_finalizados')
+    ).filter(total_quantidade_produzida__gt=0)
 
-    # Total de cards finalizados
+    # Para cada usuário, calculamos sua contribuição proporcional em cards finalizados
+    cards_por_usuario = []
+    for user in usuarios:
+        # Buscar todos os cards finalizados atualmente
+        tasks_finalizadas = Task.objects.filter(finalizado=True)
+
+        cards_finalizados_proporcional = Decimal('0.0')
+
+        # Para cada card finalizado, calcular a contribuição proporcional do usuário
+        for task in tasks_finalizadas:
+            # Total produzido neste card
+            total_produzido_card = task.quantidade_produzida
+
+            if total_produzido_card > 0:
+                # Quantidade que este usuário produziu neste card
+                quantidade_usuario = TaskQuantidadeFeita.objects.filter(
+                    task=task,
+                    usuario=user
+                ).aggregate(total=Sum('quantidade'))['total'] or 0
+
+                # Calcular proporção (0.0 a 1.0)
+                if quantidade_usuario > 0:
+                    proporcao = Decimal(quantidade_usuario) / Decimal(total_produzido_card)
+                    cards_finalizados_proporcional += proporcao
+
+        if cards_finalizados_proporcional > 0 or user.total_quantidade_produzida:
+            media_por_card = (user.total_quantidade_produzida / float(cards_finalizados_proporcional)) if cards_finalizados_proporcional > 0 else 0
+            cards_por_usuario.append({
+                'user': user,
+                'total_finalizados': float(cards_finalizados_proporcional),
+                'total_quantidade_produzida': user.total_quantidade_produzida or 0,
+                'media_por_card': media_por_card
+            })
+
+    # Ordenar por total_finalizados (decrescente)
+    cards_por_usuario = sorted(cards_por_usuario, key=lambda x: x['total_finalizados'], reverse=True)
+
+    # Total de cards finalizados ATUALMENTE
     total_cards_finalizados = Task.objects.filter(finalizado=True).count()
 
     # Total de cards em andamento
@@ -989,9 +1034,40 @@ def editar_coluna(request, coluna_id):
     if request.method == 'POST':
         coluna.nome = request.POST.get('nome')
         coluna.cor = request.POST.get('cor', coluna.cor)
+
+        # Processar mudança de posição
+        nova_posicao = request.POST.get('posicao')
+        if nova_posicao is not None:
+            nova_posicao = int(nova_posicao)
+            posicao_atual = coluna.ordem
+
+            if nova_posicao != posicao_atual:
+                # Reordenar todas as colunas
+                colunas = list(KanbanColumn.objects.all().order_by('ordem'))
+
+                # Remove a coluna atual da lista
+                colunas.pop(posicao_atual)
+
+                # Insere na nova posição
+                colunas.insert(nova_posicao, coluna)
+
+                # Atualiza a ordem de todas as colunas
+                for idx, col in enumerate(colunas):
+                    col.ordem = idx
+                    col.save(update_fields=['ordem'])
+
         coluna.save()
         return redirect('kanban_board')
-    return render(request, 'core/form_coluna.html', {'coluna': coluna})
+
+    # Preparar dados para o template
+    total_colunas = KanbanColumn.objects.count()
+    context = {
+        'coluna': coluna,
+        'range_posicoes': range(total_colunas),
+        'posicao_atual': coluna.ordem,
+        'total_colunas': total_colunas
+    }
+    return render(request, 'core/form_coluna.html', context)
 
 @login_required
 def excluir_coluna(request, coluna_id):
@@ -1185,6 +1261,54 @@ def registrar_quantidade(request, task_id):
             tipo_acao='quantidade_adicionada',
             descricao=f'{request.user.get_full_name() or request.user.username} produziu {quantidade} unidade(s). Total: {task.quantidade_produzida}/{task.quantidade_meta}'
         )
+    return redirect('kanban_board')
+
+@login_required
+@require_POST
+def editar_quantidade_feita(request, quantidade_id):
+    """Edita uma quantidade feita existente"""
+    quantidade_obj = get_object_or_404(TaskQuantidadeFeita, id=quantidade_id)
+    task = quantidade_obj.task
+    quantidade_antiga = quantidade_obj.quantidade
+
+    nova_quantidade = int(request.POST.get('quantidade', 0))
+    if nova_quantidade > 0:
+        quantidade_obj.quantidade = nova_quantidade
+        quantidade_obj.save()
+
+        # Registra histórico
+        TaskHistorico.objects.create(
+            task=task,
+            usuario=request.user,
+            tipo_acao='quantidade_editada',
+            descricao=f'{request.user.get_full_name() or request.user.username} editou quantidade de {quantidade_antiga} para {nova_quantidade} unidades. Total: {task.quantidade_produzida}/{task.quantidade_meta}'
+        )
+        messages.success(request, f'Quantidade atualizada de {quantidade_antiga} para {nova_quantidade} unidades!')
+    else:
+        messages.error(request, 'Quantidade deve ser maior que zero.')
+
+    return redirect('kanban_board')
+
+@login_required
+@require_POST
+def excluir_quantidade_feita(request, quantidade_id):
+    """Exclui uma quantidade feita"""
+    quantidade_obj = get_object_or_404(TaskQuantidadeFeita, id=quantidade_id)
+    task = quantidade_obj.task
+    quantidade_valor = quantidade_obj.quantidade
+    usuario_nome = quantidade_obj.usuario.get_full_name() or quantidade_obj.usuario.username if quantidade_obj.usuario else 'Usuário desconhecido'
+
+    # Registra histórico antes de excluir
+    TaskHistorico.objects.create(
+        task=task,
+        usuario=request.user,
+        tipo_acao='quantidade_removida',
+        descricao=f'{request.user.get_full_name() or request.user.username} removeu registro de {quantidade_valor} unidades (feito por {usuario_nome}). Total atual: {task.quantidade_produzida - quantidade_valor}/{task.quantidade_meta}'
+    )
+
+    quantidade_obj.delete()
+    messages.success(request, f'Registro de {quantidade_valor} unidades removido com sucesso!')
+
     return redirect('kanban_board')
 
 # --- Views de Controle de Ponto ---

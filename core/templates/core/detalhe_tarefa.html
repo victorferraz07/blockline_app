@@ -119,34 +119,80 @@
             </div>
 
             <!-- Quantidades Registradas -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div id="historico" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <h2 class="text-xl font-bold text-gray-900 mb-4">📊 Quantidades Produzidas</h2>
 
                 <div class="space-y-3">
                     {% for qtd in quantidades %}
-                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white font-bold">
-                                {% if qtd.usuario %}
-                                {{ qtd.usuario.username|slice:":1"|upper }}
-                                {% else %}
-                                ?
-                                {% endif %}
-                            </div>
-                            <div>
-                                <p class="font-semibold text-gray-900">
+                    <div class="p-3 bg-gray-50 rounded-lg" x-data="{ editingQty: false, newQty: {{ qtd.quantidade }} }">
+                        <div class="flex items-center justify-between" x-show="!editingQty">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white font-bold">
                                     {% if qtd.usuario %}
-                                    {{ qtd.usuario.get_full_name|default:qtd.usuario.username }}
+                                    {{ qtd.usuario.username|slice:":1"|upper }}
                                     {% else %}
-                                    Usuário Desconhecido
+                                    ?
                                     {% endif %}
-                                </p>
-                                <p class="text-xs text-gray-500">{{ qtd.data|date:'d/m/Y H:i' }}</p>
+                                </div>
+                                <div>
+                                    <p class="font-semibold text-gray-900">
+                                        {% if qtd.usuario %}
+                                        {{ qtd.usuario.get_full_name|default:qtd.usuario.username }}
+                                        {% else %}
+                                        Usuário Desconhecido
+                                        {% endif %}
+                                    </p>
+                                    <p class="text-xs text-gray-500">{{ qtd.data|date:'d/m/Y H:i' }}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <p class="text-2xl font-bold text-green-600">+{{ qtd.quantidade }}</p>
+                                <button @click="editingQty = true" class="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-sm font-medium transition-colors">
+                                    ✏️ Editar
+                                </button>
+                                <form method="post" action="{% url 'excluir_quantidade_feita' quantidade_id=qtd.id %}" class="inline" onsubmit="return confirm('Tem certeza que deseja excluir este registro de {{ qtd.quantidade }} unidades?')">
+                                    {% csrf_token %}
+                                    <button type="submit" class="px-3 py-1.5 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 text-sm font-medium transition-colors">
+                                        🗑️
+                                    </button>
+                                </form>
                             </div>
                         </div>
-                        <div class="text-right">
-                            <p class="text-2xl font-bold text-green-600">+{{ qtd.quantidade }}</p>
-                        </div>
+
+                        <!-- Form de edição inline -->
+                        <form x-show="editingQty" x-transition method="post" action="{% url 'editar_quantidade_feita' quantidade_id=qtd.id %}" class="flex items-center gap-3">
+                            {% csrf_token %}
+                            <div class="flex items-center gap-3 flex-1">
+                                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white font-bold">
+                                    {% if qtd.usuario %}
+                                    {{ qtd.usuario.username|slice:":1"|upper }}
+                                    {% else %}
+                                    ?
+                                    {% endif %}
+                                </div>
+                                <div class="flex-1">
+                                    <p class="font-semibold text-gray-900 mb-1">
+                                        {% if qtd.usuario %}
+                                        {{ qtd.usuario.get_full_name|default:qtd.usuario.username }}
+                                        {% else %}
+                                        Usuário Desconhecido
+                                        {% endif %}
+                                    </p>
+                                    <div class="flex items-center gap-2">
+                                        <label class="text-sm text-gray-600">Quantidade:</label>
+                                        <input type="number" name="quantidade" x-model="newQty" min="1" class="w-24 border border-gray-300 rounded-lg px-3 py-1 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button type="submit" class="px-3 py-1.5 rounded-lg bg-green-500 text-white hover:bg-green-600 text-sm font-medium transition-colors">
+                                    Salvar
+                                </button>
+                                <button type="button" @click="editingQty = false; newQty = {{ qtd.quantidade }}" class="px-3 py-1.5 rounded-lg bg-gray-300 text-gray-700 hover:bg-gray-400 text-sm font-medium transition-colors">
+                                    Cancelar
+                                </button>
+                            </div>
+                        </form>
                     </div>
                     {% empty %}
                     <p class="text-gray-400 italic text-center py-4">Nenhuma quantidade registrada ainda.</p>

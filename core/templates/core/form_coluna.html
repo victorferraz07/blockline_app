@@ -35,7 +35,7 @@
       </div>
 
       <!-- Cor -->
-      <div class="mb-8">
+      <div class="mb-6">
         <label class="block text-sm font-semibold text-gray-700 mb-2">Cor de Identificação</label>
         <div class="flex items-center gap-4">
           <input
@@ -47,6 +47,26 @@
           <p class="text-sm text-gray-500">Escolha uma cor para representar esta coluna</p>
         </div>
       </div>
+
+      <!-- Posição -->
+      {% if coluna %}
+      <div class="mb-8">
+        <label class="block text-sm font-semibold text-gray-700 mb-2">Posição da Coluna</label>
+        <div class="flex items-center gap-4">
+          <select name="posicao" class="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+            {% for i in range_posicoes %}
+              <option value="{{ i }}" {% if i == posicao_atual %}selected{% endif %}>
+                Posição {{ i }}{% if i == posicao_atual %} (atual){% endif %}
+              </option>
+            {% endfor %}
+          </select>
+          <div class="flex-shrink-0">
+            <p class="text-sm text-gray-500 whitespace-nowrap">Total: {{ total_colunas }} colunas</p>
+            <p class="text-xs text-gray-400 mt-1">A coluna será movida para a posição escolhida</p>
+          </div>
+        </div>
+      </div>
+      {% endif %}
 
       <!-- Actions -->
       <div class="flex gap-3">
