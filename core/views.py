@@ -1164,27 +1164,30 @@ def excluir_tarefa(request, task_id):
 @login_required
 @require_POST
 def mover_tarefa(request, task_id):
-    task = get_object_or_404(Task, id=task_id)
-    nova_coluna_id = request.POST.get('nova_coluna_id')
-    nova_ordem = int(request.POST.get('nova_ordem', 0))
+    try:
+        task = get_object_or_404(Task, id=task_id)
+        nova_coluna_id = request.POST.get('nova_coluna_id')
+        nova_ordem = int(request.POST.get('nova_ordem', 0))
 
-    if nova_coluna_id:
-        coluna_antiga = task.coluna
-        nova_coluna = get_object_or_404(KanbanColumn, id=nova_coluna_id)
+        if nova_coluna_id:
+            coluna_antiga = task.coluna
+            nova_coluna = get_object_or_404(KanbanColumn, id=nova_coluna_id)
 
-        if coluna_antiga.id != nova_coluna.id:
-            task.coluna = nova_coluna
-            # Registra histórico
-            TaskHistorico.objects.create(
-                task=task,
-                usuario=request.user,
-                tipo_acao='movido',
-                descricao=f'Movido de "{coluna_antiga.nome}" para "{nova_coluna.nome}"'
-            )
+            if coluna_antiga.id != nova_coluna.id:
+                task.coluna = nova_coluna
+                # Registra histórico
+                TaskHistorico.objects.create(
+                    task=task,
+                    usuario=request.user,
+                    tipo_acao='movido',
+                    descricao=f'Movido de "{coluna_antiga.nome}" para "{nova_coluna.nome}"'
+                )
 
-    task.ordem = nova_ordem
-    task.save()
-    return JsonResponse({'success': True})
+        task.ordem = nova_ordem
+        task.save()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 @login_required
 @require_POST
