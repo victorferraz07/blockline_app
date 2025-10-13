@@ -33,9 +33,15 @@ db.sqlite3-journal
 .DS_Store
 Thumbs.db
 
-# Django
-/static/
+# Django collected static (gerado por collectstatic)
+# Mantém os arquivos source em core/static/
+/static/admin/
+/static/core/css/output.css
+
+# Media files
 /media/
+
+# Virtual environment
 venv/
 *.sqlite3
 __pycache__/
