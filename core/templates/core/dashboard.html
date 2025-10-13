@@ -9,18 +9,18 @@
         <p class="text-gray-600 mt-2 text-lg">Visão geral do sistema de gerenciamento Blockline</p>
     </div>
 
-    <!-- Cards de Estatísticas Principais -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <!-- Cards de Estatísticas Principais - Grid Otimizado Mobile 2x2 -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-6 md:mb-8">
         <!-- Total de Itens em Estoque -->
-        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition-transform duration-200">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-blue-100 text-sm font-medium uppercase tracking-wide">Itens em Estoque</p>
-                    <p class="text-4xl font-black mt-2">{{ total_itens_estoque }}</p>
-                    <p class="text-blue-100 text-xs mt-1">{{ quantidade_total_estoque }} unidades totais</p>
+        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg sm:rounded-xl shadow-lg p-4 sm:p-5 md:p-6 text-white transform hover:scale-105 transition-transform duration-200 tap-feedback">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between">
+                <div class="flex-1">
+                    <p class="text-blue-100 text-[10px] sm:text-xs md:text-sm font-medium uppercase tracking-wide">Estoque</p>
+                    <p class="text-2xl sm:text-3xl md:text-4xl font-black mt-1 sm:mt-2">{{ total_itens_estoque }}</p>
+                    <p class="text-blue-100 text-[9px] sm:text-[10px] md:text-xs mt-0.5 sm:mt-1">{{ quantidade_total_estoque }} un.</p>
                 </div>
-                <div class="bg-blue-400 bg-opacity-30 rounded-full p-3">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="hidden sm:block bg-blue-400 bg-opacity-30 rounded-full p-2 md:p-3">
+                    <svg class="w-6 h-6 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                     </svg>
                 </div>
@@ -28,15 +28,15 @@
         </div>
 
         <!-- Total de Produtos -->
-        <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition-transform duration-200">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-purple-100 text-sm font-medium uppercase tracking-wide">Produtos Fabricados</p>
-                    <p class="text-4xl font-black mt-2">{{ total_produtos_fabricados }}</p>
-                    <p class="text-purple-100 text-xs mt-1">Produtos cadastrados</p>
+        <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg sm:rounded-xl shadow-lg p-4 sm:p-5 md:p-6 text-white transform hover:scale-105 transition-transform duration-200 tap-feedback">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between">
+                <div class="flex-1">
+                    <p class="text-purple-100 text-[10px] sm:text-xs md:text-sm font-medium uppercase tracking-wide">Produtos</p>
+                    <p class="text-2xl sm:text-3xl md:text-4xl font-black mt-1 sm:mt-2">{{ total_produtos_fabricados }}</p>
+                    <p class="text-purple-100 text-[9px] sm:text-[10px] md:text-xs mt-0.5 sm:mt-1">Cadastrados</p>
                 </div>
-                <div class="bg-purple-400 bg-opacity-30 rounded-full p-3">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="hidden sm:block bg-purple-400 bg-opacity-30 rounded-full p-2 md:p-3">
+                    <svg class="w-6 h-6 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
                     </svg>
                 </div>
@@ -44,15 +44,15 @@
         </div>
 
         <!-- Total de Recebimentos -->
-        <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition-transform duration-200">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-green-100 text-sm font-medium uppercase tracking-wide">Recebimentos</p>
-                    <p class="text-4xl font-black mt-2">{{ total_recebimentos }}</p>
-                    <p class="text-green-100 text-xs mt-1">Total de registros</p>
+        <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-lg sm:rounded-xl shadow-lg p-4 sm:p-5 md:p-6 text-white transform hover:scale-105 transition-transform duration-200 tap-feedback">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between">
+                <div class="flex-1">
+                    <p class="text-green-100 text-[10px] sm:text-xs md:text-sm font-medium uppercase tracking-wide">Recebimentos</p>
+                    <p class="text-2xl sm:text-3xl md:text-4xl font-black mt-1 sm:mt-2">{{ total_recebimentos }}</p>
+                    <p class="text-green-100 text-[9px] sm:text-[10px] md:text-xs mt-0.5 sm:mt-1">Registros</p>
                 </div>
-                <div class="bg-green-400 bg-opacity-30 rounded-full p-3">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="hidden sm:block bg-green-400 bg-opacity-30 rounded-full p-2 md:p-3">
+                    <svg class="w-6 h-6 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
                     </svg>
                 </div>
@@ -60,15 +60,15 @@
         </div>
 
         <!-- Total de Expedições -->
-        <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition-transform duration-200">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-red-100 text-sm font-medium uppercase tracking-wide">Expedições</p>
-                    <p class="text-4xl font-black mt-2">{{ total_expedicoes }}</p>
-                    <p class="text-red-100 text-xs mt-1">Total de saídas</p>
+        <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-lg sm:rounded-xl shadow-lg p-4 sm:p-5 md:p-6 text-white transform hover:scale-105 transition-transform duration-200 tap-feedback">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between">
+                <div class="flex-1">
+                    <p class="text-red-100 text-[10px] sm:text-xs md:text-sm font-medium uppercase tracking-wide">Expedições</p>
+                    <p class="text-2xl sm:text-3xl md:text-4xl font-black mt-1 sm:mt-2">{{ total_expedicoes }}</p>
+                    <p class="text-red-100 text-[9px] sm:text-[10px] md:text-xs mt-0.5 sm:mt-1">Saídas</p>
                 </div>
-                <div class="bg-red-400 bg-opacity-30 rounded-full p-3">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="hidden sm:block bg-red-400 bg-opacity-30 rounded-full p-2 md:p-3">
+                    <svg class="w-6 h-6 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6"/>
                     </svg>
                 </div>
@@ -183,23 +183,24 @@
                     Acesso Rápido
                 </h2>
 
-                <div class="space-y-3">
+                <!-- Grid 2x2 no mobile, lista no desktop -->
+                <div class="grid grid-cols-2 lg:grid-cols-1 gap-2 sm:gap-3">
                     <!-- Recebimento -->
                     <a href="{% url 'registrar_recebimento' %}"
-                       class="block p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg hover:from-green-100 hover:to-green-200 transition-all duration-200 group border border-green-200">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-3">
-                                <div class="bg-green-500 rounded-lg p-2 group-hover:scale-110 transition-transform">
+                       class="btn-mobile tap-feedback block p-3 sm:p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg hover:from-green-100 hover:to-green-200 transition-all duration-200 group border border-green-200">
+                        <div class="flex flex-col lg:flex-row items-center lg:justify-between">
+                            <div class="flex flex-col lg:flex-row items-center lg:space-x-3 text-center lg:text-left">
+                                <div class="bg-green-500 rounded-lg p-2 group-hover:scale-110 transition-transform mb-2 lg:mb-0">
                                     <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                                     </svg>
                                 </div>
                                 <div>
-                                    <h3 class="text-sm font-bold text-gray-900">Recebimento</h3>
-                                    <p class="text-xs text-gray-600">Registrar material</p>
+                                    <h3 class="text-xs sm:text-sm font-bold text-gray-900">Recebimento</h3>
+                                    <p class="text-[10px] sm:text-xs text-gray-600 hidden lg:block">Registrar material</p>
                                 </div>
                             </div>
-                            <svg class="w-5 h-5 text-green-500 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-5 h-5 text-green-500 group-hover:translate-x-1 transition-transform hidden lg:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                             </svg>
                         </div>
@@ -207,20 +208,20 @@
 
                     <!-- Estoque -->
                     <a href="{% url 'lista_estoque' %}"
-                       class="block p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg hover:from-blue-100 hover:to-blue-200 transition-all duration-200 group border border-blue-200">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-3">
-                                <div class="bg-blue-500 rounded-lg p-2 group-hover:scale-110 transition-transform">
+                       class="btn-mobile tap-feedback block p-3 sm:p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg hover:from-blue-100 hover:to-blue-200 transition-all duration-200 group border border-blue-200">
+                        <div class="flex flex-col lg:flex-row items-center lg:justify-between">
+                            <div class="flex flex-col lg:flex-row items-center lg:space-x-3 text-center lg:text-left">
+                                <div class="bg-blue-500 rounded-lg p-2 group-hover:scale-110 transition-transform mb-2 lg:mb-0">
                                     <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                                     </svg>
                                 </div>
                                 <div>
-                                    <h3 class="text-sm font-bold text-gray-900">Estoque</h3>
-                                    <p class="text-xs text-gray-600">Gerenciar itens</p>
+                                    <h3 class="text-xs sm:text-sm font-bold text-gray-900">Estoque</h3>
+                                    <p class="text-[10px] sm:text-xs text-gray-600 hidden lg:block">Gerenciar itens</p>
                                 </div>
                             </div>
-                            <svg class="w-5 h-5 text-blue-500 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-5 h-5 text-blue-500 group-hover:translate-x-1 transition-transform hidden lg:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                             </svg>
                         </div>
@@ -228,20 +229,20 @@
 
                     <!-- Produtos -->
                     <a href="{% url 'lista_produtos' %}"
-                       class="block p-4 bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg hover:from-purple-100 hover:to-purple-200 transition-all duration-200 group border border-purple-200">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-3">
-                                <div class="bg-purple-500 rounded-lg p-2 group-hover:scale-110 transition-transform">
+                       class="btn-mobile tap-feedback block p-3 sm:p-4 bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg hover:from-purple-100 hover:to-purple-200 transition-all duration-200 group border border-purple-200">
+                        <div class="flex flex-col lg:flex-row items-center lg:justify-between">
+                            <div class="flex flex-col lg:flex-row items-center lg:space-x-3 text-center lg:text-left">
+                                <div class="bg-purple-500 rounded-lg p-2 group-hover:scale-110 transition-transform mb-2 lg:mb-0">
                                     <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
                                     </svg>
                                 </div>
                                 <div>
-                                    <h3 class="text-sm font-bold text-gray-900">Produtos</h3>
-                                    <p class="text-xs text-gray-600">Gerenciar produtos</p>
+                                    <h3 class="text-xs sm:text-sm font-bold text-gray-900">Produtos</h3>
+                                    <p class="text-[10px] sm:text-xs text-gray-600 hidden lg:block">Gerenciar produtos</p>
                                 </div>
                             </div>
-                            <svg class="w-5 h-5 text-purple-500 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-5 h-5 text-purple-500 group-hover:translate-x-1 transition-transform hidden lg:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                             </svg>
                         </div>
@@ -249,41 +250,41 @@
 
                     <!-- Expedição -->
                     <a href="{% url 'registrar_expedicao' %}"
-                       class="block p-4 bg-gradient-to-r from-red-50 to-red-100 rounded-lg hover:from-red-100 hover:to-red-200 transition-all duration-200 group border border-red-200">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-3">
-                                <div class="bg-red-500 rounded-lg p-2 group-hover:scale-110 transition-transform">
+                       class="btn-mobile tap-feedback block p-3 sm:p-4 bg-gradient-to-r from-red-50 to-red-100 rounded-lg hover:from-red-100 hover:to-red-200 transition-all duration-200 group border border-red-200">
+                        <div class="flex flex-col lg:flex-row items-center lg:justify-between">
+                            <div class="flex flex-col lg:flex-row items-center lg:space-x-3 text-center lg:text-left">
+                                <div class="bg-red-500 rounded-lg p-2 group-hover:scale-110 transition-transform mb-2 lg:mb-0">
                                     <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                                     </svg>
                                 </div>
                                 <div>
-                                    <h3 class="text-sm font-bold text-gray-900">Expedição</h3>
-                                    <p class="text-xs text-gray-600">Registrar saída</p>
+                                    <h3 class="text-xs sm:text-sm font-bold text-gray-900">Expedição</h3>
+                                    <p class="text-[10px] sm:text-xs text-gray-600 hidden lg:block">Registrar saída</p>
                                 </div>
                             </div>
-                            <svg class="w-5 h-5 text-red-500 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-5 h-5 text-red-500 group-hover:translate-x-1 transition-transform hidden lg:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                             </svg>
                         </div>
                     </a>
 
-                    <!-- Kanban -->
+                    <!-- Kanban - Colspan 2 no mobile para destaque -->
                     <a href="{% url 'kanban_board' %}"
-                       class="block p-4 bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-lg hover:from-yellow-100 hover:to-yellow-200 transition-all duration-200 group border border-yellow-200">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-3">
-                                <div class="bg-yellow-500 rounded-lg p-2 group-hover:scale-110 transition-transform">
+                       class="btn-mobile tap-feedback col-span-2 lg:col-span-1 block p-3 sm:p-4 bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-lg hover:from-yellow-100 hover:to-yellow-200 transition-all duration-200 group border border-yellow-200">
+                        <div class="flex flex-col lg:flex-row items-center lg:justify-between">
+                            <div class="flex flex-col lg:flex-row items-center lg:space-x-3 text-center lg:text-left">
+                                <div class="bg-yellow-500 rounded-lg p-2 group-hover:scale-110 transition-transform mb-2 lg:mb-0">
                                     <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                                     </svg>
                                 </div>
                                 <div>
-                                    <h3 class="text-sm font-bold text-gray-900">Kanban</h3>
-                                    <p class="text-xs text-gray-600">Gerenciar tarefas</p>
+                                    <h3 class="text-xs sm:text-sm font-bold text-gray-900">Kanban</h3>
+                                    <p class="text-[10px] sm:text-xs text-gray-600 hidden lg:block">Gerenciar tarefas</p>
                                 </div>
                             </div>
-                            <svg class="w-5 h-5 text-yellow-500 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-5 h-5 text-yellow-500 group-hover:translate-x-1 transition-transform hidden lg:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                             </svg>
                         </div>
