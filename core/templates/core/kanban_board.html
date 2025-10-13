@@ -20,56 +20,93 @@
         </div>
     </div>
 
-    <!-- Controle de Zoom Flutuante (canto inferior direito) -->
-    <div class="fixed bottom-6 right-6 z-50 flex flex-col items-center gap-2 px-3 py-3 rounded-xl bg-white shadow-lg border border-gray-200 hover:shadow-xl transition-shadow">
+    <!-- Controle de Zoom Flutuante (desktop) e colapsável (mobile) -->
+    <div class="hidden md:flex fixed bottom-6 right-6 z-50 flex-col items-center gap-2 px-3 py-3 rounded-xl bg-white shadow-lg border border-gray-200 hover:shadow-xl transition-shadow">
         <button @click="zoomLevel = Math.min(150, zoomLevel + 10); document.querySelector('.kanban-board-container').style.transform = `scale(${zoomLevel / 100})`"
-                class="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-lg bg-gradient-to-br from-indigo-50 to-indigo-100 hover:from-indigo-100 hover:to-indigo-200 transition-all text-indigo-700 font-bold text-lg sm:text-xl"
+                class="w-12 h-12 flex items-center justify-center rounded-lg bg-gradient-to-br from-indigo-50 to-indigo-100 hover:from-indigo-100 hover:to-indigo-200 transition-all text-indigo-700 font-bold text-xl"
                 title="Aumentar zoom">
             +
         </button>
-        <span class="text-xs sm:text-sm font-bold text-gray-700 min-w-[45px] text-center py-1" x-text="zoomLevel + '%'"></span>
+        <span class="text-sm font-bold text-gray-700 min-w-[45px] text-center py-1" x-text="zoomLevel + '%'"></span>
         <button @click="zoomLevel = Math.max(50, zoomLevel - 10); document.querySelector('.kanban-board-container').style.transform = `scale(${zoomLevel / 100})`"
-                class="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 transition-all text-gray-700 font-bold text-lg sm:text-xl"
+                class="w-12 h-12 flex items-center justify-center rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 transition-all text-gray-700 font-bold text-xl"
                 title="Diminuir zoom">
             −
         </button>
         <button @click="zoomLevel = 100; document.querySelector('.kanban-board-container').style.transform = 'scale(1)'"
-                class="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-lg bg-gradient-to-br from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 transition-all text-purple-700 font-medium text-xs"
+                class="w-12 h-12 flex items-center justify-center rounded-lg bg-gradient-to-br from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 transition-all text-purple-700 font-medium text-xs"
                 title="Resetar zoom">
             100%
         </button>
     </div>
 
+    <!-- Botão de Zoom Mobile (compacto, canto inferior direito) -->
+    <button @click="showHistory = false; $nextTick(() => { const zoomBtn = document.getElementById('mobile-zoom-menu'); zoomBtn.style.display = zoomBtn.style.display === 'none' ? 'flex' : 'none'; })"
+            class="md:hidden fixed bottom-20 right-4 z-50 w-12 h-12 flex items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg hover:shadow-xl transition-all tap-feedback"
+            title="Zoom">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/>
+        </svg>
+    </button>
+
+    <!-- Menu Zoom Mobile (Bottom Sheet simplificado) -->
+    <div id="mobile-zoom-menu" style="display: none;" class="md:hidden fixed bottom-20 right-4 z-40 flex flex-col gap-2 px-3 py-3 rounded-xl bg-white shadow-2xl border-2 border-gray-800">
+        <button @click="zoomLevel = Math.min(150, zoomLevel + 10); document.querySelector('.kanban-board-container').style.transform = `scale(${zoomLevel / 100})`"
+                class="w-12 h-12 flex items-center justify-center rounded-lg bg-indigo-100 active:bg-indigo-200 transition-all text-indigo-700 font-bold text-xl tap-feedback">
+            +
+        </button>
+        <span class="text-sm font-bold text-gray-700 text-center py-1" x-text="zoomLevel + '%'"></span>
+        <button @click="zoomLevel = Math.max(50, zoomLevel - 10); document.querySelector('.kanban-board-container').style.transform = `scale(${zoomLevel / 100})`"
+                class="w-12 h-12 flex items-center justify-center rounded-lg bg-gray-100 active:bg-gray-200 transition-all text-gray-700 font-bold text-xl tap-feedback">
+            −
+        </button>
+        <button @click="zoomLevel = 100; document.querySelector('.kanban-board-container').style.transform = 'scale(1)'"
+                class="w-12 h-12 flex items-center justify-center rounded-lg bg-purple-100 active:bg-purple-200 transition-all text-purple-700 font-semibold text-xs tap-feedback">
+            100%
+        </button>
+    </div>
+
     <!-- Histórico Slide Down -->
-    <div x-show="showHistory" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 -translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 -translate-y-4" class="mt-4 bg-white rounded-xl shadow-lg p-6 backdrop-blur-sm">
-        <h2 class="text-lg font-bold mb-4 text-gray-900">📈 Histórico de Produção</h2>
+    <div x-show="showHistory" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 -translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 -translate-y-4" class="mt-4 bg-white rounded-xl shadow-lg p-4 sm:p-6 backdrop-blur-sm">
+        <h2 class="text-lg sm:text-xl font-bold mb-4 text-gray-900">📈 Histórico de Produção</h2>
         <ul class="divide-y divide-gray-100">
             {% for q in historico %}
-            <li class="py-3 flex flex-col md:flex-row md:items-center md:gap-4 hover:bg-gray-50 rounded-lg px-2 transition-colors" x-data="{ editingQty: false, newQty: {{ q.quantidade }} }">
-                <span class="font-semibold text-gray-900 flex-shrink-0">{{ q.task.titulo }}</span>
-                <span class="text-emerald-600 font-medium flex-shrink-0" x-show="!editingQty">+{{ q.quantidade }}</span>
+            <li class="py-3 sm:py-4 flex flex-col hover:bg-gray-50 rounded-lg px-2 transition-colors space-y-2" x-data="{ editingQty: false, newQty: {{ q.quantidade }} }">
+                <!-- Linha 1: Título e Quantidade -->
+                <div class="flex items-center justify-between gap-3">
+                    <span class="font-bold text-gray-900 text-sm sm:text-base">{{ q.task.titulo }}</span>
+                    <span class="text-emerald-600 font-bold text-base sm:text-lg flex-shrink-0" x-show="!editingQty">+{{ q.quantidade }}</span>
+                </div>
 
-                <!-- Form de edição inline -->
-                <form x-show="editingQty" x-transition method="post" action="{% url 'editar_quantidade_feita' quantidade_id=q.id %}" class="flex items-center gap-2">
+                <!-- Form de edição (mobile-friendly) -->
+                <form x-show="editingQty" x-transition method="post" action="{% url 'editar_quantidade_feita' quantidade_id=q.id %}" class="space-y-2">
                     {% csrf_token %}
-                    <input type="number" name="quantidade" x-model="newQty" min="1" class="w-20 border border-gray-300 rounded px-2 py-1 text-sm" required>
-                    <button type="submit" class="px-2 py-1 rounded bg-green-500 text-white hover:bg-green-600 text-xs">Salvar</button>
-                    <button type="button" @click="editingQty = false; newQty = {{ q.quantidade }}" class="px-2 py-1 rounded bg-gray-300 text-gray-700 hover:bg-gray-400 text-xs">Cancelar</button>
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm font-medium text-gray-700">Qtd:</label>
+                        <input type="number" name="quantidade" x-model="newQty" min="1" class="flex-1 border-2 border-gray-300 rounded-lg px-3 py-2 text-base font-semibold" required>
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="submit" class="btn-mobile flex-1 px-4 py-2.5 rounded-lg bg-green-600 text-white hover:bg-green-700 font-semibold tap-feedback">✓ Salvar</button>
+                        <button type="button" @click="editingQty = false; newQty = {{ q.quantidade }}" class="btn-mobile px-4 py-2.5 rounded-lg bg-gray-300 text-gray-700 hover:bg-gray-400 font-semibold tap-feedback">✕</button>
+                    </div>
                 </form>
 
-                <span class="text-gray-500 text-sm flex-grow">por {{ q.usuario.get_full_name|default:q.usuario.username }} • {{ q.data|date:'d/m/Y H:i' }}</span>
+                <!-- Linha 2: Info do usuário e data -->
+                <div class="text-gray-500 text-xs sm:text-sm" x-show="!editingQty">
+                    por <span class="font-medium text-gray-700">{{ q.usuario.get_full_name|default:q.usuario.username }}</span> • {{ q.data|date:'d/m/Y H:i' }}
+                </div>
 
-                <!-- Botões de ação -->
-                <div class="flex gap-1 flex-shrink-0" x-show="!editingQty">
-                    <button @click="editingQty = true" class="px-2 py-1 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-medium">✏️ Editar</button>
-                    <form method="post" action="{% url 'excluir_quantidade_feita' quantidade_id=q.id %}" class="inline" onsubmit="return confirm('Tem certeza que deseja excluir este registro de {{ q.quantidade }} unidades?')">
+                <!-- Botões de ação (mobile otimizado) -->
+                <div class="flex gap-2" x-show="!editingQty">
+                    <button @click="editingQty = true" class="btn-mobile flex-1 px-4 py-2.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold tap-feedback">✏️ Editar</button>
+                    <form method="post" action="{% url 'excluir_quantidade_feita' quantidade_id=q.id %}" class="flex-1" onsubmit="return confirm('Tem certeza que deseja excluir este registro de {{ q.quantidade }} unidades?')">
                         {% csrf_token %}
-                        <button type="submit" class="px-2 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100 text-xs font-medium">🗑️ Excluir</button>
+                        <button type="submit" class="btn-mobile w-full px-4 py-2.5 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 font-semibold tap-feedback">🗑️ Excluir</button>
                     </form>
                 </div>
             </li>
             {% empty %}
-            <li class="text-gray-400 italic py-4 text-center">Nenhum registro ainda.</li>
+            <li class="text-gray-400 italic py-8 text-center text-sm sm:text-base">Nenhum registro ainda.</li>
             {% endfor %}
         </ul>
     </div>
@@ -77,41 +114,50 @@
 
 <!-- Board Container com scroll horizontal suave e zoom -->
 <div class="kanban-board-container transition-transform duration-200" style="transform-origin: top left;">
-<div class="flex gap-3 sm:gap-4 overflow-x-auto pb-6 px-1 scrollbar-hide" style="scroll-behavior: smooth;">
+<!-- Indicador de Scroll Horizontal (Mobile) -->
+<div class="md:hidden relative">
+    <div class="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-gray-50 to-transparent pointer-events-none z-10"></div>
+    <div class="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-gray-50 to-transparent pointer-events-none z-10 flex items-center justify-center">
+        <svg class="w-6 h-6 text-gray-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+    </div>
+</div>
+<div class="flex gap-3 sm:gap-4 overflow-x-auto pb-6 px-1 scrollbar-hide" style="scroll-behavior: smooth; scroll-snap-type: x proximity;">
     {% for coluna in colunas %}
-    <div class="kanban-column flex-shrink-0 w-72 sm:w-80" data-column-id="{{ coluna.id }}">
+    <div class="kanban-column flex-shrink-0 w-72 sm:w-80" data-column-id="{{ coluna.id }}" style="scroll-snap-align: start;">
         <!-- Column Header -->
         <div class="bg-white rounded-t-xl border border-gray-200 shadow-sm relative overflow-visible">
             <div class="flex items-center justify-between p-3 sm:p-4 overflow-visible">
-                <div class="flex items-center gap-2">
-                    <div class="w-3 h-3 rounded-full" style="background: {{ coluna.cor }};"></div>
-                    <h2 class="font-semibold text-sm sm:text-base text-gray-900 truncate max-w-[140px] sm:max-w-none">{{ coluna.nome }}</h2>
-                    <span class="text-xs text-gray-500 bg-gray-100 px-1.5 sm:px-2 py-0.5 rounded-full">{{ coluna.tasks.count }}</span>
+                <div class="flex items-center gap-2 flex-1 min-w-0">
+                    <div class="w-4 h-4 rounded-full flex-shrink-0" style="background: {{ coluna.cor }};"></div>
+                    <h2 class="font-bold text-base sm:text-lg text-gray-900 truncate">{{ coluna.nome }}</h2>
+                    <span class="text-xs sm:text-sm font-bold text-white bg-indigo-600 px-2 sm:px-2.5 py-1 rounded-full flex-shrink-0 min-w-[24px] text-center">{{ coluna.tasks.count }}</span>
                 </div>
                 <div class="relative" x-data="{ open: false }">
-                    <button @click="open = !open" class="p-1 hover:bg-gray-100 rounded transition-colors">
-                        <svg class="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 16 16">
+                    <button @click="open = !open" class="p-2 sm:p-2.5 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors tap-feedback flex-shrink-0">
+                        <svg class="w-6 h-6 text-gray-600" fill="currentColor" viewBox="0 0 16 16">
                             <circle cx="8" cy="3" r="1.5"/>
                             <circle cx="8" cy="8" r="1.5"/>
                             <circle cx="8" cy="13" r="1.5"/>
                         </svg>
                     </button>
 
-                    <!-- Dropdown inline mas com z-index alto -->
+                    <!-- Dropdown inline mas com z-index alto e maior no mobile -->
                     <div x-show="open"
                          @click.away="open = false"
                          x-transition
-                         class="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-2xl border-2 border-gray-800 py-2 overflow-visible"
+                         class="absolute right-0 top-full mt-2 w-64 sm:w-56 bg-white rounded-xl shadow-2xl border-2 border-gray-800 py-2 overflow-visible"
                          style="z-index: 999999;">
                         <a href="{% url 'editar_coluna' coluna_id=coluna.id %}"
-                           class="flex items-center gap-3 px-4 py-3 text-base font-semibold text-gray-900 hover:bg-blue-50 transition-colors border-b border-gray-200">
+                           class="flex items-center gap-3 px-4 py-3.5 sm:py-3 text-base font-semibold text-gray-900 hover:bg-blue-50 active:bg-blue-100 transition-colors border-b border-gray-200 tap-feedback">
                             <span class="text-xl">✏️</span>
                             <span>Editar coluna</span>
                         </a>
                         <form method="post" action="{% url 'excluir_coluna' coluna_id=coluna.id %}" onsubmit="return confirm('Deseja excluir esta coluna?')">
                             {% csrf_token %}
                             <button type="submit"
-                                    class="flex items-center gap-3 w-full text-left px-4 py-3 text-base font-semibold text-red-600 hover:bg-red-50 transition-colors">
+                                    class="flex items-center gap-3 w-full text-left px-4 py-3.5 sm:py-3 text-base font-semibold text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors tap-feedback">
                                 <span class="text-xl">🗑️</span>
                                 <span>Excluir coluna</span>
                             </button>
@@ -200,59 +246,76 @@
 
                     <!-- Actions e Form de Quantidade (Alpine.js) -->
                     <div x-data="{ editQty: false }">
-                        <!-- Actions (sempre visíveis) - Botões maiores para mobile -->
-                        <div class="no-drag pt-2 border-t border-gray-100 flex flex-wrap gap-1.5 sm:gap-2">
-                            <a href="{% url 'detalhe_tarefa' task_id=task.id %}" class="no-drag btn-mobile text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-medium transition-colors tap-feedback">
-                                <span class="hidden sm:inline">📋 Detalhes</span>
-                                <span class="sm:hidden">📋</span>
-                            </a>
+                        <!-- Actions (sempre visíveis) - Organizadas em duas linhas no mobile -->
+                        <div class="no-drag pt-2 border-t border-gray-100">
                             {% if not task.finalizado %}
-                            <form method="post" action="{% url 'marcar_andamento' task_id=task.id %}" class="inline no-drag">
-                                {% csrf_token %}
-                                <button type="submit" class="no-drag btn-mobile text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium transition-colors tap-feedback">
-                                    <span class="hidden sm:inline">▶️ Iniciar</span>
-                                    <span class="sm:hidden">▶️</span>
-                                </button>
-                            </form>
-                            <form method="post" action="{% url 'finalizar' task_id=task.id %}" class="inline no-drag" onsubmit="return confirm('Tem certeza que deseja finalizar este card? Esta ação marcará o card como concluído.')">
-                                {% csrf_token %}
-                                <button type="submit" class="no-drag btn-mobile text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-medium transition-colors tap-feedback">
-                                    <span class="hidden sm:inline">✓ Finalizar</span>
-                                    <span class="sm:hidden">✓</span>
-                                </button>
-                            </form>
-                            <button @click="editQty = !editQty" class="no-drag btn-mobile text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 font-medium transition-colors tap-feedback">
-                                <span class="hidden sm:inline">+ Qtd</span>
-                                <span class="sm:hidden">+</span>
-                            </button>
-                            <a href="{% url 'detalhe_tarefa' task_id=task.id %}#historico" class="no-drag btn-mobile text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 font-medium transition-colors tap-feedback" title="Ver/Editar histórico de quantidades">
-                                <span class="hidden sm:inline">📊 Hist</span>
-                                <span class="sm:hidden">📊</span>
-                            </a>
-                            <a href="{% url 'editar_tarefa' task_id=task.id %}" class="no-drag btn-mobile text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-gray-50 text-gray-700 hover:bg-gray-100 font-medium transition-colors tap-feedback">
-                                ✏️
-                            </a>
-                            {% else %}
-                            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full">
-                                <span class="text-xs sm:text-sm text-green-600 font-semibold">✓ Finalizado</span>
-                                <form method="post" action="{% url 'desfinalizar' task_id=task.id %}" class="inline no-drag" onsubmit="return confirm('Deseja reabrir este card?')">
+                            <!-- Linha 1: Ações Principais -->
+                            <div class="flex gap-2 mb-2">
+                                <a href="{% url 'detalhe_tarefa' task_id=task.id %}" class="no-drag btn-mobile flex-1 text-xs sm:text-sm px-3 py-2.5 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-semibold transition-colors tap-feedback text-center">
+                                    📋 <span class="hidden sm:inline">Detalhes</span>
+                                </a>
+                                <form method="post" action="{% url 'marcar_andamento' task_id=task.id %}" class="flex-1 no-drag">
                                     {% csrf_token %}
-                                    <button type="submit" class="no-drag btn-mobile text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-yellow-50 text-yellow-700 hover:bg-yellow-100 font-medium transition-colors tap-feedback">
-                                        <span class="hidden sm:inline">↩️ Reabrir</span>
-                                        <span class="sm:hidden">↩️</span>
+                                    <button type="submit" class="no-drag btn-mobile w-full text-xs sm:text-sm px-3 py-2.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold transition-colors tap-feedback">
+                                        ▶️ <span class="hidden sm:inline">Iniciar</span>
                                     </button>
                                 </form>
+                                <form method="post" action="{% url 'finalizar' task_id=task.id %}" class="flex-1 no-drag" onsubmit="return confirm('Tem certeza que deseja finalizar este card?')">
+                                    {% csrf_token %}
+                                    <button type="submit" class="no-drag btn-mobile w-full text-xs sm:text-sm px-3 py-2.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold transition-colors tap-feedback">
+                                        ✓ <span class="hidden sm:inline">Finalizar</span>
+                                    </button>
+                                </form>
+                            </div>
+                            <!-- Linha 2: Ações Secundárias -->
+                            <div class="flex gap-2">
+                                <button @click="editQty = !editQty" class="no-drag btn-mobile flex-1 text-xs sm:text-sm px-3 py-2.5 rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 font-semibold transition-colors tap-feedback">
+                                    <span x-show="!editQty">+ Qtd</span>
+                                    <span x-show="editQty">✕ Fechar</span>
+                                </button>
+                                <a href="{% url 'detalhe_tarefa' task_id=task.id %}#historico" class="no-drag btn-mobile flex-1 text-xs sm:text-sm px-3 py-2.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 font-semibold transition-colors tap-feedback text-center" title="Histórico">
+                                    📊 <span class="hidden sm:inline">Hist</span>
+                                </a>
+                                <a href="{% url 'editar_tarefa' task_id=task.id %}" class="no-drag btn-mobile flex-1 text-xs sm:text-sm px-3 py-2.5 rounded-lg bg-gray-50 text-gray-700 hover:bg-gray-100 font-semibold transition-colors tap-feedback text-center">
+                                    ✏️ <span class="hidden sm:inline">Editar</span>
+                                </a>
+                            </div>
+                            {% else %}
+                            <!-- Card Finalizado -->
+                            <div class="flex flex-col gap-2">
+                                <div class="flex items-center justify-center px-3 py-2 bg-green-50 text-green-700 rounded-lg font-semibold text-sm">
+                                    ✓ Card Finalizado
+                                </div>
+                                <div class="flex gap-2">
+                                    <a href="{% url 'detalhe_tarefa' task_id=task.id %}" class="no-drag btn-mobile flex-1 text-xs sm:text-sm px-3 py-2.5 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-semibold transition-colors tap-feedback text-center">
+                                        📋 Detalhes
+                                    </a>
+                                    <form method="post" action="{% url 'desfinalizar' task_id=task.id %}" class="flex-1 no-drag" onsubmit="return confirm('Deseja reabrir este card?')">
+                                        {% csrf_token %}
+                                        <button type="submit" class="no-drag btn-mobile w-full text-xs sm:text-sm px-3 py-2.5 rounded-lg bg-yellow-50 text-yellow-700 hover:bg-yellow-100 font-semibold transition-colors tap-feedback">
+                                            ↩️ Reabrir
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
                             {% endif %}
                         </div>
 
-                        <!-- Quick Add Quantity Form - Inputs maiores para mobile -->
-                        <form x-show="editQty" x-transition method="post" action="{% url 'registrar_quantidade' task_id=task.id %}" class="no-drag mt-3 flex gap-2 items-center pt-3 border-t border-gray-100">
+                        <!-- Quick Add Quantity Form - Full width e otimizado para mobile -->
+                        <form x-show="editQty" x-transition method="post" action="{% url 'registrar_quantidade' task_id=task.id %}" class="no-drag mt-3 pt-3 border-t border-gray-100 space-y-2">
                         {% csrf_token %}
-                        <input type="number" name="quantidade" min="1" class="no-drag flex-1 border-2 border-gray-300 rounded-lg px-3 py-2.5 text-sm sm:text-base focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" placeholder="Quantidade" required>
-                        <button type="submit" class="no-drag btn-mobile px-4 py-2.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 font-semibold transition-colors text-sm sm:text-base tap-feedback">
-                            Salvar
-                        </button>
+                        <div class="flex items-center gap-2">
+                            <label class="text-sm font-medium text-gray-700 flex-shrink-0">Quantidade:</label>
+                            <input type="number" name="quantidade" min="1" class="no-drag flex-1 border-2 border-gray-300 rounded-lg px-4 py-3 text-base font-semibold text-center focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" placeholder="0" required>
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="submit" class="no-drag btn-mobile flex-1 px-4 py-3 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 font-semibold transition-colors text-base tap-feedback">
+                                ✓ Salvar
+                            </button>
+                            <button type="button" @click="editQty = false" class="no-drag btn-mobile px-4 py-3 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 font-semibold transition-colors text-base tap-feedback">
+                                ✕
+                            </button>
+                        </div>
                         </form>
                     </div>
                 </div>
@@ -456,8 +519,24 @@ document.addEventListener('DOMContentLoaded', function() {
             preventOnFilter: false,
             onStart: function(evt) {
                 console.log('🚀 Começou a arrastar card:', evt.item.dataset.taskId);
+                // Vibração háptica ao pegar o card
+                if ('vibrate' in navigator) {
+                    navigator.vibrate(50);
+                }
+                // Adiciona classe visual às colunas
+                document.querySelectorAll('.kanban-column > div[class*="space-y"]').forEach(col => {
+                    col.classList.add('drop-zone-active');
+                });
             },
             onEnd: function(evt) {
+                // Remove classe visual das colunas
+                document.querySelectorAll('.kanban-column > div[class*="space-y"]').forEach(col => {
+                    col.classList.remove('drop-zone-active');
+                });
+                // Vibração háptica ao soltar o card
+                if ('vibrate' in navigator) {
+                    navigator.vibrate([30, 20, 30]);
+                }
                 const taskCard = evt.item;
                 const taskId = taskCard.dataset.taskId;
                 const newColumnElement = evt.to.closest('.kanban-column');
@@ -515,16 +594,20 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
-/* Animações extras para drag and drop */
+/* Animações extras para drag and drop - Feedback visual forte */
 .sortable-ghost {
-    opacity: 0.3 !important;
-    background: rgba(99, 102, 241, 0.1) !important;
+    opacity: 0.4 !important;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2)) !important;
+    border: 3px dashed #6366f1 !important;
+    transform: scale(0.95);
 }
 
 .sortable-drag {
-    transform: rotate(2deg) scale(1.05);
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    transform: rotate(3deg) scale(1.08) !important;
+    box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.35), 0 0 0 3px #6366f1 !important;
     cursor: grabbing !important;
+    z-index: 9999 !important;
+    opacity: 0.95 !important;
 }
 
 .kanban-card:active {
@@ -533,6 +616,26 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .kanban-column:active {
     cursor: grabbing;
+}
+
+/* Highlight da coluna quando arrasta card por cima */
+.sortable-drag-over {
+    background: rgba(99, 102, 241, 0.1) !important;
+    border: 2px solid #6366f1 !important;
+}
+
+/* Animação de pulso para indicar área dropável */
+@keyframes pulse-drop-zone {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(99, 102, 241, 0);
+    }
+}
+
+.drop-zone-active {
+    animation: pulse-drop-zone 1.5s infinite;
 }
 </style>
 {% endblock %}
