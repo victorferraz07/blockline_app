@@ -6,7 +6,28 @@
 <div class="fixed inset-0 -z-10 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50"></div>
 
 <!-- Header moderno -->
-<div class="mb-6" x-data="{ showHistory: false, zoomLevel: 100 }">
+<div class="mb-6" x-data="{
+    showHistory: false,
+    zoomLevel: 100,
+    applyZoom(newLevel) {
+        this.zoomLevel = newLevel;
+        const container = document.querySelector('.kanban-board-container');
+        const wrapper = document.querySelector('.kanban-board-wrapper');
+        const scale = this.zoomLevel / 100;
+
+        // Aplica o zoom com transform
+        container.style.transform = `scale(${scale})`;
+        container.style.transformOrigin = 'top left';
+
+        // Ajusta a altura do wrapper para evitar cortes
+        const originalHeight = container.scrollHeight;
+        wrapper.style.height = `${originalHeight * scale}px`;
+
+        // Ajusta a largura para manter o conteúdo visível
+        const originalWidth = container.scrollWidth;
+        wrapper.style.width = `${originalWidth * scale}px`;
+    }
+}">
     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Quadro Kanban</h1>
         <div class="flex flex-wrap gap-2 w-full sm:w-auto">
@@ -22,18 +43,18 @@
 
     <!-- Controle de Zoom Flutuante (desktop) e colapsável (mobile) -->
     <div class="hidden md:flex fixed bottom-6 right-6 z-50 flex-col items-center gap-2 px-3 py-3 rounded-xl bg-white shadow-lg border border-gray-200 hover:shadow-xl transition-shadow">
-        <button @click="zoomLevel = Math.min(150, zoomLevel + 10); document.querySelector('.kanban-board-container').style.transform = `scale(${zoomLevel / 100})`"
+        <button @click="applyZoom(Math.min(150, zoomLevel + 10))"
                 class="w-12 h-12 flex items-center justify-center rounded-lg bg-gradient-to-br from-indigo-50 to-indigo-100 hover:from-indigo-100 hover:to-indigo-200 transition-all text-indigo-700 font-bold text-xl"
                 title="Aumentar zoom">
             +
         </button>
         <span class="text-sm font-bold text-gray-700 min-w-[45px] text-center py-1" x-text="zoomLevel + '%'"></span>
-        <button @click="zoomLevel = Math.max(50, zoomLevel - 10); document.querySelector('.kanban-board-container').style.transform = `scale(${zoomLevel / 100})`"
+        <button @click="applyZoom(Math.max(50, zoomLevel - 10))"
                 class="w-12 h-12 flex items-center justify-center rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 transition-all text-gray-700 font-bold text-xl"
                 title="Diminuir zoom">
             −
         </button>
-        <button @click="zoomLevel = 100; document.querySelector('.kanban-board-container').style.transform = 'scale(1)'"
+        <button @click="applyZoom(100)"
                 class="w-12 h-12 flex items-center justify-center rounded-lg bg-gradient-to-br from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 transition-all text-purple-700 font-medium text-xs"
                 title="Resetar zoom">
             100%
@@ -51,16 +72,16 @@
 
     <!-- Menu Zoom Mobile (Bottom Sheet simplificado) -->
     <div id="mobile-zoom-menu" style="display: none;" class="md:hidden fixed bottom-20 right-4 z-40 flex flex-col gap-2 px-3 py-3 rounded-xl bg-white shadow-2xl border-2 border-gray-800">
-        <button @click="zoomLevel = Math.min(150, zoomLevel + 10); document.querySelector('.kanban-board-container').style.transform = `scale(${zoomLevel / 100})`"
+        <button @click="applyZoom(Math.min(150, zoomLevel + 10))"
                 class="w-12 h-12 flex items-center justify-center rounded-lg bg-indigo-100 active:bg-indigo-200 transition-all text-indigo-700 font-bold text-xl tap-feedback">
             +
         </button>
         <span class="text-sm font-bold text-gray-700 text-center py-1" x-text="zoomLevel + '%'"></span>
-        <button @click="zoomLevel = Math.max(50, zoomLevel - 10); document.querySelector('.kanban-board-container').style.transform = `scale(${zoomLevel / 100})`"
+        <button @click="applyZoom(Math.max(50, zoomLevel - 10))"
                 class="w-12 h-12 flex items-center justify-center rounded-lg bg-gray-100 active:bg-gray-200 transition-all text-gray-700 font-bold text-xl tap-feedback">
             −
         </button>
-        <button @click="zoomLevel = 100; document.querySelector('.kanban-board-container').style.transform = 'scale(1)'"
+        <button @click="applyZoom(100)"
                 class="w-12 h-12 flex items-center justify-center rounded-lg bg-purple-100 active:bg-purple-200 transition-all text-purple-700 font-semibold text-xs tap-feedback">
             100%
         </button>
@@ -112,6 +133,8 @@
     </div>
 </div>
 
+<!-- Wrapper para conter o zoom -->
+<div class="kanban-board-wrapper overflow-auto w-full transition-all duration-200">
 <!-- Board Container com scroll horizontal suave e zoom -->
 <div class="kanban-board-container transition-transform duration-200" style="transform-origin: top left;">
 <!-- Indicador de Scroll Horizontal (Mobile) -->
@@ -383,6 +406,8 @@
 </div>
 </div>
 <!-- Fim do container de zoom -->
+</div>
+<!-- Fim do wrapper de zoom -->
 
 <style>
 /* Hide elements with x-cloak before Alpine loads */
