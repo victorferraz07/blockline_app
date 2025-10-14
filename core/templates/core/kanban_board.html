@@ -12,20 +12,11 @@
     applyZoom(newLevel) {
         this.zoomLevel = newLevel;
         const container = document.querySelector('.kanban-board-container');
-        const wrapper = document.querySelector('.kanban-board-wrapper');
         const scale = this.zoomLevel / 100;
 
-        // Aplica o zoom com transform
+        // Aplica o zoom com transform scale
         container.style.transform = `scale(${scale})`;
-        container.style.transformOrigin = 'top left';
-
-        // Ajusta a altura do wrapper para evitar cortes
-        const originalHeight = container.scrollHeight;
-        wrapper.style.height = `${originalHeight * scale}px`;
-
-        // Ajusta a largura para manter o conteúdo visível
-        const originalWidth = container.scrollWidth;
-        wrapper.style.width = `${originalWidth * scale}px`;
+        container.style.transformOrigin = 'top center';
     }
 }">
     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -133,10 +124,8 @@
     </div>
 </div>
 
-<!-- Wrapper para conter o zoom -->
-<div class="kanban-board-wrapper overflow-auto w-full transition-all duration-200">
 <!-- Board Container com scroll horizontal suave e zoom -->
-<div class="kanban-board-container transition-transform duration-200" style="transform-origin: top left;">
+<div class="kanban-board-container transition-transform duration-200" style="transform-origin: top center;">
 <!-- Indicador de Scroll Horizontal (Mobile) -->
 <div class="md:hidden relative">
     <div class="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-gray-50 to-transparent pointer-events-none z-10"></div>
@@ -406,8 +395,6 @@
 </div>
 </div>
 <!-- Fim do container de zoom -->
-</div>
-<!-- Fim do wrapper de zoom -->
 
 <style>
 /* Hide elements with x-cloak before Alpine loads */
