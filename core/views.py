@@ -1424,6 +1424,52 @@ def controle_ponto(request):
     )
     horas_abonadas = sum(float(abono.horas_abonadas) for abono in abonos_periodo)
 
+    # Pesquisa por dia específico
+    dia_pesquisa_str = request.GET.get('dia_pesquisa')
+    dia_pesquisado = None
+    pontos_do_dia = []
+    entrada = None
+    saida = None
+    inicio_almoco = None
+    fim_almoco = None
+    horas_trabalhadas_dia = 0
+    tempo_almoco = None
+
+    if dia_pesquisa_str:
+        try:
+            dia_pesquisado = datetime.strptime(dia_pesquisa_str, '%Y-%m-%d').date()
+            # Buscar todos os pontos do dia
+            pontos_do_dia = RegistroPonto.objects.filter(
+                usuario=usuario,
+                data_hora__date=dia_pesquisado
+            ).order_by('data_hora')
+
+            # Separar os registros por tipo
+            registros_dia = {'entrada': None, 'saida': None, 'inicio_almoco': None, 'fim_almoco': None}
+            for ponto in pontos_do_dia:
+                if ponto.tipo == 'entrada':
+                    entrada = registros_dia['entrada'] = ponto.data_hora
+                elif ponto.tipo == 'saida':
+                    saida = registros_dia['saida'] = ponto.data_hora
+                elif ponto.tipo == 'inicio_almoco':
+                    inicio_almoco = registros_dia['inicio_almoco'] = ponto.data_hora
+                elif ponto.tipo == 'fim_almoco':
+                    fim_almoco = registros_dia['fim_almoco'] = ponto.data_hora
+
+            # Calcular horas trabalhadas do dia
+            if registros_dia['entrada'] and registros_dia['saida']:
+                delta = registros_dia['saida'] - registros_dia['entrada']
+                horas_trabalhadas_dia = delta.total_seconds() / 3600
+
+                # Calcular tempo de almoço
+                if registros_dia['inicio_almoco'] and registros_dia['fim_almoco']:
+                    intervalo = registros_dia['fim_almoco'] - registros_dia['inicio_almoco']
+                    tempo_almoco = intervalo.total_seconds() / 3600
+                    horas_trabalhadas_dia -= tempo_almoco
+        except (ValueError, TypeError):
+            # Data inválida, ignora
+            dia_pesquisado = None
+
     # Calcular dias de falta (dias úteis sem ponto e sem abono, até hoje)
     dias_falta = 0
     dia_atual = primeiro_dia.date()
@@ -1575,6 +1621,15 @@ def controle_ponto(request):
         'abonos_mes': abonos_mes,
         'primeiro_dia': primeiro_dia,
         'ultimo_dia': ultimo_dia,
+        # Dados da pesquisa por dia
+        'dia_pesquisado': dia_pesquisado,
+        'pontos_do_dia': pontos_do_dia,
+        'entrada': entrada,
+        'saida': saida,
+        'inicio_almoco': inicio_almoco,
+        'fim_almoco': fim_almoco,
+        'horas_trabalhadas_dia': round(horas_trabalhadas_dia, 2) if horas_trabalhadas_dia else 0,
+        'tempo_almoco': round(tempo_almoco, 2) if tempo_almoco else None,
     }
 
     return render(request, 'core/controle_ponto.html', contexto)
