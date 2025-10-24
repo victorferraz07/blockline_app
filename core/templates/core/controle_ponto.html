@@ -25,7 +25,7 @@
     </div>
 
     <!-- Pesquisa por Dia -->
-    <div class="mb-6 bg-white rounded-xl shadow-sm border border-gray-200 p-6" x-data="{ mostrarResultado: {{ 'true' if dia_pesquisado else 'false' }} }">
+    <div class="mb-6 bg-white rounded-xl shadow-sm border border-gray-200 p-6" x-data="{ mostrarResultado: {% if dia_pesquisado %}true{% else %}false{% endif %} }">
         <h2 class="text-xl font-bold text-gray-900 mb-4">🔍 Pesquisar Ponto por Dia</h2>
 
         <form method="get" action="{% url 'controle_ponto' %}" class="flex flex-col sm:flex-row gap-3">

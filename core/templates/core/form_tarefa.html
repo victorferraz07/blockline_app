@@ -49,11 +49,11 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <!-- Quantidade -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-2">Quantidade</label>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">Quantidade Meta</label>
           <input
             type="number"
             name="quantidade"
-            value="{{ task.quantidade|default:0 }}"
+            value="{{ task.quantidade_meta|default:0 }}"
             min="0"
             class="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             placeholder="0"
