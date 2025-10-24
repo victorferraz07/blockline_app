@@ -460,13 +460,47 @@
             <span class="font-medium">Fornecedores</span>
           </a>
 
-          <a href="{% url 'lista_requisicoes' %}"
-             class="flex items-center gap-4 px-4 py-3.5 rounded-xl hover:bg-gray-50 tap-feedback transition-colors {% if '/requisicoes/' in request.path %}bg-indigo-50 text-indigo-700{% else %}text-gray-700{% endif %}">
-            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
-            </svg>
-            <span class="font-medium">Requisições</span>
-          </a>
+          <!-- Seção Compras -->
+          <div x-data="{ comprasOpen: false }">
+            <button @click="comprasOpen = !comprasOpen"
+                    class="w-full flex items-center justify-between gap-4 px-4 py-3.5 rounded-xl hover:bg-gray-50 tap-feedback transition-colors text-gray-700">
+              <div class="flex items-center gap-4">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+                <span class="font-medium">Compras</span>
+              </div>
+              <svg class="w-5 h-5" :class="{'rotate-180': comprasOpen}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </button>
+
+            <div x-show="comprasOpen" x-transition class="ml-4 mt-1 space-y-1">
+              <a href="{% url 'lista_requisicoes' %}"
+                 class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-gray-50 tap-feedback transition-colors {% if '/requisicoes/' in request.path %}bg-indigo-50 text-indigo-700{% else %}text-gray-600{% endif %}">
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+                <span class="text-sm font-medium">Requisições</span>
+              </a>
+
+              <a href="{% url 'lista_gastos_viagem' %}"
+                 class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-gray-50 tap-feedback transition-colors {% if '/gastos-viagem/' in request.path %}bg-indigo-50 text-indigo-700{% else %}text-gray-600{% endif %}">
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span class="text-sm font-medium">Gastos Viagem</span>
+              </a>
+
+              <a href="{% url 'lista_gastos_caixa' %}"
+                 class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-gray-50 tap-feedback transition-colors {% if '/gastos-caixa/' in request.path %}bg-indigo-50 text-indigo-700{% else %}text-gray-600{% endif %}">
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+                <span class="text-sm font-medium">Gastos Caixa</span>
+              </a>
+            </div>
+          </div>
 
           <div class="border-t border-gray-200 my-3"></div>
 
