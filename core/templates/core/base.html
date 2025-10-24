@@ -144,42 +144,71 @@
         <div class="hidden md:flex flex-1 justify-center space-x-6">
           <a href="{% url 'dashboard' %}"
              class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if request.path == prefix|add:'/' %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
-            Dashboard
+            📊 Dashboard
           </a>
+
+          <!-- Menu Dropdown Compras -->
+          <div x-data="{ open: false }" @click.away="open = false" class="relative">
+            <button @click="open = !open"
+                    class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/requisicoes/' in request.path or '/gastos-viagem/' in request.path or '/gastos-caixa/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %} flex items-center gap-1">
+              🛒 Compras
+              <svg class="w-4 h-4" :class="{'rotate-180': open}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </button>
+            <div x-show="open"
+                 x-transition:enter="transition ease-out duration-100"
+                 x-transition:enter-start="transform opacity-0 scale-95"
+                 x-transition:enter-end="transform opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-75"
+                 x-transition:leave-start="transform opacity-100 scale-100"
+                 x-transition:leave-end="transform opacity-0 scale-95"
+                 class="absolute top-full left-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+              <a href="{% url 'lista_requisicoes' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 {% if '/requisicoes/' in request.path %}bg-indigo-100 font-semibold{% endif %}">
+                🛒 Requisições de Compra
+              </a>
+              <a href="{% url 'lista_gastos_viagem' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 {% if '/gastos-viagem/' in request.path %}bg-indigo-100 font-semibold{% endif %}">
+                ✈️ Gastos de Viagem
+              </a>
+              <a href="{% url 'lista_gastos_caixa' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 {% if '/gastos-caixa/' in request.path %}bg-indigo-100 font-semibold{% endif %}">
+                💵 Gastos de Caixa
+              </a>
+            </div>
+          </div>
 
           <a href="{% url 'lista_recebimentos' %}"
              class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/recebimento/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
-            Recebimento
+            📥 Recebimento
           </a>
 
           <a href="{% url 'lista_estoque' %}"
              class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/estoque/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
-            Estoque
+            📦 Estoque
           </a>
 
           <a href="{% url 'lista_produtos' %}"
              class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/produtos/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
-            Produtos
+            🏭 Produtos
           </a>
 
           <a href="{% url 'lista_expedicoes' %}"
              class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/expedicao/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
-            Expedição
+            🚚 Expedição
           </a>
 
           <a href="{{ prefix }}/clientes/"
              class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/clientes/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
-            Clientes
+            👥 Clientes
           </a>
 
           <a href="{{ prefix }}/fornecedores/"
              class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/fornecedores/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
-            Fornecedores
+            🏢 Fornecedores
           </a>
 
           <a href="{% url 'kanban_board' %}"
              class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/kanban/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
-            Kanban
+            📋 Kanban
           </a>
 
           <a href="{% url 'controle_ponto' %}"
@@ -221,15 +250,31 @@
       </div>
 
       <!-- Mobile menu -->
-      <div id="mobile-menu" class="md:hidden hidden flex-col space-y-2 mt-2 pb-4">
-        <a href="{% url 'dashboard' %}" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Dashboard</a>
-        <a href="{% url 'lista_recebimentos' %}" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Recebimento</a>
-        <a href="{% url 'lista_estoque' %}" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Estoque</a>
-        <a href="{% url 'lista_produtos' %}" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Produtos</a>
-        <a href="{% url 'lista_expedicoes' %}" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Expedição</a>
-        <a href="{{ prefix }}/clientes/" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Clientes</a>
-        <a href="{{ prefix }}/fornecedores/" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Fornecedores</a>
-        <a href="{% url 'kanban_board' %}" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">Kanban</a>
+      <div id="mobile-menu" class="md:hidden hidden flex-col space-y-2 mt-2 pb-4" x-data="{ comprasOpen: false }">
+        <a href="{% url 'dashboard' %}" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">📊 Dashboard</a>
+
+        <!-- Compras com submenu -->
+        <div>
+          <button @click="comprasOpen = !comprasOpen" class="w-full text-left py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 flex items-center justify-between">
+            <span>🛒 Compras</span>
+            <svg class="w-4 h-4" :class="{'rotate-180': comprasOpen}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+          <div x-show="comprasOpen" x-transition class="ml-4 mt-1 space-y-1">
+            <a href="{% url 'lista_requisicoes' %}" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 text-sm">🛒 Requisições de Compra</a>
+            <a href="{% url 'lista_gastos_viagem' %}" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 text-sm">✈️ Gastos de Viagem</a>
+            <a href="{% url 'lista_gastos_caixa' %}" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 text-sm">💵 Gastos de Caixa</a>
+          </div>
+        </div>
+
+        <a href="{% url 'lista_recebimentos' %}" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">📥 Recebimento</a>
+        <a href="{% url 'lista_estoque' %}" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">📦 Estoque</a>
+        <a href="{% url 'lista_produtos' %}" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">🏭 Produtos</a>
+        <a href="{% url 'lista_expedicoes' %}" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">🚚 Expedição</a>
+        <a href="{{ prefix }}/clientes/" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">👥 Clientes</a>
+        <a href="{{ prefix }}/fornecedores/" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">🏢 Fornecedores</a>
+        <a href="{% url 'kanban_board' %}" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">📋 Kanban</a>
         <a href="{% url 'controle_ponto' %}" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">⏰ Ponto</a>
 
         {% if user.is_authenticated %}
@@ -413,6 +458,14 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
             </svg>
             <span class="font-medium">Fornecedores</span>
+          </a>
+
+          <a href="{% url 'lista_requisicoes' %}"
+             class="flex items-center gap-4 px-4 py-3.5 rounded-xl hover:bg-gray-50 tap-feedback transition-colors {% if '/requisicoes/' in request.path %}bg-indigo-50 text-indigo-700{% else %}text-gray-700{% endif %}">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+            </svg>
+            <span class="font-medium">Requisições</span>
           </a>
 
           <div class="border-t border-gray-200 my-3"></div>

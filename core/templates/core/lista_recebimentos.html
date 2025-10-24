@@ -133,7 +133,15 @@
                             </svg>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-600 font-medium">NF #{{ recebimento.numero_nota_fiscal|default:"S/N" }}</p>
+                            <p class="text-xs text-gray-600 font-medium">
+                                {% if recebimento.numero_nota_fiscal %}
+                                NF #<a href="{% url 'lista_requisicoes' %}?status=todas&nf={{ recebimento.numero_nota_fiscal }}"
+                                       class="text-indigo-600 hover:text-indigo-800 hover:underline font-semibold"
+                                       title="Ver requisições desta nota fiscal">{{ recebimento.numero_nota_fiscal }} 🔗</a>
+                                {% else %}
+                                NF #S/N
+                                {% endif %}
+                            </p>
                             <p class="text-sm font-bold text-gray-800">{{ recebimento.get_nome_fornecedor }}</p>
                         </div>
                     </div>

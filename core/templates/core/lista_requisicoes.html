@@ -1,0 +1,605 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% block content %}
+
+<div class="fixed inset-0 -z-10 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50"></div>
+
+<div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">🛒 Compras</h1>
+            <p class="text-gray-600 mt-1">Gerencie o fluxo de compras da empresa</p>
+        </div>
+        <button onclick="document.getElementById('modal-nova-requisicao').style.display='flex'"
+                class="btn-mobile px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors tap-feedback">
+            + Nova Compra
+        </button>
+    </div>
+
+    <!-- Alerta de Filtro por NF -->
+    {% if nf_filtro %}
+    <div class="mb-6 bg-indigo-50 border-2 border-indigo-300 rounded-xl p-4">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">🔗</span>
+                <div>
+                    <p class="font-semibold text-indigo-900">Filtrado por Nota Fiscal</p>
+                    <p class="text-sm text-indigo-700">Mostrando requisições com NF: <span class="font-bold">{{ nf_filtro }}</span></p>
+                </div>
+            </div>
+            <a href="{% url 'lista_requisicoes' %}?status={{ status_filtro }}"
+               class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold transition-colors">
+                Limpar Filtro
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Cards de Estatísticas -->
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <a href="?status=pendente" class="bg-white rounded-xl shadow-sm border-2 {% if status_filtro == 'pendente' %}border-yellow-500{% else %}border-gray-200{% endif %} p-4 hover:shadow-md transition-all">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-semibold text-gray-600">Aguardando Aprovação</span>
+                <span class="text-2xl">⏳</span>
+            </div>
+            <p class="text-3xl font-bold text-yellow-600">{{ total_pendente }}</p>
+        </a>
+
+        <a href="?status=aprovado" class="bg-white rounded-xl shadow-sm border-2 {% if status_filtro == 'aprovado' %}border-blue-500{% else %}border-gray-200{% endif %} p-4 hover:shadow-md transition-all">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-semibold text-gray-600">Aguardando Compra</span>
+                <span class="text-2xl">✅</span>
+            </div>
+            <p class="text-3xl font-bold text-blue-600">{{ total_aprovado }}</p>
+        </a>
+
+        <a href="?status=comprado" class="bg-white rounded-xl shadow-sm border-2 {% if status_filtro == 'comprado' %}border-purple-500{% else %}border-gray-200{% endif %} p-4 hover:shadow-md transition-all">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-semibold text-gray-600">Aguardando Recebimento</span>
+                <span class="text-2xl">📦</span>
+            </div>
+            <p class="text-3xl font-bold text-purple-600">{{ total_comprado }}</p>
+        </a>
+
+        <a href="?status=recebido" class="bg-white rounded-xl shadow-sm border-2 {% if status_filtro == 'recebido' %}border-green-500{% else %}border-gray-200{% endif %} p-4 hover:shadow-md transition-all">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-semibold text-gray-600">Concluídos</span>
+                <span class="text-2xl">✔️</span>
+            </div>
+            <p class="text-3xl font-bold text-green-600">{{ total_recebido }}</p>
+        </a>
+
+        <a href="?status=rejeitado" class="bg-white rounded-xl shadow-sm border-2 {% if status_filtro == 'rejeitado' %}border-red-500{% else %}border-gray-200{% endif %} p-4 hover:shadow-md transition-all">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-semibold text-gray-600">Rejeitados</span>
+                <span class="text-2xl">❌</span>
+            </div>
+            <p class="text-3xl font-bold text-red-600">{{ total_rejeitado }}</p>
+        </a>
+    </div>
+
+    <!-- Filtro -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+        <div class="flex flex-wrap gap-2">
+            <a href="?status=todas" class="px-4 py-2 rounded-lg font-semibold {% if status_filtro == 'todas' %}bg-gray-800 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %} transition-colors">
+                📋 Todas
+            </a>
+            <a href="?status=pendente" class="px-4 py-2 rounded-lg font-semibold {% if status_filtro == 'pendente' %}bg-yellow-500 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %} transition-colors">
+                ⏳ Pendentes
+            </a>
+            <a href="?status=aprovado" class="px-4 py-2 rounded-lg font-semibold {% if status_filtro == 'aprovado' %}bg-blue-500 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %} transition-colors">
+                ✅ Aprovados
+            </a>
+            <a href="?status=comprado" class="px-4 py-2 rounded-lg font-semibold {% if status_filtro == 'comprado' %}bg-purple-500 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %} transition-colors">
+                🛒 Comprados
+            </a>
+            <a href="?status=recebido" class="px-4 py-2 rounded-lg font-semibold {% if status_filtro == 'recebido' %}bg-green-500 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %} transition-colors">
+                📦 Recebidos
+            </a>
+            <a href="?status=rejeitado" class="px-4 py-2 rounded-lg font-semibold {% if status_filtro == 'rejeitado' %}bg-red-500 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %} transition-colors">
+                ❌ Rejeitados
+            </a>
+        </div>
+    </div>
+
+    <!-- Lista de Requisições -->
+    <div class="space-y-4">
+        {% for req in requisicoes %}
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-all" x-data="{
+            showDetails: false,
+            showEdit: false,
+            showApprove: false,
+            showReject: false,
+            showBuy: false,
+            showRejectBuy: false,
+            showReceive: false
+        }">
+            <!-- Cabeçalho da Compra -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                <div class="flex-1">
+                    <h3 class="text-xl font-bold text-gray-900">{{ req.item }}</h3>
+                    <p class="text-sm text-gray-600 mt-1">{{ req.descricao|truncatewords:15 }}</p>
+                    <div class="flex flex-wrap gap-2 mt-2">
+                        <span class="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">👤 {{ req.requerente.username }}</span>
+                        <span class="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">📅 {{ req.data_requisicao|date:'d/m/Y H:i' }}</span>
+                        <span class="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">💰 R$ {{ req.valor_total_estimado|floatformat:2 }}</span>
+                    </div>
+                </div>
+                <div>
+                    <span class="inline-block px-4 py-2 rounded-lg font-semibold
+                        {% if req.status == 'pendente' %}bg-yellow-100 text-yellow-800
+                        {% elif req.status == 'aprovado' %}bg-blue-100 text-blue-800
+                        {% elif req.status == 'comprado' %}bg-purple-100 text-purple-800
+                        {% elif req.status == 'recebido' %}bg-green-100 text-green-800
+                        {% elif req.status == 'rejeitado' %}bg-red-100 text-red-800
+                        {% else %}bg-gray-100 text-gray-800{% endif %}">
+                        {{ req.get_status_display }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Botões de Ação -->
+            <div class="flex flex-wrap gap-2">
+                <button @click="showDetails = !showDetails"
+                        class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-semibold transition-colors">
+                    <span x-show="!showDetails">📋 Ver Detalhes</span>
+                    <span x-show="showDetails">✕ Fechar</span>
+                </button>
+
+                <button @click="showEdit = !showEdit"
+                        class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-semibold transition-colors tap-feedback">
+                    <span x-show="!showEdit">✏️ Editar</span>
+                    <span x-show="showEdit">✕ Fechar</span>
+                </button>
+
+                {% if req.status == 'comprado' %}
+                <button @click="showReceive = !showReceive"
+                        class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 font-semibold transition-colors tap-feedback">
+                    📦 Marcar como Recebido
+                </button>
+                {% endif %}
+            </div>
+
+            <!-- Detalhes da Compra -->
+            <div x-show="showDetails" x-transition class="mt-4 pt-4 border-t border-gray-200">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <h4 class="font-semibold text-gray-700 mb-2">Informações do Item</h4>
+                        <p class="text-sm"><strong>Quantidade:</strong> {{ req.quantidade }} {{ req.unidade }}</p>
+                        <p class="text-sm"><strong>Preço Estimado:</strong> R$ {{ req.preco_estimado|floatformat:2 }}</p>
+                        <p class="text-sm"><strong>Total Estimado:</strong> R$ {{ req.valor_total_estimado|floatformat:2 }}</p>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-gray-700 mb-2">Informações da Compra</h4>
+                        <p class="text-sm"><strong>Propósito:</strong> {{ req.proposito }}</p>
+                        {% if req.projeto %}<p class="text-sm"><strong>Projeto:</strong> {{ req.projeto }}</p>{% endif %}
+                        <p class="text-sm"><strong>Requerente:</strong> {{ req.requerente.get_full_name|default:req.requerente.username }}</p>
+                    </div>
+                </div>
+
+                {% if req.status == 'pendente' %}
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                    <h4 class="font-semibold text-gray-700 mb-3">Ações de Aprovação</h4>
+                    <div class="flex flex-wrap gap-2">
+                        <button @click="showApprove = !showApprove"
+                                class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 font-semibold transition-colors tap-feedback">
+                            ✅ Aprovar
+                        </button>
+                        <button @click="showReject = !showReject"
+                                class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-semibold transition-colors tap-feedback">
+                            ❌ Rejeitar
+                        </button>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if req.status == 'aprovado' %}
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                    <h4 class="font-semibold text-gray-700 mb-3">Ações de Compra</h4>
+                    <div class="flex flex-wrap gap-2">
+                        <button @click="showBuy = !showBuy"
+                                class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 font-semibold transition-colors tap-feedback">
+                            🛒 Aprovar
+                        </button>
+                        <button @click="showRejectBuy = !showRejectBuy"
+                                class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-semibold transition-colors tap-feedback">
+                            ❌ Rejeitar
+                        </button>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if req.status == 'rejeitado' %}
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                    <h4 class="font-semibold text-red-700 mb-2">Informações da Rejeição</h4>
+                    {% if req.aprovado_por %}
+                    <p class="text-sm">❌ <strong>Rejeitado por:</strong> {{ req.aprovado_por.username }} em {{ req.data_aprovacao|date:'d/m/Y H:i' }}</p>
+                    {% if req.observacao_aprovacao %}<p class="text-sm text-red-600 ml-6 mt-1"><strong>Motivo:</strong> {{ req.observacao_aprovacao }}</p>{% endif %}
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                {% if req.status != 'pendente' and req.status != 'rejeitado' %}
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                    <h4 class="font-semibold text-gray-700 mb-2">Histórico</h4>
+                    {% if req.aprovado_por %}
+                    <p class="text-sm">✅ <strong>Aprovado por:</strong> {{ req.aprovado_por.username }} em {{ req.data_aprovacao|date:'d/m/Y H:i' }}</p>
+                    {% if req.observacao_aprovacao %}<p class="text-sm text-gray-600 ml-6">{{ req.observacao_aprovacao }}</p>{% endif %}
+                    {% if req.documento_aprovacao %}
+                    <p class="text-sm ml-6 mt-1">
+                        <a href="{{ req.documento_aprovacao.url }}" target="_blank" class="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 hover:underline">
+                            📎 Ver documento anexado
+                        </a>
+                    </p>
+                    {% endif %}
+                    {% endif %}
+
+                    {% if req.comprado_por %}
+                    <p class="text-sm mt-2">🛒 <strong>Comprado por:</strong> {{ req.comprado_por.username }} em {{ req.data_compra|date:'d/m/Y H:i' }}</p>
+                    <p class="text-sm ml-6"><strong>Preço Real:</strong> R$ {{ req.preco_real|floatformat:2 }}</p>
+                    {% if req.fornecedor %}<p class="text-sm ml-6"><strong>Fornecedor:</strong> {{ req.fornecedor.nome }}</p>{% endif %}
+                    {% if req.nota_fiscal %}
+                    <p class="text-sm ml-6">
+                        <strong>NF:</strong>
+                        <a href="{% url 'lista_recebimentos' %}?q={{ req.nota_fiscal }}"
+                           class="text-indigo-600 hover:text-indigo-800 hover:underline font-semibold"
+                           title="Ver recebimento desta nota fiscal">
+                            {{ req.nota_fiscal }} 🔗
+                        </a>
+                    </p>
+                    {% endif %}
+                    {% if req.data_entrega_prevista %}<p class="text-sm ml-6"><strong>📅 Entrega Prevista:</strong> {{ req.data_entrega_prevista|date:'d/m/Y' }}</p>{% endif %}
+                    {% endif %}
+
+                    {% if req.recebido_por %}
+                    <p class="text-sm mt-2">📦 <strong>Recebido por:</strong> {{ req.recebido_por.username }} em {{ req.data_recebimento|date:'d/m/Y H:i' }}</p>
+                    {% if req.observacao_recebimento %}<p class="text-sm text-gray-600 ml-6">{{ req.observacao_recebimento }}</p>{% endif %}
+
+                    <!-- Histórico de Alterações (apenas em recebidos) -->
+                    {% if req.historico.all %}
+                    <div class="mt-4 pt-3 border-t border-gray-300">
+                        <h5 class="font-semibold text-gray-700 mb-3">📝 Histórico de Alterações</h5>
+                        <div class="space-y-3">
+                            {% for hist in req.historico.all %}
+                            <div class="bg-gray-50 rounded-lg p-3">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-sm font-semibold text-gray-700">{{ hist.tipo_alteracao }}</span>
+                                    <span class="text-xs text-gray-500">{{ hist.data_alteracao|date:'d/m/Y H:i' }}</span>
+                                </div>
+                                <p class="text-sm text-gray-600 mb-1">
+                                    <strong>Usuário:</strong> {{ hist.usuario.get_full_name|default:hist.usuario.username }}
+                                </p>
+                                <div class="text-sm text-gray-700 whitespace-pre-line bg-white rounded p-2 mt-2">{{ hist.descricao }}</div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Form de Edição -->
+            <div x-show="showEdit" x-transition class="mt-4 pt-4 border-t border-gray-200">
+                <form method="post" action="{% url 'editar_requisicao' req.id %}" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <h4 class="font-semibold text-blue-700 mb-4">✏️ Editar Compra Completa</h4>
+
+                    <!-- Informações Básicas -->
+                    <div class="mb-6">
+                        <h5 class="font-semibold text-gray-800 mb-3 pb-2 border-b">📦 Informações Básicas</h5>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">Item *</label>
+                                <input type="text" name="item" value="{{ req.item }}" required class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">Descrição *</label>
+                                <textarea name="descricao" rows="3" required class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">{{ req.descricao }}</textarea>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">Quantidade *</label>
+                                    <input type="number" step="0.01" name="quantidade" value="{{ req.quantidade }}" required class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">Unidade</label>
+                                    <select name="unidade" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="un" {% if req.unidade == 'un' %}selected{% endif %}>un</option>
+                                        <option value="kg" {% if req.unidade == 'kg' %}selected{% endif %}>kg</option>
+                                        <option value="m" {% if req.unidade == 'm' %}selected{% endif %}>m</option>
+                                        <option value="l" {% if req.unidade == 'l' %}selected{% endif %}>l</option>
+                                        <option value="cx" {% if req.unidade == 'cx' %}selected{% endif %}>cx</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">Preço Est. (R$) *</label>
+                                    <input type="number" step="0.01" name="preco_estimado" value="{{ req.preco_estimado }}" required class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">Propósito *</label>
+                                    <input type="text" name="proposito" value="{{ req.proposito }}" required class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">Projeto (opcional)</label>
+                                    <input type="text" name="projeto" value="{{ req.projeto|default:'' }}" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dados de Aprovação -->
+                    {% if req.status != 'pendente' %}
+                    <div class="mb-6">
+                        <h5 class="font-semibold text-gray-800 mb-3 pb-2 border-b">✅ Dados de Aprovação</h5>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">Observação de Aprovação</label>
+                                <textarea name="observacao_aprovacao" rows="2" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">{{ req.observacao_aprovacao|default:'' }}</textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">📎 Atualizar Documento de Aprovação</label>
+                                <input type="file" name="documento_aprovacao" accept="image/*,.pdf,.doc,.docx" class="w-full border border-gray-300 rounded-lg px-4 py-2 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                                {% if req.documento_aprovacao %}
+                                <p class="text-xs text-gray-500 mt-1">Arquivo atual: <a href="{{ req.documento_aprovacao.url }}" target="_blank" class="text-blue-600 hover:underline">Ver documento</a></p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Dados de Compra -->
+                    {% if req.status == 'comprado' or req.status == 'recebido' %}
+                    <div class="mb-6">
+                        <h5 class="font-semibold text-gray-800 mb-3 pb-2 border-b">🛒 Dados de Compra</h5>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">Preço Real (R$)</label>
+                                <input type="number" step="0.01" name="preco_real" value="{{ req.preco_real|default:'' }}" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">Fornecedor</label>
+                                <select name="fornecedor_id" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="">Selecione...</option>
+                                    {% for forn in fornecedores %}
+                                    <option value="{{ forn.id }}" {% if req.fornecedor and req.fornecedor.id == forn.id %}selected{% endif %}>{{ forn.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Dados de Recebimento -->
+                    {% if req.status == 'comprado' or req.status == 'recebido' %}
+                    <div class="mb-6">
+                        <h5 class="font-semibold text-gray-800 mb-3 pb-2 border-b">📦 Dados de Recebimento</h5>
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">Nota Fiscal</label>
+                                    <input type="text" name="nota_fiscal" value="{{ req.nota_fiscal|default:'' }}" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">📅 Data de Entrega Prevista</label>
+                                    <input type="date" name="data_entrega_prevista" value="{% if req.data_entrega_prevista %}{{ req.data_entrega_prevista|date:'Y-m-d' }}{% endif %}" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                            </div>
+                            {% if req.status == 'recebido' %}
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">Observação de Recebimento</label>
+                                <textarea name="observacao_recebimento" rows="2" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">{{ req.observacao_recebimento|default:'' }}</textarea>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="flex gap-3 mt-6">
+                        <button type="submit" class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors">
+                            💾 Salvar Todas as Alterações
+                        </button>
+                        <button type="button" @click="showEdit = false" class="px-6 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition-colors">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Form de Aprovação -->
+            <div x-show="showApprove" x-transition class="mt-4 pt-4 border-t border-gray-200">
+                <form method="post" action="{% url 'aprovar_requisicao' req.id %}" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <h4 class="font-semibold text-green-700 mb-3">✅ Aprovar Compra</h4>
+                    <div class="mb-3">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Observação (opcional)</label>
+                        <textarea name="observacao" rows="2" class="w-full border border-gray-300 rounded-lg px-4 py-2" placeholder="Adicione uma observação..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">📎 Documento/Imagem de Aprovação (opcional)</label>
+                        <input type="file" name="documento_aprovacao" accept="image/*,.pdf,.doc,.docx" class="w-full border border-gray-300 rounded-lg px-4 py-2 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                        <p class="text-xs text-gray-500 mt-1">Formatos aceitos: imagens, PDF, DOC, DOCX</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="submit" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 font-semibold">Confirmar</button>
+                        <button type="button" @click="showApprove = false" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Form de Rejeição -->
+            <div x-show="showReject" x-transition class="mt-4 pt-4 border-t border-gray-200">
+                <form method="post" action="{% url 'rejeitar_requisicao' req.id %}">
+                    {% csrf_token %}
+                    <h4 class="font-semibold text-red-700 mb-3">❌ Rejeitar Compra</h4>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Motivo da Rejeição (opcional)</label>
+                    <textarea name="observacao" rows="2" class="w-full border border-gray-300 rounded-lg px-4 py-2 mb-3" placeholder="Explique o motivo da rejeição..."></textarea>
+                    <div class="flex gap-2">
+                        <button type="submit" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-semibold">Confirmar</button>
+                        <button type="button" @click="showReject = false" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Form de Compra -->
+            <div x-show="showBuy" x-transition class="mt-4 pt-4 border-t border-gray-200">
+                <form method="post" action="{% url 'marcar_como_comprado' req.id %}">
+                    {% csrf_token %}
+                    <h4 class="font-semibold text-purple-700 mb-3">🛒 Aprovar Compra</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Preço Real (R$) *</label>
+                            <input type="number" step="0.01" name="preco_real" required class="w-full border border-gray-300 rounded-lg px-4 py-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Fornecedor</label>
+                            <select name="fornecedor_id" class="w-full border border-gray-300 rounded-lg px-4 py-2">
+                                <option value="">Selecione...</option>
+                                {% for forn in fornecedores %}
+                                <option value="{{ forn.id }}">{{ forn.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="submit" class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 font-semibold">Confirmar</button>
+                        <button type="button" @click="showBuy = false" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Form de Rejeição de Compra -->
+            <div x-show="showRejectBuy" x-transition class="mt-4 pt-4 border-t border-gray-200">
+                <form method="post" action="{% url 'rejeitar_compra' req.id %}">
+                    {% csrf_token %}
+                    <h4 class="font-semibold text-red-700 mb-3">❌ Rejeitar Compra</h4>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Motivo da Rejeição *</label>
+                    <textarea name="observacao" rows="2" required class="w-full border border-gray-300 rounded-lg px-4 py-2 mb-3" placeholder="Explique o motivo da rejeição da compra..."></textarea>
+                    <div class="flex gap-2">
+                        <button type="submit" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-semibold">Confirmar</button>
+                        <button type="button" @click="showRejectBuy = false" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Form de Recebimento -->
+            <div x-show="showReceive" x-transition class="mt-4 pt-4 border-t border-gray-200">
+                <form method="post" action="{% url 'marcar_como_recebido' req.id %}">
+                    {% csrf_token %}
+                    <h4 class="font-semibold text-green-700 mb-3">📦 Confirmar Recebimento</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Nota Fiscal</label>
+                            <input type="text" name="nota_fiscal" class="w-full border border-gray-300 rounded-lg px-4 py-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">📅 Data de Entrega Prevista</label>
+                            <input type="date" name="data_entrega_prevista" class="w-full border border-gray-300 rounded-lg px-4 py-2">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Observação (opcional)</label>
+                        <textarea name="observacao" rows="2" class="w-full border border-gray-300 rounded-lg px-4 py-2" placeholder="Observações sobre o recebimento..."></textarea>
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="submit" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 font-semibold">Confirmar</button>
+                        <button type="button" @click="showReceive = false" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% empty %}
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+            <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+            </svg>
+            <p class="text-gray-500 font-semibold">Nenhuma requisição encontrada</p>
+            <p class="text-gray-400 text-sm mt-1">
+                {% if status_filtro != 'todas' %}
+                    Tente mudar o filtro ou <a href="?status=todas" class="text-indigo-600 hover:underline">ver todas</a>
+                {% else %}
+                    Crie sua primeira requisição clicando no botão acima
+                {% endif %}
+            </p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal Nova Compra -->
+<div id="modal-nova-requisicao" style="display: none;" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onclick="if(event.target === this) this.style.display='none'">
+    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-bold text-gray-900">Nova Compra</h2>
+            <button onclick="document.getElementById('modal-nova-requisicao').style.display='none'" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <form method="post" action="{% url 'criar_requisicao' %}">
+            {% csrf_token %}
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Item *</label>
+                    <input type="text" name="item" required class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Ex: Parafuso M6">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Descrição *</label>
+                    <textarea name="descricao" rows="3" required class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Descreva o item em detalhes..."></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Quantidade *</label>
+                        <input type="number" step="0.01" name="quantidade" required class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Unidade</label>
+                        <select name="unidade" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="un">un</option>
+                            <option value="kg">kg</option>
+                            <option value="m">m</option>
+                            <option value="l">l</option>
+                            <option value="cx">cx</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Preço Est. (R$) *</label>
+                        <input type="number" step="0.01" name="preco_estimado" required class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Propósito *</label>
+                    <input type="text" name="proposito" required class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Ex: Manutenção, Produção, Estoque">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Projeto (opcional)</label>
+                    <input type="text" name="projeto" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Ex: Projeto X, Cliente Y">
+                </div>
+            </div>
+
+            <div class="flex gap-3 mt-6">
+                <button type="submit" class="flex-1 px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors">
+                    Criar Compra
+                </button>
+                <button type="button" onclick="document.getElementById('modal-nova-requisicao').style.display='none'" class="px-6 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition-colors">
+                    Cancelar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

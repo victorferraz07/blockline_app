@@ -2052,3 +2052,493 @@ def manifest_json(request):
     }
 
     return JsonResponse(manifest, content_type='application/manifest+json')
+
+
+# ==================================================
+# VIEWS DE REQUISIÇÕES DE COMPRA
+# ==================================================
+
+@login_required
+def lista_requisicoes(request):
+    """Lista todas as requisições filtradas por status e nota fiscal"""
+    from .models import RequisicaoCompra, Fornecedor
+    from django.db.models import Q
+
+    status_filtro = request.GET.get('status', 'todas')
+    nf_filtro = request.GET.get('nf', '')
+
+    if status_filtro == 'todas':
+        requisicoes = RequisicaoCompra.objects.all()
+    else:
+        requisicoes = RequisicaoCompra.objects.filter(status=status_filtro)
+
+    # Filtrar por nota fiscal se fornecido
+    if nf_filtro:
+        requisicoes = requisicoes.filter(nota_fiscal__icontains=nf_filtro)
+
+    # Estatísticas
+    total_pendente = RequisicaoCompra.objects.filter(status='pendente').count()
+    total_aprovado = RequisicaoCompra.objects.filter(status='aprovado').count()
+    total_comprado = RequisicaoCompra.objects.filter(status='comprado').count()
+    total_recebido = RequisicaoCompra.objects.filter(status='recebido').count()
+    total_rejeitado = RequisicaoCompra.objects.filter(status='rejeitado').count()
+
+    fornecedores = Fornecedor.objects.all()
+
+    context = {
+        'requisicoes': requisicoes,
+        'status_filtro': status_filtro,
+        'nf_filtro': nf_filtro,
+        'total_pendente': total_pendente,
+        'total_aprovado': total_aprovado,
+        'total_comprado': total_comprado,
+        'total_recebido': total_recebido,
+        'total_rejeitado': total_rejeitado,
+        'fornecedores': fornecedores,
+    }
+
+    return render(request, 'core/lista_requisicoes.html', context)
+
+
+@login_required
+@require_POST
+def criar_requisicao(request):
+    """Cria uma nova requisição de compra"""
+    from .models import RequisicaoCompra
+
+    requisicao = RequisicaoCompra.objects.create(
+        item=request.POST.get('item'),
+        descricao=request.POST.get('descricao'),
+        quantidade=request.POST.get('quantidade'),
+        unidade=request.POST.get('unidade', 'un'),
+        preco_estimado=request.POST.get('preco_estimado'),
+        proposito=request.POST.get('proposito'),
+        projeto=request.POST.get('projeto', ''),
+        requerente=request.user,
+        status='pendente'
+    )
+
+    messages.success(request, f'Requisição "{requisicao.item}" criada com sucesso!')
+    return redirect('lista_requisicoes')
+
+
+@login_required
+@require_POST
+def editar_requisicao(request, requisicao_id):
+    """Edita uma requisição de compra - todos os campos"""
+    from .models import RequisicaoCompra, HistoricoRequisicao
+    from datetime import datetime
+    from decimal import Decimal
+
+    requisicao = get_object_or_404(RequisicaoCompra, id=requisicao_id)
+
+    # Capturar valores antigos para comparação
+    old_values = {
+        'item': requisicao.item,
+        'descricao': requisicao.descricao,
+        'quantidade': requisicao.quantidade,
+        'unidade': requisicao.unidade,
+        'preco_estimado': requisicao.preco_estimado,
+        'proposito': requisicao.proposito,
+        'projeto': requisicao.projeto,
+        'observacao_aprovacao': requisicao.observacao_aprovacao,
+        'preco_real': requisicao.preco_real,
+        'fornecedor_id': requisicao.fornecedor_id,
+        'fornecedor_nome': requisicao.fornecedor.nome if requisicao.fornecedor else None,
+        'nota_fiscal': requisicao.nota_fiscal,
+        'data_entrega_prevista': requisicao.data_entrega_prevista,
+        'observacao_recebimento': requisicao.observacao_recebimento,
+    }
+
+    changes = []
+
+    # Atualizar campos básicos (sempre atualizar, registrar mudanças apenas se diferentes)
+    new_item = request.POST.get('item')
+    if new_item != old_values['item']:
+        changes.append(f"Item alterado de '{old_values['item']}' para '{new_item}'")
+    requisicao.item = new_item
+
+    new_descricao = request.POST.get('descricao')
+    if new_descricao != old_values['descricao']:
+        changes.append(f"Descrição alterada")
+    requisicao.descricao = new_descricao
+
+    new_quantidade = int(request.POST.get('quantidade'))
+    if new_quantidade != old_values['quantidade']:
+        changes.append(f"Quantidade alterada de {old_values['quantidade']} para {new_quantidade}")
+    requisicao.quantidade = new_quantidade
+
+    new_unidade = request.POST.get('unidade', 'un')
+    if new_unidade != old_values['unidade']:
+        changes.append(f"Unidade alterada de '{old_values['unidade']}' para '{new_unidade}'")
+    requisicao.unidade = new_unidade
+
+    new_preco_estimado = Decimal(request.POST.get('preco_estimado'))
+    if new_preco_estimado != old_values['preco_estimado']:
+        changes.append(f"Preço estimado alterado de R$ {old_values['preco_estimado']} para R$ {new_preco_estimado}")
+    requisicao.preco_estimado = new_preco_estimado
+
+    new_proposito = request.POST.get('proposito')
+    if new_proposito != old_values['proposito']:
+        changes.append(f"Propósito alterado")
+    requisicao.proposito = new_proposito
+
+    new_projeto = request.POST.get('projeto', '')
+    if new_projeto != old_values['projeto']:
+        if new_projeto:
+            changes.append(f"Projeto definido como '{new_projeto}'")
+        else:
+            changes.append(f"Projeto removido")
+    requisicao.projeto = new_projeto
+
+    # Atualizar dados de aprovação
+    observacao_aprovacao = request.POST.get('observacao_aprovacao', '')
+    if observacao_aprovacao != old_values['observacao_aprovacao']:
+        if observacao_aprovacao:
+            changes.append(f"Observação de aprovação alterada")
+        elif old_values['observacao_aprovacao']:
+            changes.append(f"Observação de aprovação removida")
+        requisicao.observacao_aprovacao = observacao_aprovacao
+
+    # Atualizar documento de aprovação
+    if request.FILES.get('documento_aprovacao'):
+        changes.append(f"Documento de aprovação atualizado")
+        requisicao.documento_aprovacao = request.FILES['documento_aprovacao']
+
+    # Atualizar dados de compra
+    preco_real = request.POST.get('preco_real', '')
+    if preco_real:
+        new_preco_real = Decimal(preco_real)
+        if new_preco_real != old_values['preco_real']:
+            changes.append(f"Preço real alterado de R$ {old_values['preco_real'] or '0.00'} para R$ {new_preco_real}")
+        requisicao.preco_real = new_preco_real
+
+    fornecedor_id = request.POST.get('fornecedor_id', '')
+    if fornecedor_id:
+        new_fornecedor_id = int(fornecedor_id)
+        if new_fornecedor_id != old_values['fornecedor_id']:
+            from .models import Fornecedor
+            novo_fornecedor = Fornecedor.objects.get(id=new_fornecedor_id)
+            changes.append(f"Fornecedor alterado de '{old_values['fornecedor_nome'] or 'Nenhum'}' para '{novo_fornecedor.nome}'")
+        requisicao.fornecedor_id = new_fornecedor_id
+
+    # Atualizar dados de recebimento
+    nota_fiscal = request.POST.get('nota_fiscal', '')
+    if nota_fiscal != old_values['nota_fiscal']:
+        if nota_fiscal:
+            changes.append(f"Nota fiscal alterada de '{old_values['nota_fiscal'] or 'Nenhuma'}' para '{nota_fiscal}'")
+        elif old_values['nota_fiscal']:
+            changes.append(f"Nota fiscal removida")
+    requisicao.nota_fiscal = nota_fiscal
+
+    data_entrega_str = request.POST.get('data_entrega_prevista', '')
+    if data_entrega_str:
+        try:
+            new_data_entrega = datetime.strptime(data_entrega_str, '%Y-%m-%d').date()
+            if new_data_entrega != old_values['data_entrega_prevista']:
+                old_data_str = old_values['data_entrega_prevista'].strftime('%d/%m/%Y') if old_values['data_entrega_prevista'] else 'Nenhuma'
+                changes.append(f"Data de entrega prevista alterada de {old_data_str} para {new_data_entrega.strftime('%d/%m/%Y')}")
+            requisicao.data_entrega_prevista = new_data_entrega
+        except ValueError:
+            pass
+
+    observacao_recebimento = request.POST.get('observacao_recebimento', '')
+    if observacao_recebimento != old_values['observacao_recebimento']:
+        if observacao_recebimento:
+            changes.append(f"Observação de recebimento alterada")
+        elif old_values['observacao_recebimento']:
+            changes.append(f"Observação de recebimento removida")
+    requisicao.observacao_recebimento = observacao_recebimento
+
+    requisicao.save()
+
+    # Criar registro no histórico se houver alterações
+    if changes:
+        HistoricoRequisicao.objects.create(
+            requisicao=requisicao,
+            usuario=request.user,
+            tipo_alteracao="Edição Manual",
+            descricao="\n".join(changes)
+        )
+
+    messages.success(request, f'Requisição "{requisicao.item}" atualizada com sucesso!')
+    return redirect('lista_requisicoes')
+
+
+@login_required
+@require_POST
+def aprovar_requisicao(request, requisicao_id):
+    """Aprova uma requisição"""
+    from .models import RequisicaoCompra
+    from django.utils import timezone
+
+    requisicao = get_object_or_404(RequisicaoCompra, id=requisicao_id)
+
+    if requisicao.status != 'pendente':
+        messages.warning(request, 'Esta requisição já foi processada.')
+        return redirect('lista_requisicoes')
+
+    requisicao.status = 'aprovado'
+    requisicao.aprovado_por = request.user
+    requisicao.data_aprovacao = timezone.now()
+    requisicao.observacao_aprovacao = request.POST.get('observacao', '')
+
+    # Processar upload de documento
+    if request.FILES.get('documento_aprovacao'):
+        requisicao.documento_aprovacao = request.FILES['documento_aprovacao']
+
+    requisicao.save()
+
+    messages.success(request, f'Requisição "{requisicao.item}" aprovada!')
+    return redirect('lista_requisicoes')
+
+
+@login_required
+@require_POST
+def rejeitar_requisicao(request, requisicao_id):
+    """Rejeita uma requisição"""
+    from .models import RequisicaoCompra
+    from django.utils import timezone
+
+    requisicao = get_object_or_404(RequisicaoCompra, id=requisicao_id)
+
+    if requisicao.status != 'pendente':
+        messages.warning(request, 'Esta requisição já foi processada.')
+        return redirect('lista_requisicoes')
+
+    requisicao.status = 'rejeitado'
+    requisicao.aprovado_por = request.user
+    requisicao.data_aprovacao = timezone.now()
+    requisicao.observacao_aprovacao = request.POST.get('observacao', 'Requisição rejeitada')
+    requisicao.save()
+
+    messages.warning(request, f'Requisição "{requisicao.item}" rejeitada.')
+    return redirect('lista_requisicoes')
+
+
+@login_required
+@require_POST
+def rejeitar_compra(request, requisicao_id):
+    """Rejeita uma compra aprovada, voltando status para rejeitado"""
+    from .models import RequisicaoCompra
+    from django.utils import timezone
+
+    requisicao = get_object_or_404(RequisicaoCompra, id=requisicao_id)
+
+    if requisicao.status != 'aprovado':
+        messages.warning(request, 'Esta requisição não está aguardando compra.')
+        return redirect('lista_requisicoes')
+
+    observacao = request.POST.get('observacao', '')
+    if not observacao:
+        messages.error(request, 'É necessário informar o motivo da rejeição.')
+        return redirect('lista_requisicoes')
+
+    requisicao.status = 'rejeitado'
+    requisicao.observacao_aprovacao = f"Compra rejeitada: {observacao}"
+    requisicao.save()
+
+    messages.warning(request, f'Compra da requisição "{requisicao.item}" rejeitada.')
+    return redirect('lista_requisicoes')
+
+
+@login_required
+@require_POST
+def marcar_como_comprado(request, requisicao_id):
+    """Marca requisição como comprada"""
+    from .models import RequisicaoCompra
+    from django.utils import timezone
+
+    requisicao = get_object_or_404(RequisicaoCompra, id=requisicao_id)
+
+    if requisicao.status != 'aprovado':
+        messages.warning(request, 'Esta requisição precisa estar aprovada.')
+        return redirect('lista_requisicoes')
+
+    requisicao.status = 'comprado'
+    requisicao.comprado_por = request.user
+    requisicao.data_compra = timezone.now()
+    requisicao.preco_real = request.POST.get('preco_real')
+    requisicao.fornecedor_id = request.POST.get('fornecedor_id')
+    requisicao.nota_fiscal = request.POST.get('nota_fiscal', '')
+
+    # Processar data de entrega prevista
+    data_entrega_str = request.POST.get('data_entrega_prevista')
+    if data_entrega_str:
+        from datetime import datetime
+        try:
+            requisicao.data_entrega_prevista = datetime.strptime(data_entrega_str, '%Y-%m-%d').date()
+        except ValueError:
+            pass
+
+    requisicao.save()
+
+    messages.success(request, f'Requisição "{requisicao.item}" marcada como comprada!')
+    return redirect('lista_requisicoes')
+
+
+@login_required
+@require_POST
+def marcar_como_recebido(request, requisicao_id):
+    """Marca requisição como recebida"""
+    from .models import RequisicaoCompra
+    from django.utils import timezone
+
+    requisicao = get_object_or_404(RequisicaoCompra, id=requisicao_id)
+
+    if requisicao.status != 'comprado':
+        messages.warning(request, 'Esta requisição precisa estar marcada como comprada.')
+        return redirect('lista_requisicoes')
+
+    requisicao.status = 'recebido'
+    requisicao.recebido_por = request.user
+    requisicao.data_recebimento = timezone.now()
+    requisicao.observacao_recebimento = request.POST.get('observacao', '')
+
+    # Processar nota fiscal
+    nota_fiscal = request.POST.get('nota_fiscal', '')
+    if nota_fiscal:
+        requisicao.nota_fiscal = nota_fiscal
+
+    # Processar data de entrega prevista
+    data_entrega_str = request.POST.get('data_entrega_prevista')
+    if data_entrega_str:
+        from datetime import datetime
+        try:
+            requisicao.data_entrega_prevista = datetime.strptime(data_entrega_str, '%Y-%m-%d').date()
+        except ValueError:
+            pass
+
+    requisicao.save()
+
+    messages.success(request, f'Requisição "{requisicao.item}" marcada como recebida!')
+    return redirect('lista_requisicoes')
+
+
+# ==================================================
+# VIEWS DE GASTOS DE VIAGEM
+# ==================================================
+
+@login_required
+def lista_gastos_viagem(request):
+    """Lista todos os gastos de viagem"""
+    from .models import GastoViagem
+    from django.db.models import Sum
+    from decimal import Decimal
+
+    gastos = GastoViagem.objects.all().select_related('usuario')
+
+    # Calcular total de gastos
+    total_gastos = gastos.aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
+
+    context = {
+        'gastos': gastos,
+        'total_gastos': total_gastos,
+    }
+
+    return render(request, 'core/lista_gastos_viagem.html', context)
+
+
+@login_required
+@require_POST
+def criar_gasto_viagem(request):
+    """Cria um novo gasto de viagem"""
+    from .models import GastoViagem
+    from datetime import datetime
+
+    gasto = GastoViagem.objects.create(
+        usuario=request.user,
+        valor=request.POST.get('valor'),
+        descricao=request.POST.get('descricao'),
+        destino=request.POST.get('destino', ''),
+    )
+
+    # Processar imagem
+    if request.FILES.get('imagem'):
+        gasto.imagem = request.FILES['imagem']
+
+    # Processar data da viagem
+    data_viagem_str = request.POST.get('data_viagem')
+    if data_viagem_str:
+        try:
+            gasto.data_viagem = datetime.strptime(data_viagem_str, '%Y-%m-%d').date()
+        except ValueError:
+            pass
+
+    gasto.save()
+
+    messages.success(request, 'Gasto de viagem registrado com sucesso!')
+    return redirect('lista_gastos_viagem')
+
+
+@login_required
+@require_POST
+def excluir_gasto_viagem(request, gasto_id):
+    """Exclui um gasto de viagem"""
+    from .models import GastoViagem
+
+    gasto = get_object_or_404(GastoViagem, id=gasto_id)
+    gasto.delete()
+
+    messages.success(request, 'Gasto de viagem excluído com sucesso!')
+    return redirect('lista_gastos_viagem')
+
+
+# ==================================================
+# VIEWS DE GASTOS DE CAIXA INTERNO
+# ==================================================
+
+@login_required
+def lista_gastos_caixa(request):
+    """Lista todos os gastos do caixa interno"""
+    from .models import GastoCaixaInterno
+    from django.db.models import Sum
+    from decimal import Decimal
+
+    gastos = GastoCaixaInterno.objects.all().select_related('usuario')
+
+    # Calcular total de gastos
+    total_gastos = gastos.aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
+
+    context = {
+        'gastos': gastos,
+        'total_gastos': total_gastos,
+    }
+
+    return render(request, 'core/lista_gastos_caixa.html', context)
+
+
+@login_required
+@require_POST
+def criar_gasto_caixa(request):
+    """Cria um novo gasto do caixa interno"""
+    from .models import GastoCaixaInterno
+
+    gasto = GastoCaixaInterno.objects.create(
+        usuario=request.user,
+        valor=request.POST.get('valor'),
+        descricao=request.POST.get('descricao'),
+        categoria=request.POST.get('categoria', ''),
+    )
+
+    # Processar imagem
+    if request.FILES.get('imagem'):
+        gasto.imagem = request.FILES['imagem']
+
+    gasto.save()
+
+    messages.success(request, 'Gasto de caixa registrado com sucesso!')
+    return redirect('lista_gastos_caixa')
+
+
+@login_required
+@require_POST
+def excluir_gasto_caixa(request, gasto_id):
+    """Exclui um gasto do caixa interno"""
+    from .models import GastoCaixaInterno
+
+    gasto = get_object_or_404(GastoCaixaInterno, id=gasto_id)
+    gasto.delete()
+
+    messages.success(request, 'Gasto de caixa excluído com sucesso!')
+    return redirect('lista_gastos_caixa')

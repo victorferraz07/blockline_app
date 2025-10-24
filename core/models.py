@@ -465,3 +465,122 @@ class ResumoMensal(models.Model):
 
     def __str__(self):
         return f"{self.usuario.username} - {self.mes}/{self.ano}"
+
+
+class RequisicaoCompra(models.Model):
+    STATUS_CHOICES = [
+        ('pendente', 'Aguardando Aprovação'),
+        ('aprovado', 'Aprovado - Aguardando Compra'),
+        ('comprado', 'Comprado - Aguardando Recebimento'),
+        ('recebido', 'Pedido Concluído'),
+        ('rejeitado', 'Rejeitado'),
+    ]
+
+    # Informações básicas
+    item = models.CharField(max_length=200, verbose_name="Item")
+    descricao = models.TextField(verbose_name="Descrição")
+    quantidade = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Quantidade")
+    unidade = models.CharField(max_length=20, default="un", verbose_name="Unidade")
+    preco_estimado = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Preço Estimado (R$)")
+
+    # Informações da requisição
+    proposito = models.CharField(max_length=200, verbose_name="Propósito")
+    projeto = models.CharField(max_length=200, blank=True, null=True, verbose_name="Projeto")
+    requerente = models.ForeignKey(User, on_delete=models.CASCADE, related_name='requisicoes', verbose_name="Requerente")
+
+    # Status e controle
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pendente', verbose_name="Status")
+    data_requisicao = models.DateTimeField(auto_now_add=True, verbose_name="Data da Requisição")
+
+    # Aprovação
+    aprovado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='aprovacoes_compra', verbose_name="Aprovado Por")
+    data_aprovacao = models.DateTimeField(null=True, blank=True, verbose_name="Data de Aprovação")
+    observacao_aprovacao = models.TextField(blank=True, null=True, verbose_name="Observação da Aprovação")
+    documento_aprovacao = models.FileField(upload_to='requisicoes/aprovacao/', blank=True, null=True, verbose_name="Documento/Imagem de Aprovação")
+
+    # Compra
+    comprado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='compras_realizadas', verbose_name="Comprado Por")
+    data_compra = models.DateTimeField(null=True, blank=True, verbose_name="Data da Compra")
+    preco_real = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="Preço Real (R$)")
+    fornecedor = models.ForeignKey(Fornecedor, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Fornecedor")
+    nota_fiscal = models.CharField(max_length=100, blank=True, null=True, verbose_name="Nota Fiscal")
+    data_entrega_prevista = models.DateField(null=True, blank=True, verbose_name="Data de Entrega Prevista")
+
+    # Recebimento
+    recebido_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='recebimentos_compra', verbose_name="Recebido Por")
+    data_recebimento = models.DateTimeField(null=True, blank=True, verbose_name="Data de Recebimento")
+    observacao_recebimento = models.TextField(blank=True, null=True, verbose_name="Observação do Recebimento")
+
+    class Meta:
+        ordering = ['-data_requisicao']
+        verbose_name = "Requisição de Compra"
+        verbose_name_plural = "Requisições de Compra"
+
+    def __str__(self):
+        return f"{self.item} - {self.get_status_display()}"
+
+    def valor_total_estimado(self):
+        return self.quantidade * self.preco_estimado
+
+    def valor_total_real(self):
+        if self.preco_real:
+            return self.quantidade * self.preco_real
+        return None
+
+
+class HistoricoRequisicao(models.Model):
+    """Histórico de alterações em requisições de compra"""
+    requisicao = models.ForeignKey(RequisicaoCompra, on_delete=models.CASCADE, related_name='historico', verbose_name="Requisição")
+    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, verbose_name="Usuário")
+    data_alteracao = models.DateTimeField(auto_now_add=True, verbose_name="Data da Alteração")
+    tipo_alteracao = models.CharField(max_length=100, verbose_name="Tipo de Alteração")
+    descricao = models.TextField(verbose_name="Descrição das Alterações")
+
+    class Meta:
+        ordering = ['-data_alteracao']
+        verbose_name = "Histórico de Requisição"
+        verbose_name_plural = "Históricos de Requisições"
+
+    def __str__(self):
+        return f"{self.requisicao.item} - {self.tipo_alteracao} por {self.usuario} em {self.data_alteracao.strftime('%d/%m/%Y %H:%M')}"
+
+
+# ==================================================
+# MODELOS DE GASTOS
+# ==================================================
+
+class GastoViagem(models.Model):
+    """Gastos realizados em viagens"""
+    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, verbose_name="Usuário")
+    valor = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Valor (R$)")
+    descricao = models.TextField(verbose_name="Descrição")
+    imagem = models.ImageField(upload_to='gastos_viagem/', blank=True, null=True, verbose_name="Comprovante/Foto")
+    data_gasto = models.DateTimeField(auto_now_add=True, verbose_name="Data do Gasto")
+    data_viagem = models.DateField(null=True, blank=True, verbose_name="Data da Viagem")
+    destino = models.CharField(max_length=200, blank=True, null=True, verbose_name="Destino")
+
+    class Meta:
+        ordering = ['-data_gasto']
+        verbose_name = "Gasto de Viagem"
+        verbose_name_plural = "Gastos de Viagem"
+
+    def __str__(self):
+        return f"{self.usuario} - R$ {self.valor} - {self.data_gasto.strftime('%d/%m/%Y')}"
+
+
+class GastoCaixaInterno(models.Model):
+    """Gastos do caixa interno da empresa"""
+    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, verbose_name="Usuário")
+    valor = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Valor (R$)")
+    descricao = models.TextField(verbose_name="Descrição")
+    imagem = models.ImageField(upload_to='gastos_caixa/', blank=True, null=True, verbose_name="Comprovante/Foto")
+    data_gasto = models.DateTimeField(auto_now_add=True, verbose_name="Data do Gasto")
+    categoria = models.CharField(max_length=100, blank=True, null=True, verbose_name="Categoria")
+
+    class Meta:
+        ordering = ['-data_gasto']
+        verbose_name = "Gasto de Caixa Interno"
+        verbose_name_plural = "Gastos de Caixa Interno"
+
+    def __str__(self):
+        return f"{self.usuario} - R$ {self.valor} - {self.data_gasto.strftime('%d/%m/%Y')}"

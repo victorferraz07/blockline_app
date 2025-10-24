@@ -1,0 +1,139 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% block content %}
+
+<div class="fixed inset-0 -z-10 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50"></div>
+
+<div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">✈️ Gastos de Viagem</h1>
+            <p class="text-gray-600 mt-1">Registre e acompanhe gastos realizados em viagens</p>
+        </div>
+        <button onclick="document.getElementById('modal-novo-gasto').style.display='flex'"
+                class="btn-mobile px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors tap-feedback">
+            + Novo Gasto
+        </button>
+    </div>
+
+    <!-- Card de Total -->
+    <div class="bg-white rounded-xl shadow-sm border-2 border-indigo-500 p-6 mb-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <span class="text-sm font-semibold text-gray-600">Total de Gastos</span>
+                <p class="text-3xl font-bold text-indigo-600 mt-1">R$ {{ total_gastos|floatformat:2 }}</p>
+            </div>
+            <span class="text-5xl">💰</span>
+        </div>
+    </div>
+
+    <!-- Lista de Gastos -->
+    <div class="space-y-4">
+        {% for gasto in gastos %}
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-all">
+            <div class="flex flex-col md:flex-row gap-4">
+                <!-- Imagem -->
+                {% if gasto.imagem %}
+                <div class="flex-shrink-0">
+                    <img src="{{ gasto.imagem.url }}" alt="Comprovante" class="w-32 h-32 object-cover rounded-lg border-2 border-gray-200">
+                </div>
+                {% endif %}
+
+                <!-- Informações -->
+                <div class="flex-1">
+                    <div class="flex items-start justify-between mb-3">
+                        <div>
+                            <p class="text-2xl font-bold text-indigo-600">R$ {{ gasto.valor|floatformat:2 }}</p>
+                            {% if gasto.destino %}
+                            <p class="text-sm text-gray-600 mt-1">📍 {{ gasto.destino }}</p>
+                            {% endif %}
+                        </div>
+                        <form method="post" action="{% url 'excluir_gasto_viagem' gasto.id %}" onsubmit="return confirm('Tem certeza que deseja excluir este gasto?')">
+                            {% csrf_token %}
+                            <button type="submit" class="text-red-500 hover:text-red-700 font-semibold">
+                                🗑️ Excluir
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="bg-gray-50 rounded-lg p-4 mb-3">
+                        <p class="text-sm text-gray-700">{{ gasto.descricao }}</p>
+                    </div>
+
+                    <div class="flex flex-wrap gap-4 text-sm text-gray-600">
+                        <span>👤 {{ gasto.usuario.get_full_name|default:gasto.usuario.username }}</span>
+                        <span>📅 Registrado em: {{ gasto.data_gasto|date:'d/m/Y H:i' }}</span>
+                        {% if gasto.data_viagem %}
+                        <span>🗓️ Data da Viagem: {{ gasto.data_viagem|date:'d/m/Y' }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+            <p class="text-xl text-gray-500">Nenhum gasto de viagem registrado</p>
+            <p class="text-sm text-gray-400 mt-2">Clique em "Novo Gasto" para começar</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal Novo Gasto -->
+<div id="modal-novo-gasto" style="display: none;" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onclick="if(event.target === this) this.style.display='none'">
+    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-bold text-gray-900">Novo Gasto de Viagem</h2>
+            <button onclick="document.getElementById('modal-novo-gasto').style.display='none'" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <form method="post" action="{% url 'criar_gasto_viagem' %}" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Valor (R$) *</label>
+                    <input type="number" step="0.01" name="valor" required class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Descrição *</label>
+                    <textarea name="descricao" rows="4" required class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Descreva o gasto realizado..."></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Destino</label>
+                        <input type="text" name="destino" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Ex: São Paulo, SP">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Data da Viagem</label>
+                        <input type="date" name="data_viagem" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">📎 Comprovante/Foto</label>
+                    <input type="file" name="imagem" accept="image/*" class="w-full border border-gray-300 rounded-lg px-4 py-2 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                </div>
+            </div>
+
+            <div class="flex gap-3 mt-6">
+                <button type="submit" class="flex-1 px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors">
+                    Registrar Gasto
+                </button>
+                <button type="button" onclick="document.getElementById('modal-novo-gasto').style.display='none'" class="px-6 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition-colors">
+                    Cancelar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

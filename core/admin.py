@@ -9,7 +9,8 @@ from .models import (
     ItemExpedido, DocumentoExpedicao, ImagemExpedicao,
     KanbanColumn, Task, TaskQuantidadeFeita, TaskHistorico,
     JornadaTrabalho, RegistroPonto, ResumoMensal, AbonoDia,
-    MovimentacaoEstoque
+    MovimentacaoEstoque, RequisicaoCompra, HistoricoRequisicao,
+    GastoViagem, GastoCaixaInterno
 )
 
 # --- Configurações de Administração Customizadas ---
@@ -200,3 +201,51 @@ class FornecedorAdmin(admin.ModelAdmin):
         ('Endereço', {'fields': ('endereco',)}),
         ('Descrição', {'fields': ('descricao',)}),
     )
+
+# --- Registro de Requisições de Compra ---
+@admin.register(RequisicaoCompra)
+class RequisicaoCompraAdmin(admin.ModelAdmin):
+    list_display = ('item', 'requerente', 'status', 'valor_total_estimado', 'data_requisicao')
+    list_filter = ('status', 'data_requisicao')
+    search_fields = ('item', 'descricao', 'requerente__username', 'proposito')
+    readonly_fields = ('data_requisicao', 'data_aprovacao', 'data_compra', 'data_recebimento')
+    fieldsets = (
+        ('Informações do Item', {'fields': ('item', 'descricao', 'quantidade', 'unidade', 'preco_estimado')}),
+        ('Informações da Requisição', {'fields': ('proposito', 'projeto', 'requerente', 'status')}),
+        ('Aprovação', {'fields': ('aprovado_por', 'data_aprovacao', 'observacao_aprovacao', 'documento_aprovacao')}),
+        ('Compra', {'fields': ('comprado_por', 'data_compra', 'preco_real', 'fornecedor', 'nota_fiscal', 'data_entrega_prevista')}),
+        ('Recebimento', {'fields': ('recebido_por', 'data_recebimento', 'observacao_recebimento')}),
+    )
+
+
+@admin.register(HistoricoRequisicao)
+class HistoricoRequisicaoAdmin(admin.ModelAdmin):
+    list_display = ('requisicao', 'tipo_alteracao', 'usuario', 'data_alteracao')
+    list_filter = ('tipo_alteracao', 'data_alteracao')
+    search_fields = ('requisicao__item', 'usuario__username', 'descricao')
+    readonly_fields = ('requisicao', 'usuario', 'data_alteracao', 'tipo_alteracao', 'descricao')
+
+    def has_add_permission(self, request):
+        # Histórico é criado automaticamente, não permite adição manual
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        # Histórico não deve ser editado
+        return False
+
+
+# --- Registro de Gastos ---
+@admin.register(GastoViagem)
+class GastoViagemAdmin(admin.ModelAdmin):
+    list_display = ('usuario', 'valor', 'destino', 'data_viagem', 'data_gasto')
+    list_filter = ('data_gasto', 'data_viagem')
+    search_fields = ('descricao', 'destino', 'usuario__username')
+    readonly_fields = ('data_gasto',)
+
+
+@admin.register(GastoCaixaInterno)
+class GastoCaixaInternoAdmin(admin.ModelAdmin):
+    list_display = ('usuario', 'valor', 'categoria', 'data_gasto')
+    list_filter = ('data_gasto', 'categoria')
+    search_fields = ('descricao', 'categoria', 'usuario__username')
+    readonly_fields = ('data_gasto',)

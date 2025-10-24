@@ -75,6 +75,26 @@ urlpatterns = [
     path('fornecedores/<int:pk>/editar/', views.editar_fornecedor, name='editar_fornecedor'),
     path('fornecedores/<int:pk>/excluir/', views.excluir_fornecedor, name='excluir_fornecedor'),
 
+    # --- Rotas de Requisições de Compra ---
+    path('requisicoes/', views.lista_requisicoes, name='lista_requisicoes'),
+    path('requisicoes/criar/', views.criar_requisicao, name='criar_requisicao'),
+    path('requisicoes/<int:requisicao_id>/editar/', views.editar_requisicao, name='editar_requisicao'),
+    path('requisicoes/<int:requisicao_id>/aprovar/', views.aprovar_requisicao, name='aprovar_requisicao'),
+    path('requisicoes/<int:requisicao_id>/rejeitar/', views.rejeitar_requisicao, name='rejeitar_requisicao'),
+    path('requisicoes/<int:requisicao_id>/rejeitar-compra/', views.rejeitar_compra, name='rejeitar_compra'),
+    path('requisicoes/<int:requisicao_id>/comprado/', views.marcar_como_comprado, name='marcar_como_comprado'),
+    path('requisicoes/<int:requisicao_id>/recebido/', views.marcar_como_recebido, name='marcar_como_recebido'),
+
+    # --- Rotas de Gastos de Viagem ---
+    path('gastos-viagem/', views.lista_gastos_viagem, name='lista_gastos_viagem'),
+    path('gastos-viagem/criar/', views.criar_gasto_viagem, name='criar_gasto_viagem'),
+    path('gastos-viagem/<int:gasto_id>/excluir/', views.excluir_gasto_viagem, name='excluir_gasto_viagem'),
+
+    # --- Rotas de Gastos de Caixa Interno ---
+    path('gastos-caixa/', views.lista_gastos_caixa, name='lista_gastos_caixa'),
+    path('gastos-caixa/criar/', views.criar_gasto_caixa, name='criar_gasto_caixa'),
+    path('gastos-caixa/<int:gasto_id>/excluir/', views.excluir_gasto_caixa, name='excluir_gasto_caixa'),
+
     # --- PWA ---
     path('manifest.json', views.manifest_json, name='manifest_json'),
 ]
