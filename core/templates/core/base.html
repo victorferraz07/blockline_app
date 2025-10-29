@@ -134,23 +134,23 @@
       <div class="flex items-center justify-between h-16 w-full">
 
         <!-- Logo -->
-        <div class="flex-shrink-0 flex items-center pl-4 ml-0">
+        <div class="flex-shrink-0 flex items-center pl-4 lg:pl-6">
           <a href="{% url 'dashboard' %}" class="flex items-center gap-2">
-            <span class="font-bold text-2xl text-indigo-700 tracking-tight">Blockline</span>
+            <span class="font-bold text-xl lg:text-2xl text-indigo-700 tracking-tight">Blockline</span>
           </a>
         </div>
 
-        <!-- Menu (desktop) -->
-        <div class="hidden md:flex flex-1 justify-center space-x-6">
+        <!-- Menu (desktop) - Agora aparece só em telas grandes (>= 1280px) -->
+        <div class="hidden xl:flex flex-1 justify-center space-x-4 2xl:space-x-6 px-8">
           <a href="{% url 'dashboard' %}"
-             class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if request.path == prefix|add:'/' %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
+             class="py-2 px-2 xl:px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 text-sm 2xl:text-base {% if request.path == prefix|add:'/' %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
             📊 Dashboard
           </a>
 
           <!-- Menu Dropdown Compras -->
           <div x-data="{ open: false }" @click.away="open = false" class="relative">
             <button @click="open = !open"
-                    class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/requisicoes/' in request.path or '/gastos-viagem/' in request.path or '/gastos-caixa/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %} flex items-center gap-1">
+                    class="py-2 px-2 xl:px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 text-sm 2xl:text-base {% if '/requisicoes/' in request.path or '/gastos-viagem/' in request.path or '/gastos-caixa/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %} flex items-center gap-1">
               🛒 Compras
               <svg class="w-4 h-4" :class="{'rotate-180': open}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -177,68 +177,102 @@
           </div>
 
           <a href="{% url 'lista_recebimentos' %}"
-             class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/recebimento/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
+             class="py-2 px-2 xl:px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 text-sm 2xl:text-base {% if '/recebimento/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
             📥 Recebimento
           </a>
 
           <a href="{% url 'lista_estoque' %}"
-             class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/estoque/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
+             class="py-2 px-2 xl:px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 text-sm 2xl:text-base {% if '/estoque/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
             📦 Estoque
           </a>
 
           <a href="{% url 'lista_produtos' %}"
-             class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/produtos/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
+             class="py-2 px-2 xl:px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 text-sm 2xl:text-base {% if '/produtos/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
             🏭 Produtos
           </a>
 
           <a href="{% url 'lista_expedicoes' %}"
-             class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/expedicao/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
+             class="py-2 px-2 xl:px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 text-sm 2xl:text-base {% if '/expedicao/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
             🚚 Expedição
           </a>
 
           <a href="{{ prefix }}/clientes/"
-             class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/clientes/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
+             class="py-2 px-2 xl:px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 text-sm 2xl:text-base {% if '/clientes/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
             👥 Clientes
           </a>
 
           <a href="{{ prefix }}/fornecedores/"
-             class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/fornecedores/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
+             class="py-2 px-2 xl:px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 text-sm 2xl:text-base {% if '/fornecedores/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
             🏢 Fornecedores
           </a>
 
           <a href="{% url 'kanban_board' %}"
-             class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/kanban/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
+             class="py-2 px-2 xl:px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 text-sm 2xl:text-base {% if '/kanban/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
             📋 Kanban
           </a>
 
           <a href="{% url 'controle_ponto' %}"
-             class="py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 {% if '/ponto/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
+             class="py-2 px-2 xl:px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 text-sm 2xl:text-base {% if '/ponto/' in request.path %}bg-indigo-100 font-semibold text-indigo-700{% endif %}">
             ⏰ Ponto
           </a>
         </div>
 
         <!-- Login/Perfil -->
-        <div class="flex items-center space-x-4 pr-4 mr-0">
+        <div class="flex items-center space-x-2 lg:space-x-4 pr-4 lg:pr-6">
           {% if user.is_authenticated %}
-            <span class="hidden md:inline text-gray-700">
-              Olá, <span class="font-semibold">{{ user.get_full_name|default:user.username }}</span>
-            </span>
-            <form method="post" action="{% url 'logout' %}" class="inline">
-              {% csrf_token %}
-              <button type="submit" class="py-2 px-3 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 font-semibold transition">
-                Sair
+            <!-- Dropdown de Perfil (Desktop) -->
+            <div x-data="{ open: false }" @click.away="open = false" class="hidden xl:block relative">
+              <button @click="open = !open"
+                      class="flex items-center gap-2 py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700 text-sm 2xl:text-base">
+                <span class="font-semibold">{{ user.get_full_name|default:user.username }}</span>
+                <svg class="w-4 h-4" :class="{'rotate-180': open}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
               </button>
-            </form>
+              <div x-show="open"
+                   x-transition:enter="transition ease-out duration-100"
+                   x-transition:enter-start="transform opacity-0 scale-95"
+                   x-transition:enter-end="transform opacity-100 scale-100"
+                   x-transition:leave="transition ease-in duration-75"
+                   x-transition:leave-start="transform opacity-100 scale-100"
+                   x-transition:leave-end="transform opacity-0 scale-95"
+                   class="absolute right-0 top-full mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                <a href="{% url 'perfil_usuario' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50">
+                  👤 Meu Perfil
+                </a>
+                <div class="border-t border-gray-200 my-1"></div>
+                <form method="post" action="{% url 'logout' %}">
+                  {% csrf_token %}
+                  <button type="submit" class="w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50">
+                    🚪 Sair
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            <!-- Botões separados (Mobile/Tablet) -->
+            <div class="xl:hidden flex items-center gap-2">
+              <a href="{% url 'perfil_usuario' %}"
+                 class="py-2 px-2 lg:px-3 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-semibold transition text-sm">
+                👤
+              </a>
+              <form method="post" action="{% url 'logout' %}" class="inline">
+                {% csrf_token %}
+                <button type="submit" class="py-2 px-2 lg:px-3 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 font-semibold transition text-sm">
+                  Sair
+                </button>
+              </form>
+            </div>
           {% else %}
             <a href="{% url 'login' %}"
-               class="py-2 px-3 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 font-semibold transition">
+               class="py-2 px-2 lg:px-3 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 font-semibold transition text-sm 2xl:text-base">
               Entrar
             </a>
           {% endif %}
         </div>
 
-        <!-- Mobile menu button -->
-        <div class="md:hidden flex items-center ml-2">
+        <!-- Mobile/Tablet menu button - Agora aparece até telas xl -->
+        <div class="xl:hidden flex items-center ml-2">
           <button id="menu-toggle" class="text-indigo-700 focus:outline-none" aria-label="Abrir menu">
             <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"
                  xmlns="http://www.w3.org/2000/svg">
@@ -249,8 +283,8 @@
         </div>
       </div>
 
-      <!-- Mobile menu -->
-      <div id="mobile-menu" class="md:hidden hidden flex-col space-y-2 mt-2 pb-4" x-data="{ comprasOpen: false }">
+      <!-- Mobile/Tablet menu - Agora aparece até telas xl -->
+      <div id="mobile-menu" class="xl:hidden hidden flex-col space-y-2 mt-2 pb-4" x-data="{ comprasOpen: false }">
         <a href="{% url 'dashboard' %}" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">📊 Dashboard</a>
 
         <!-- Compras com submenu -->
@@ -278,16 +312,22 @@
         <a href="{% url 'controle_ponto' %}" class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">⏰ Ponto</a>
 
         {% if user.is_authenticated %}
-          <span class="block py-2 px-3 text-gray-700">
-            Olá, <span class="font-semibold">{{ user.get_full_name|default:user.username }}</span>
-          </span>
-          <form method="post" action="{% url 'logout' %}" class="block">
-            {% csrf_token %}
-            <button type="submit"
-                    class="w-full text-left py-2 px-3 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 font-semibold transition">
-              Sair
-            </button>
-          </form>
+          <div class="border-t border-gray-200 mt-2 pt-2">
+            <span class="block py-2 px-3 text-gray-700">
+              Olá, <span class="font-semibold">{{ user.get_full_name|default:user.username }}</span>
+            </span>
+            <a href="{% url 'perfil_usuario' %}"
+               class="block py-2 px-3 rounded-lg hover:bg-indigo-50 transition text-gray-700">
+              👤 Meu Perfil
+            </a>
+            <form method="post" action="{% url 'logout' %}" class="block">
+              {% csrf_token %}
+              <button type="submit"
+                      class="w-full text-left py-2 px-3 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 font-semibold transition">
+                🚪 Sair
+              </button>
+            </form>
+          </div>
         {% else %}
           <a href="{% url 'login' %}"
              class="block py-2 px-3 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 font-semibold transition">
@@ -335,7 +375,7 @@
     </div>
   {% endif %}
 
-  <main class="p-4 sm:p-8">
+  <main class="p-4 sm:p-6 lg:p-8">
     {% block content %}{% endblock %}
   </main>
 

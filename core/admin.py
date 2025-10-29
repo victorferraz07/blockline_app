@@ -237,15 +237,15 @@ class HistoricoRequisicaoAdmin(admin.ModelAdmin):
 # --- Registro de Gastos ---
 @admin.register(GastoViagem)
 class GastoViagemAdmin(admin.ModelAdmin):
-    list_display = ('usuario', 'valor', 'destino', 'data_viagem', 'data_gasto')
-    list_filter = ('data_gasto', 'data_viagem')
-    search_fields = ('descricao', 'destino', 'usuario__username')
+    list_display = ('usuario', 'valor', 'categoria', 'nota_fiscal', 'destino', 'data_viagem', 'enviado_financeiro', 'data_gasto')
+    list_filter = ('data_gasto', 'data_viagem', 'categoria', 'enviado_financeiro')
+    search_fields = ('descricao', 'destino', 'categoria', 'nota_fiscal', 'usuario__username')
     readonly_fields = ('data_gasto',)
 
 
 @admin.register(GastoCaixaInterno)
 class GastoCaixaInternoAdmin(admin.ModelAdmin):
-    list_display = ('usuario', 'valor', 'categoria', 'data_gasto')
-    list_filter = ('data_gasto', 'categoria')
-    search_fields = ('descricao', 'categoria', 'usuario__username')
+    list_display = ('usuario', 'valor', 'categoria', 'nota_fiscal', 'enviado_financeiro', 'data_gasto')
+    list_filter = ('data_gasto', 'categoria', 'enviado_financeiro')
+    search_fields = ('descricao', 'categoria', 'nota_fiscal', 'usuario__username')
     readonly_fields = ('data_gasto',)

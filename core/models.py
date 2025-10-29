@@ -558,6 +558,9 @@ class GastoViagem(models.Model):
     data_gasto = models.DateTimeField(auto_now_add=True, verbose_name="Data do Gasto")
     data_viagem = models.DateField(null=True, blank=True, verbose_name="Data da Viagem")
     destino = models.CharField(max_length=200, blank=True, null=True, verbose_name="Destino")
+    categoria = models.CharField(max_length=100, blank=True, null=True, verbose_name="Categoria")
+    nota_fiscal = models.CharField(max_length=100, blank=True, null=True, verbose_name="Número da Nota Fiscal")
+    enviado_financeiro = models.BooleanField(default=False, verbose_name="Enviado ao Financeiro")
 
     class Meta:
         ordering = ['-data_gasto']
@@ -576,6 +579,8 @@ class GastoCaixaInterno(models.Model):
     imagem = models.ImageField(upload_to='gastos_caixa/', blank=True, null=True, verbose_name="Comprovante/Foto")
     data_gasto = models.DateTimeField(auto_now_add=True, verbose_name="Data do Gasto")
     categoria = models.CharField(max_length=100, blank=True, null=True, verbose_name="Categoria")
+    nota_fiscal = models.CharField(max_length=100, blank=True, null=True, verbose_name="Número da Nota Fiscal")
+    enviado_financeiro = models.BooleanField(default=False, verbose_name="Enviado ao Financeiro")
 
     class Meta:
         ordering = ['-data_gasto']

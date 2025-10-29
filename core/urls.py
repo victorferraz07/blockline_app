@@ -88,12 +88,23 @@ urlpatterns = [
     # --- Rotas de Gastos de Viagem ---
     path('gastos-viagem/', views.lista_gastos_viagem, name='lista_gastos_viagem'),
     path('gastos-viagem/criar/', views.criar_gasto_viagem, name='criar_gasto_viagem'),
+    path('gastos-viagem/<int:gasto_id>/editar/', views.editar_gasto_viagem, name='editar_gasto_viagem'),
     path('gastos-viagem/<int:gasto_id>/excluir/', views.excluir_gasto_viagem, name='excluir_gasto_viagem'),
+    path('gastos-viagem/<int:gasto_id>/toggle-enviado/', views.toggle_enviado_financeiro_viagem, name='toggle_enviado_financeiro_viagem'),
+    path('gastos-viagem/exportar-excel/', views.exportar_gastos_viagem_excel, name='exportar_gastos_viagem_excel'),
 
     # --- Rotas de Gastos de Caixa Interno ---
     path('gastos-caixa/', views.lista_gastos_caixa, name='lista_gastos_caixa'),
     path('gastos-caixa/criar/', views.criar_gasto_caixa, name='criar_gasto_caixa'),
+    path('gastos-caixa/<int:gasto_id>/editar/', views.editar_gasto_caixa, name='editar_gasto_caixa'),
     path('gastos-caixa/<int:gasto_id>/excluir/', views.excluir_gasto_caixa, name='excluir_gasto_caixa'),
+    path('gastos-caixa/<int:gasto_id>/toggle-enviado/', views.toggle_enviado_financeiro, name='toggle_enviado_financeiro'),
+    path('gastos-caixa/exportar-excel/', views.exportar_gastos_excel, name='exportar_gastos_excel'),
+
+    # --- Rotas de Perfil do Usuário ---
+    path('perfil/', views.perfil_usuario, name='perfil_usuario'),
+    path('perfil/editar/', views.editar_perfil, name='editar_perfil'),
+    path('perfil/alterar-senha/', views.alterar_senha, name='alterar_senha'),
 
     # --- PWA ---
     path('manifest.json', views.manifest_json, name='manifest_json'),

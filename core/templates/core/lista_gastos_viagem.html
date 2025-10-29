@@ -1,15 +1,16 @@
 {% extends 'core/base.html' %}
 {% load static %}
+{% load l10n %}
 {% block content %}
 
 <div class="fixed inset-0 -z-10 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50"></div>
 
-<div class="max-w-7xl mx-auto">
+<div class="max-w-7xl mx-auto px-2 sm:px-0" x-data="{ selectedIds: [] }">
     <!-- Header -->
-    <div class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div class="mb-4 lg:mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 lg:gap-4">
         <div>
-            <h1 class="text-3xl font-bold text-gray-900">✈️ Gastos de Viagem</h1>
-            <p class="text-gray-600 mt-1">Registre e acompanhe gastos realizados em viagens</p>
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-900">✈️ Gastos de Viagem</h1>
+            <p class="text-sm md:text-base text-gray-600 mt-1">Registre e acompanhe gastos realizados em viagens</p>
         </div>
         <button onclick="document.getElementById('modal-novo-gasto').style.display='flex'"
                 class="btn-mobile px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors tap-feedback">
@@ -28,15 +29,50 @@
         </div>
     </div>
 
+    <!-- Barra de Seleção e Exportação -->
+    <div class="mb-6">
+        <div class="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <input type="checkbox"
+                       @change="if($event.target.checked) { selectedIds = [{% for g in gastos %}{{ g.id }}{% if not forloop.last %},{% endif %}{% endfor %}] } else { selectedIds = [] }"
+                       class="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500">
+                <span class="font-semibold text-gray-700">Selecionar Todos</span>
+                <span x-show="selectedIds.length > 0" class="px-3 py-1 bg-blue-200 text-blue-800 rounded-full text-sm font-bold">
+                    <span x-text="selectedIds.length"></span> selecionado(s)
+                </span>
+            </div>
+            <form method="post" action="{% url 'exportar_gastos_viagem_excel' %}" x-show="selectedIds.length > 0">
+                {% csrf_token %}
+                <input type="hidden" name="gasto_ids" :value="selectedIds.join(',')">
+                <button type="submit" class="px-6 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2">
+                    📊 Exportar para Excel
+                </button>
+            </form>
+        </div>
+    </div>
+
     <!-- Lista de Gastos -->
     <div class="space-y-4">
         {% for gasto in gastos %}
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-all">
+        <div x-data="{ showDetails: false }"
+             @click="showDetails = !showDetails"
+             class="{% if gasto.enviado_financeiro %}bg-purple-50 border-purple-300{% else %}bg-white border-gray-200{% endif %} rounded-xl shadow-sm border-2 p-6 hover:shadow-md transition-all cursor-pointer">
             <div class="flex flex-col md:flex-row gap-4">
+                <!-- Checkbox de Seleção -->
+                <div class="flex-shrink-0" @click.stop>
+                    <input type="checkbox"
+                           value="{{ gasto.id }}"
+                           @change="if($event.target.checked) { selectedIds.push({{ gasto.id }}) } else { selectedIds = selectedIds.filter(id => id !== {{ gasto.id }}) }"
+                           :checked="selectedIds.includes({{ gasto.id }})"
+                           class="w-6 h-6 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                </div>
+
                 <!-- Imagem -->
                 {% if gasto.imagem %}
-                <div class="flex-shrink-0">
-                    <img src="{{ gasto.imagem.url }}" alt="Comprovante" class="w-32 h-32 object-cover rounded-lg border-2 border-gray-200">
+                <div class="flex-shrink-0" @click.stop>
+                    <a href="{{ gasto.imagem.url }}" target="_blank" title="Clique para abrir a imagem em tamanho completo">
+                        <img src="{{ gasto.imagem.url }}" alt="Comprovante" class="w-32 h-32 object-cover rounded-lg border-2 border-gray-200 cursor-pointer hover:border-indigo-400 transition-colors">
+                    </a>
                 </div>
                 {% endif %}
 
@@ -45,28 +81,128 @@
                     <div class="flex items-start justify-between mb-3">
                         <div>
                             <p class="text-2xl font-bold text-indigo-600">R$ {{ gasto.valor|floatformat:2 }}</p>
+                            <div class="flex flex-wrap gap-2 mt-2">
+                                {% if gasto.categoria %}
+                                <span class="inline-block px-3 py-1 bg-indigo-100 text-indigo-800 text-sm font-semibold rounded-full">
+                                    {{ gasto.categoria }}
+                                </span>
+                                {% endif %}
+                                {% if gasto.nota_fiscal %}
+                                <span class="inline-block px-3 py-1 bg-blue-100 text-blue-800 text-sm font-semibold rounded-full">
+                                    📄 NF: {{ gasto.nota_fiscal }}
+                                </span>
+                                {% endif %}
+                                {% if gasto.enviado_financeiro %}
+                                <span class="inline-block px-3 py-1 bg-purple-100 text-purple-800 text-sm font-semibold rounded-full">
+                                    ✅ Enviado ao Financeiro
+                                </span>
+                                {% else %}
+                                <span class="inline-block px-3 py-1 bg-yellow-100 text-yellow-800 text-sm font-semibold rounded-full">
+                                    ⏳ Pendente de Envio
+                                </span>
+                                {% endif %}
+                            </div>
                             {% if gasto.destino %}
                             <p class="text-sm text-gray-600 mt-1">📍 {{ gasto.destino }}</p>
                             {% endif %}
+                            {% if gasto.data_viagem %}
+                            <p class="text-sm text-gray-600 mt-1">🗓️ {{ gasto.data_viagem|date:'d/m/Y' }}</p>
+                            {% endif %}
                         </div>
-                        <form method="post" action="{% url 'excluir_gasto_viagem' gasto.id %}" onsubmit="return confirm('Tem certeza que deseja excluir este gasto?')">
-                            {% csrf_token %}
-                            <button type="submit" class="text-red-500 hover:text-red-700 font-semibold">
-                                🗑️ Excluir
+                        <div class="flex flex-col md:flex-row gap-2" @click.stop>
+                            <button @click="showDetails = !showDetails" class="text-indigo-600 hover:text-indigo-700 font-semibold whitespace-nowrap">
+                                <span x-show="!showDetails">👁️ Ver Detalhes</span>
+                                <span x-show="showDetails">👁️ Ocultar</span>
                             </button>
-                        </form>
+                            <form method="post" action="{% url 'toggle_enviado_financeiro_viagem' gasto.id %}">
+                                {% csrf_token %}
+                                <button type="submit" class="{% if gasto.enviado_financeiro %}text-yellow-600 hover:text-yellow-700{% else %}text-purple-600 hover:text-purple-700{% endif %} font-semibold whitespace-nowrap">
+                                    {% if gasto.enviado_financeiro %}
+                                    ⏳ Marcar como Pendente
+                                    {% else %}
+                                    ✅ Marcar como Enviado
+                                    {% endif %}
+                                </button>
+                            </form>
+                            <button onclick="openEditModal{{ gasto.id }}()" class="text-blue-600 hover:text-blue-700 font-semibold whitespace-nowrap">
+                                ✏️ Editar
+                            </button>
+                            <form method="post" action="{% url 'excluir_gasto_viagem' gasto.id %}" onsubmit="return confirm('Tem certeza que deseja excluir este gasto?')">
+                                {% csrf_token %}
+                                <button type="submit" class="text-red-500 hover:text-red-700 font-semibold whitespace-nowrap">
+                                    🗑️ Excluir
+                                </button>
+                            </form>
+                        </div>
                     </div>
 
-                    <div class="bg-gray-50 rounded-lg p-4 mb-3">
-                        <p class="text-sm text-gray-700">{{ gasto.descricao }}</p>
+                    <!-- Resumo (sempre visível) -->
+                    <div class="bg-gray-50 rounded-lg p-4 mb-3" x-show="!showDetails">
+                        <p class="text-sm text-gray-700 line-clamp-2">{{ gasto.descricao }}</p>
                     </div>
 
-                    <div class="flex flex-wrap gap-4 text-sm text-gray-600">
+                    <!-- Detalhes Expandidos -->
+                    <div x-show="showDetails"
+                         x-transition:enter="transition ease-out duration-300"
+                         x-transition:enter-start="opacity-0 transform -translate-y-2"
+                         x-transition:enter-end="opacity-100 transform translate-y-0"
+                         class="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-lg p-6 mb-3 border-2 border-indigo-200">
+                        <h3 class="text-lg font-bold text-gray-900 mb-4">📋 Detalhes Completos</h3>
+
+                        <div class="space-y-3">
+                            <div>
+                                <span class="text-sm font-semibold text-gray-600">Descrição:</span>
+                                <p class="text-gray-800 mt-1">{{ gasto.descricao }}</p>
+                            </div>
+
+                            {% if gasto.categoria %}
+                            <div>
+                                <span class="text-sm font-semibold text-gray-600">Categoria:</span>
+                                <p class="text-gray-800 mt-1">{{ gasto.categoria }}</p>
+                            </div>
+                            {% endif %}
+
+                            {% if gasto.nota_fiscal %}
+                            <div>
+                                <span class="text-sm font-semibold text-gray-600">Número da Nota Fiscal:</span>
+                                <p class="text-gray-800 mt-1 font-mono text-lg">{{ gasto.nota_fiscal }}</p>
+                            </div>
+                            {% endif %}
+
+                            {% if gasto.destino %}
+                            <div>
+                                <span class="text-sm font-semibold text-gray-600">Destino:</span>
+                                <p class="text-gray-800 mt-1">{{ gasto.destino }}</p>
+                            </div>
+                            {% endif %}
+
+                            {% if gasto.data_viagem %}
+                            <div>
+                                <span class="text-sm font-semibold text-gray-600">Data da Viagem:</span>
+                                <p class="text-gray-800 mt-1">{{ gasto.data_viagem|date:'d/m/Y' }}</p>
+                            </div>
+                            {% endif %}
+
+                            <div>
+                                <span class="text-sm font-semibold text-gray-600">Valor Total:</span>
+                                <p class="text-2xl font-bold text-indigo-600 mt-1">R$ {{ gasto.valor|floatformat:2 }}</p>
+                            </div>
+
+                            <div>
+                                <span class="text-sm font-semibold text-gray-600">Registrado por:</span>
+                                <p class="text-gray-800 mt-1">{{ gasto.usuario.get_full_name|default:gasto.usuario.username }}</p>
+                            </div>
+
+                            <div>
+                                <span class="text-sm font-semibold text-gray-600">Data do Registro:</span>
+                                <p class="text-gray-800 mt-1">{{ gasto.data_gasto|date:'d/m/Y H:i' }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-4 text-sm text-gray-600" x-show="!showDetails">
                         <span>👤 {{ gasto.usuario.get_full_name|default:gasto.usuario.username }}</span>
-                        <span>📅 Registrado em: {{ gasto.data_gasto|date:'d/m/Y H:i' }}</span>
-                        {% if gasto.data_viagem %}
-                        <span>🗓️ Data da Viagem: {{ gasto.data_viagem|date:'d/m/Y' }}</span>
-                        {% endif %}
+                        <span>📅 {{ gasto.data_gasto|date:'d/m/Y H:i' }}</span>
                     </div>
                 </div>
             </div>
@@ -79,6 +215,89 @@
         {% endfor %}
     </div>
 </div>
+
+<!-- Modais de Edição -->
+{% for gasto in gastos %}
+<div id="modal-editar-{{ gasto.id }}" style="display: none;" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onclick="if(event.target === this) this.style.display='none'">
+    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-bold text-gray-900">Editar Gasto de Viagem</h2>
+            <button onclick="document.getElementById('modal-editar-{{ gasto.id }}').style.display='none'" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <form method="post" action="{% url 'editar_gasto_viagem' gasto.id %}" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Valor (R$) *</label>
+                    <input type="number" step="0.01" name="valor" value="{{ gasto.valor|unlocalize }}" required class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Descrição *</label>
+                    <textarea name="descricao" rows="4" required class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">{{ gasto.descricao }}</textarea>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Categoria</label>
+                        <input type="text" name="categoria" value="{{ gasto.categoria|default:'' }}" placeholder="Ex: Alimentação" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Número da Nota Fiscal</label>
+                        <input type="text" name="nota_fiscal" value="{{ gasto.nota_fiscal|default:'' }}" placeholder="Ex: 123456" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Destino</label>
+                        <input type="text" name="destino" value="{{ gasto.destino|default:'' }}" placeholder="Ex: São Paulo" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Data da Viagem</label>
+                        <input type="date" name="data_viagem" value="{% if gasto.data_viagem %}{{ gasto.data_viagem|date:'Y-m-d' }}{% endif %}" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                </div>
+
+                {% if gasto.imagem %}
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Imagem Atual</label>
+                    <img src="{{ gasto.imagem.url }}" alt="Comprovante" class="w-32 h-32 object-cover rounded-lg border-2 border-gray-200">
+                </div>
+                {% endif %}
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">📎 {% if gasto.imagem %}Alterar{% else %}Adicionar{% endif %} Comprovante/Foto</label>
+                    <input type="file" name="imagem" accept="image/*" class="w-full border border-gray-300 rounded-lg px-4 py-2 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                </div>
+            </div>
+
+            <div class="flex gap-3 mt-6">
+                <button type="submit" class="flex-1 px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors">
+                    💾 Salvar Alterações
+                </button>
+                <button type="button" onclick="document.getElementById('modal-editar-{{ gasto.id }}').style.display='none'" class="px-6 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition-colors">
+                    Cancelar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openEditModal{{ gasto.id }}() {
+    document.getElementById('modal-editar-{{ gasto.id }}').style.display = 'flex';
+}
+</script>
+{% endfor %}
 
 <!-- Modal Novo Gasto -->
 <div id="modal-novo-gasto" style="display: none;" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onclick="if(event.target === this) this.style.display='none'">
@@ -104,6 +323,18 @@
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Descrição *</label>
                     <textarea name="descricao" rows="4" required class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Descreva o gasto realizado..."></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Categoria</label>
+                        <input type="text" name="categoria" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Ex: Alimentação, Hospedagem">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Número da Nota Fiscal</label>
+                        <input type="text" name="nota_fiscal" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Ex: 123456">
+                    </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

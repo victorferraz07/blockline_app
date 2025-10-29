@@ -2451,6 +2451,8 @@ def criar_gasto_viagem(request):
         valor=request.POST.get('valor'),
         descricao=request.POST.get('descricao'),
         destino=request.POST.get('destino', ''),
+        categoria=request.POST.get('categoria', ''),
+        nota_fiscal=request.POST.get('nota_fiscal', ''),
     )
 
     # Processar imagem
@@ -2482,6 +2484,222 @@ def excluir_gasto_viagem(request, gasto_id):
 
     messages.success(request, 'Gasto de viagem excluído com sucesso!')
     return redirect('lista_gastos_viagem')
+
+
+@login_required
+@require_POST
+def toggle_enviado_financeiro_viagem(request, gasto_id):
+    """Alterna o status de envio ao financeiro para gastos de viagem"""
+    from .models import GastoViagem
+
+    gasto = get_object_or_404(GastoViagem, id=gasto_id)
+    gasto.enviado_financeiro = not gasto.enviado_financeiro
+    gasto.save()
+
+    status = "enviado ao" if gasto.enviado_financeiro else "marcado como não enviado ao"
+    messages.success(request, f'Gasto {status} financeiro!')
+    return redirect('lista_gastos_viagem')
+
+
+@login_required
+@require_POST
+def editar_gasto_viagem(request, gasto_id):
+    """Edita um gasto de viagem"""
+    from .models import GastoViagem
+    from datetime import datetime
+
+    gasto = get_object_or_404(GastoViagem, id=gasto_id)
+
+    gasto.valor = request.POST.get('valor')
+    gasto.descricao = request.POST.get('descricao')
+    gasto.destino = request.POST.get('destino', '')
+    gasto.categoria = request.POST.get('categoria', '')
+    gasto.nota_fiscal = request.POST.get('nota_fiscal', '')
+
+    # Processar imagem se foi enviada
+    if request.FILES.get('imagem'):
+        gasto.imagem = request.FILES['imagem']
+
+    # Processar data da viagem
+    data_viagem_str = request.POST.get('data_viagem')
+    if data_viagem_str:
+        try:
+            gasto.data_viagem = datetime.strptime(data_viagem_str, '%Y-%m-%d').date()
+        except ValueError:
+            pass
+
+    gasto.save()
+
+    messages.success(request, 'Gasto de viagem atualizado com sucesso!')
+    return redirect('lista_gastos_viagem')
+
+
+@login_required
+@require_POST
+def exportar_gastos_viagem_excel(request):
+    """Exporta gastos de viagem selecionados para Excel com formatação"""
+    from .models import GastoViagem
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from django.http import HttpResponse
+    from decimal import Decimal
+
+    # Obter IDs selecionados
+    gasto_ids = request.POST.get('gasto_ids', '').split(',')
+    gasto_ids = [int(id) for id in gasto_ids if id]
+
+    # Buscar gastos
+    gastos = GastoViagem.objects.filter(id__in=gasto_ids).order_by('data_gasto')
+
+    # Criar workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Gastos de Viagem"
+
+    # Estilos aprimorados
+    header_fill = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
+    header_font = Font(name='Calibri', bold=True, color="FFFFFF", size=13)
+
+    # Bordas
+    border = Border(
+        left=Side(style='thin', color="000000"),
+        right=Side(style='thin', color="000000"),
+        top=Side(style='thin', color="000000"),
+        bottom=Side(style='thin', color="000000")
+    )
+
+    # Cores alternadas
+    light_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
+    white_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
+
+    # Fonte padrão
+    data_font = Font(name='Calibri', size=11)
+
+    # Cabeçalhos
+    headers = ["Data Registro", "Nota Fiscal", "Categoria", "Destino", "Data Viagem", "Descrição", "Valor (R$)", "Link Imagem"]
+    ws.append(headers)
+
+    # Formatar cabeçalho
+    ws.row_dimensions[1].height = 30
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_num)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        cell.border = border
+
+    # Ajustar largura das colunas
+    ws.column_dimensions['A'].width = 20  # Data Registro
+    ws.column_dimensions['B'].width = 18  # Nota Fiscal
+    ws.column_dimensions['C'].width = 22  # Categoria
+    ws.column_dimensions['D'].width = 25  # Destino
+    ws.column_dimensions['E'].width = 16  # Data Viagem
+    ws.column_dimensions['F'].width = 60  # Descrição
+    ws.column_dimensions['G'].width = 16  # Valor
+    ws.column_dimensions['H'].width = 50  # Link
+
+    # Adicionar dados
+    total = Decimal('0.00')
+    row_num = 2
+
+    for idx, gasto in enumerate(gastos):
+        fill = light_fill if idx % 2 == 0 else white_fill
+
+        # Altura dinâmica
+        descricao_lines = len(gasto.descricao) // 80 + 1
+        row_height = max(35, min(descricao_lines * 15, 100))
+        ws.row_dimensions[row_num].height = row_height
+
+        # Dados
+        data = [
+            gasto.data_gasto.strftime('%d/%m/%Y %H:%M'),
+            gasto.nota_fiscal or '-',
+            gasto.categoria or '-',
+            gasto.destino or '-',
+            gasto.data_viagem.strftime('%d/%m/%Y') if gasto.data_viagem else '-',
+            gasto.descricao,
+            float(gasto.valor),
+            ''
+        ]
+
+        ws.append(data)
+
+        # Formatar células
+        for col_num in range(1, 9):
+            cell = ws.cell(row=row_num, column=col_num)
+            cell.fill = fill
+            cell.border = border
+            cell.font = data_font
+
+            if col_num in [1, 2, 3, 4, 5]:  # Data, NF, Categoria, Destino, Data Viagem
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+            elif col_num == 6:  # Descrição
+                cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+            elif col_num == 7:  # Valor
+                cell.number_format = 'R$ #,##0.00'
+                cell.font = Font(name='Calibri', size=11, bold=True)
+                cell.alignment = Alignment(horizontal="right", vertical="center")
+            elif col_num == 8:  # Link
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+
+        # Adicionar link para imagem
+        if gasto.imagem:
+            try:
+                img_url = request.build_absolute_uri(gasto.imagem.url)
+                img_cell = ws.cell(row=row_num, column=8)
+                img_cell.value = img_url
+                img_cell.hyperlink = img_url
+                img_cell.font = Font(name='Calibri', size=10, color="0563C1", underline="single")
+                img_cell.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+            except Exception:
+                img_cell = ws.cell(row=row_num, column=8)
+                img_cell.value = "-"
+        else:
+            img_cell = ws.cell(row=row_num, column=8)
+            img_cell.value = "-"
+            img_cell.font = Font(name='Calibri', size=11, color="999999")
+
+        total += gasto.valor
+        row_num += 1
+
+    # Linha de total
+    row_num += 1
+    ws.row_dimensions[row_num].height = 35
+
+    ws.merge_cells(f'A{row_num}:F{row_num}')
+    total_label_cell = ws.cell(row=row_num, column=1)
+    total_label_cell.value = "TOTAL GERAL"
+    total_label_cell.font = Font(name='Calibri', bold=True, size=14, color="000000")
+    total_label_cell.alignment = Alignment(horizontal="right", vertical="center")
+    total_label_cell.fill = PatternFill(start_color="FFD966", end_color="FFD966", fill_type="solid")
+    total_label_cell.border = border
+
+    total_value_cell = ws.cell(row=row_num, column=7)
+    total_value_cell.value = float(total)
+    total_value_cell.number_format = 'R$ #,##0.00'
+    total_value_cell.font = Font(name='Calibri', bold=True, size=14, color="000000")
+    total_value_cell.alignment = Alignment(horizontal="right", vertical="center")
+    total_value_cell.fill = PatternFill(start_color="FFD966", end_color="FFD966", fill_type="solid")
+    total_value_cell.border = border
+
+    for col in [2, 3, 4, 5, 6, 8]:
+        cell = ws.cell(row=row_num, column=col)
+        cell.fill = PatternFill(start_color="FFD966", end_color="FFD966", fill_type="solid")
+        cell.border = border
+
+    # Recursos avançados
+    ws.freeze_panes = 'A2'
+    ws.auto_filter.ref = f'A1:H{row_num-1}'
+    ws.sheet_view.zoomScale = 90
+
+    # Resposta HTTP
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename=gastos_viagem.xlsx'
+
+    wb.save(response)
+    return response
 
 
 # ==================================================
@@ -2519,6 +2737,7 @@ def criar_gasto_caixa(request):
         valor=request.POST.get('valor'),
         descricao=request.POST.get('descricao'),
         categoria=request.POST.get('categoria', ''),
+        nota_fiscal=request.POST.get('nota_fiscal', ''),
     )
 
     # Processar imagem
@@ -2542,3 +2761,299 @@ def excluir_gasto_caixa(request, gasto_id):
 
     messages.success(request, 'Gasto de caixa excluído com sucesso!')
     return redirect('lista_gastos_caixa')
+
+
+@login_required
+@require_POST
+def toggle_enviado_financeiro(request, gasto_id):
+    """Alterna o status de envio ao financeiro"""
+    from .models import GastoCaixaInterno
+
+    gasto = get_object_or_404(GastoCaixaInterno, id=gasto_id)
+    gasto.enviado_financeiro = not gasto.enviado_financeiro
+    gasto.save()
+
+    status = "enviado ao" if gasto.enviado_financeiro else "marcado como não enviado ao"
+    messages.success(request, f'Gasto {status} financeiro!')
+    return redirect('lista_gastos_caixa')
+
+
+@login_required
+@require_POST
+def editar_gasto_caixa(request, gasto_id):
+    """Edita um gasto do caixa interno"""
+    from .models import GastoCaixaInterno
+
+    gasto = get_object_or_404(GastoCaixaInterno, id=gasto_id)
+
+    gasto.valor = request.POST.get('valor')
+    gasto.descricao = request.POST.get('descricao')
+    gasto.categoria = request.POST.get('categoria', '')
+    gasto.nota_fiscal = request.POST.get('nota_fiscal', '')
+
+    # Processar imagem se foi enviada
+    if request.FILES.get('imagem'):
+        gasto.imagem = request.FILES['imagem']
+
+    gasto.save()
+
+    messages.success(request, 'Gasto de caixa atualizado com sucesso!')
+    return redirect('lista_gastos_caixa')
+
+
+@login_required
+@require_POST
+def exportar_gastos_excel(request):
+    """Exporta gastos selecionados para Excel com formatação"""
+    from .models import GastoCaixaInterno
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from django.http import HttpResponse
+    from decimal import Decimal
+
+    # Obter IDs selecionados
+    gasto_ids = request.POST.get('gasto_ids', '').split(',')
+    gasto_ids = [int(id) for id in gasto_ids if id]
+
+    # Buscar gastos
+    gastos = GastoCaixaInterno.objects.filter(id__in=gasto_ids).order_by('data_gasto')
+
+    # Criar workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Gastos de Caixa"
+
+    # Estilos aprimorados
+    header_fill = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")  # Azul mais escuro
+    header_font = Font(name='Calibri', bold=True, color="FFFFFF", size=13)
+
+    # Bordas mais visíveis
+    border = Border(
+        left=Side(style='thin', color="000000"),
+        right=Side(style='thin', color="000000"),
+        top=Side(style='thin', color="000000"),
+        bottom=Side(style='thin', color="000000")
+    )
+
+    # Cores alternadas mais suaves
+    light_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")  # Cinza muito claro
+    white_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
+
+    # Fonte padrão para dados
+    data_font = Font(name='Calibri', size=11)
+
+    # Cabeçalhos
+    headers = ["Data", "Nota Fiscal", "Categoria", "Descrição", "Valor (R$)", "Link Imagem"]
+    ws.append(headers)
+
+    # Formatar cabeçalho com altura otimizada
+    ws.row_dimensions[1].height = 30
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_num)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        cell.border = border
+
+    # Ajustar largura das colunas para melhor leitura
+    ws.column_dimensions['A'].width = 20  # Data - mais espaço
+    ws.column_dimensions['B'].width = 18  # Nota Fiscal - mais legível
+    ws.column_dimensions['C'].width = 22  # Categoria - confortável
+    ws.column_dimensions['D'].width = 60  # Descrição - maior para ler melhor
+    ws.column_dimensions['E'].width = 16  # Valor - espaço adequado
+    ws.column_dimensions['F'].width = 50  # URL da imagem - espaço para ver o link completo
+
+    # Adicionar dados
+    total = Decimal('0.00')
+    row_num = 2
+
+    for idx, gasto in enumerate(gastos):
+        # Determinar cor da linha (alternada)
+        fill = light_fill if idx % 2 == 0 else white_fill
+
+        # Altura da linha dinâmica baseada no tamanho da descrição
+        # Aproximadamente 15 pixels por linha de texto
+        descricao_lines = len(gasto.descricao) // 80 + 1  # Estimar linhas
+        row_height = max(35, min(descricao_lines * 15, 100))  # Entre 35 e 100
+        ws.row_dimensions[row_num].height = row_height
+
+        # Dados
+        data = [
+            gasto.data_gasto.strftime('%d/%m/%Y %H:%M'),
+            gasto.nota_fiscal or '-',
+            gasto.categoria or '-',
+            gasto.descricao,
+            float(gasto.valor),
+            ''  # Coluna para link da imagem
+        ]
+
+        ws.append(data)
+
+        # Formatar células com estilos aprimorados
+        for col_num in range(1, 7):
+            cell = ws.cell(row=row_num, column=col_num)
+            cell.fill = fill
+            cell.border = border
+            cell.font = data_font
+
+            # Alinhamentos específicos por coluna
+            if col_num == 1:  # Data
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+            elif col_num in [2, 3]:  # Nota Fiscal e Categoria
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+            elif col_num == 4:  # Descrição
+                cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+            elif col_num == 5:  # Valor
+                cell.number_format = 'R$ #,##0.00'
+                cell.font = Font(name='Calibri', size=11, bold=True)
+                cell.alignment = Alignment(horizontal="right", vertical="center")
+            elif col_num == 6:  # Link
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+
+        # Adicionar link para imagem se existir
+        if gasto.imagem:
+            try:
+                # Obter URL completa da imagem
+                img_url = request.build_absolute_uri(gasto.imagem.url)
+
+                # Adicionar URL completa visível (funciona em qualquer visualizador)
+                img_cell = ws.cell(row=row_num, column=6)
+                img_cell.value = img_url
+                img_cell.hyperlink = img_url
+                img_cell.font = Font(name='Calibri', size=10, color="0563C1", underline="single")
+                img_cell.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+            except Exception as e:
+                # Se houver erro, indicar sem imagem
+                img_cell = ws.cell(row=row_num, column=6)
+                img_cell.value = "-"
+                img_cell.alignment = Alignment(horizontal="center", vertical="center")
+        else:
+            # Sem imagem
+            img_cell = ws.cell(row=row_num, column=6)
+            img_cell.value = "-"
+            img_cell.font = Font(name='Calibri', size=11, color="999999")
+            img_cell.alignment = Alignment(horizontal="center", vertical="center")
+
+        total += gasto.valor
+        row_num += 1
+
+    # Adicionar linha de total aprimorada
+    row_num += 1
+    ws.row_dimensions[row_num].height = 35
+
+    # Mesclar células para o rótulo
+    ws.merge_cells(f'A{row_num}:D{row_num}')
+    total_label_cell = ws.cell(row=row_num, column=1)
+    total_label_cell.value = "TOTAL GERAL"
+    total_label_cell.font = Font(name='Calibri', bold=True, size=14, color="000000")
+    total_label_cell.alignment = Alignment(horizontal="right", vertical="center")
+    total_label_cell.fill = PatternFill(start_color="FFD966", end_color="FFD966", fill_type="solid")  # Amarelo suave
+    total_label_cell.border = border
+
+    # Célula do valor total
+    total_value_cell = ws.cell(row=row_num, column=5)
+    total_value_cell.value = float(total)
+    total_value_cell.number_format = 'R$ #,##0.00'
+    total_value_cell.font = Font(name='Calibri', bold=True, size=14, color="000000")
+    total_value_cell.alignment = Alignment(horizontal="right", vertical="center")
+    total_value_cell.fill = PatternFill(start_color="FFD966", end_color="FFD966", fill_type="solid")
+    total_value_cell.border = border
+
+    # Aplicar formatação nas células vazias da linha de total
+    for col in [2, 3, 4, 6]:
+        cell = ws.cell(row=row_num, column=col)
+        cell.fill = PatternFill(start_color="FFD966", end_color="FFD966", fill_type="solid")
+        cell.border = border
+
+    # Congelar painéis (fixar cabeçalho)
+    ws.freeze_panes = 'A2'
+
+    # Habilitar auto-filtro no cabeçalho
+    ws.auto_filter.ref = f'A1:F{row_num-1}'
+
+    # Configurar zoom padrão (90% para melhor visualização)
+    ws.sheet_view.zoomScale = 90
+
+    # Preparar resposta HTTP
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename=gastos_caixa.xlsx'
+
+    wb.save(response)
+    return response
+
+
+# ==================================================
+# VIEWS DE PERFIL DO USUÁRIO
+# ==================================================
+
+@login_required
+def perfil_usuario(request):
+    """Exibe o perfil do usuário logado"""
+    context = {
+        'user': request.user,
+    }
+    return render(request, 'core/perfil_usuario.html', context)
+
+
+@login_required
+def alterar_senha(request):
+    """Permite ao usuário alterar sua senha"""
+    if request.method == 'POST':
+        senha_atual = request.POST.get('senha_atual')
+        nova_senha = request.POST.get('nova_senha')
+        confirmar_senha = request.POST.get('confirmar_senha')
+
+        # Validar senha atual
+        if not request.user.check_password(senha_atual):
+            messages.error(request, 'Senha atual incorreta!')
+            return redirect('perfil_usuario')
+
+        # Validar nova senha
+        if len(nova_senha) < 6:
+            messages.error(request, 'A nova senha deve ter pelo menos 6 caracteres!')
+            return redirect('perfil_usuario')
+
+        # Validar confirmação
+        if nova_senha != confirmar_senha:
+            messages.error(request, 'As senhas não coincidem!')
+            return redirect('perfil_usuario')
+
+        # Alterar senha
+        request.user.set_password(nova_senha)
+        request.user.save()
+
+        # Manter usuário logado após mudança de senha
+        from django.contrib.auth import update_session_auth_hash
+        update_session_auth_hash(request, request.user)
+
+        messages.success(request, 'Senha alterada com sucesso!')
+        return redirect('perfil_usuario')
+
+    return redirect('perfil_usuario')
+
+
+@login_required
+def editar_perfil(request):
+    """Permite ao usuário editar informações básicas do perfil"""
+    if request.method == 'POST':
+        first_name = request.POST.get('first_name', '').strip()
+        last_name = request.POST.get('last_name', '').strip()
+        email = request.POST.get('email', '').strip()
+
+        # Validar email
+        if email and User.objects.exclude(id=request.user.id).filter(email=email).exists():
+            messages.error(request, 'Este email já está sendo usado por outro usuário!')
+            return redirect('perfil_usuario')
+
+        # Atualizar dados
+        request.user.first_name = first_name
+        request.user.last_name = last_name
+        request.user.email = email
+        request.user.save()
+
+        messages.success(request, 'Perfil atualizado com sucesso!')
+        return redirect('perfil_usuario')
+
+    return redirect('perfil_usuario')
