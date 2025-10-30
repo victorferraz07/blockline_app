@@ -1506,8 +1506,12 @@ def controle_ponto(request):
         data_hora__date=hoje
     ).order_by('-data_hora').first()
 
-    # Horas esperadas no mês
-    horas_esperadas = jornada.horas_mensais
+    # Meta mensal (horas esperadas no período completo)
+    horas_meta_mensal = jornada.horas_esperadas_periodo(primeiro_dia.date(), ultimo_dia.date())
+
+    # Horas esperadas até hoje (para cálculo do saldo)
+    data_final_calculo = min(ultimo_dia.date(), hoje)
+    horas_esperadas = jornada.horas_esperadas_periodo(primeiro_dia.date(), data_final_calculo)
 
     # Saldo de horas (inclui horas abonadas no cálculo)
     saldo_horas = (horas_trabalhadas + horas_abonadas) - horas_esperadas
@@ -1612,6 +1616,7 @@ def controle_ponto(request):
         'horas_trabalhadas': round(horas_trabalhadas, 2),
         'horas_abonadas': round(horas_abonadas, 2),
         'horas_esperadas': round(horas_esperadas, 2),
+        'horas_meta_mensal': round(horas_meta_mensal, 2),
         'saldo_horas': round(saldo_horas, 2),
         'dias_trabalhados': len([d for d, r in dias_trabalhados.items() if r['entrada'] and r['saida']]),
         'dias_falta': dias_falta,

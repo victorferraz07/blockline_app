@@ -375,22 +375,74 @@ class JornadaTrabalho(models.Model):
         else:  # Segunda a Quinta
             return float(self.horas_diarias)
 
-    @property
-    def horas_mensais(self):
-        """Calcula horas mensais baseado nos dias úteis"""
-        import calendar
-        from datetime import datetime
-        now = datetime.now()
-        dias_no_mes = calendar.monthrange(now.year, now.month)[1]
+    def horas_esperadas_periodo(self, data_inicio, data_fim):
+        """Calcula horas esperadas para um período específico"""
+        from datetime import timedelta
         total_horas = 0
         dias_trabalho = [int(d) for d in self.dias_semana.split(',')]
 
-        for dia in range(1, dias_no_mes + 1):
-            data = datetime(now.year, now.month, dia)
-            if data.weekday() in dias_trabalho:
-                total_horas += self.horas_esperadas_dia(data)
+        dia_atual = data_inicio
+        while dia_atual <= data_fim:
+            if dia_atual.weekday() in dias_trabalho:
+                total_horas += self.horas_esperadas_dia(dia_atual)
+            dia_atual += timedelta(days=1)
 
         return total_horas
+
+    @property
+    def horas_mensais(self):
+        """Calcula horas mensais baseado nos dias úteis e período personalizado"""
+        import calendar
+        from datetime import datetime
+        now = datetime.now()
+
+        # Se usa período padrão (dia 1 ao último dia do mês)
+        if self.dia_inicio_mes == 1 and self.dia_fim_mes == 0:
+            dias_no_mes = calendar.monthrange(now.year, now.month)[1]
+            total_horas = 0
+            dias_trabalho = [int(d) for d in self.dias_semana.split(',')]
+
+            for dia in range(1, dias_no_mes + 1):
+                data = datetime(now.year, now.month, dia)
+                if data.weekday() in dias_trabalho:
+                    total_horas += self.horas_esperadas_dia(data)
+
+            return total_horas
+        else:
+            # Usa período personalizado - calcula com base no dia atual
+            dia_inicio = self.dia_inicio_mes
+            dia_fim = self.dia_fim_mes if self.dia_fim_mes != 0 else calendar.monthrange(now.year, now.month)[1]
+
+            # Determinar primeiro e último dia do período atual
+            if now.day >= dia_inicio:
+                # Período atual
+                primeiro_dia = datetime(now.year, now.month, dia_inicio).date()
+
+                if dia_fim >= dia_inicio:
+                    # Termina no mesmo mês
+                    ultimo_dia = datetime(now.year, now.month, dia_fim).date()
+                else:
+                    # Termina no próximo mês
+                    if now.month == 12:
+                        proximo_mes = 1
+                        proximo_ano = now.year + 1
+                    else:
+                        proximo_mes = now.month + 1
+                        proximo_ano = now.year
+                    ultimo_dia = datetime(proximo_ano, proximo_mes, dia_fim).date()
+            else:
+                # Período anterior
+                if now.month == 1:
+                    mes_anterior = 12
+                    ano_anterior = now.year - 1
+                else:
+                    mes_anterior = now.month - 1
+                    ano_anterior = now.year
+
+                primeiro_dia = datetime(ano_anterior, mes_anterior, dia_inicio).date()
+                ultimo_dia = datetime(now.year, now.month, dia_fim).date()
+
+            return self.horas_esperadas_periodo(primeiro_dia, ultimo_dia)
 
 class RegistroPonto(models.Model):
     TIPO_CHOICES = [
