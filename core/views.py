@@ -2431,9 +2431,15 @@ def lista_gastos_viagem(request):
     # Calcular total de gastos
     total_gastos = gastos.aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
 
+    # Calcular totais separados por status de envio ao financeiro
+    total_enviado = gastos.filter(enviado_financeiro=True).aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
+    total_pendente = gastos.filter(enviado_financeiro=False).aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
+
     context = {
         'gastos': gastos,
         'total_gastos': total_gastos,
+        'total_enviado': total_enviado,
+        'total_pendente': total_pendente,
     }
 
     return render(request, 'core/lista_gastos_viagem.html', context)
@@ -2718,9 +2724,15 @@ def lista_gastos_caixa(request):
     # Calcular total de gastos
     total_gastos = gastos.aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
 
+    # Calcular totais separados por status de envio ao financeiro
+    total_enviado = gastos.filter(enviado_financeiro=True).aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
+    total_pendente = gastos.filter(enviado_financeiro=False).aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
+
     context = {
         'gastos': gastos,
         'total_gastos': total_gastos,
+        'total_enviado': total_enviado,
+        'total_pendente': total_pendente,
     }
 
     return render(request, 'core/lista_gastos_caixa.html', context)

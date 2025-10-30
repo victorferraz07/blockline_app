@@ -18,14 +18,39 @@
         </button>
     </div>
 
-    <!-- Card de Total -->
-    <div class="bg-white rounded-xl shadow-sm border-2 border-indigo-500 p-6 mb-6">
-        <div class="flex items-center justify-between">
-            <div>
-                <span class="text-sm font-semibold text-gray-600">Total de Gastos</span>
-                <p class="text-3xl font-bold text-indigo-600 mt-1">R$ {{ total_gastos|floatformat:2 }}</p>
+    <!-- Cards de Totais -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <!-- Total Geral -->
+        <div class="bg-white rounded-xl shadow-sm border-2 border-green-500 p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <span class="text-sm font-semibold text-gray-600">Total Geral</span>
+                    <p class="text-2xl md:text-3xl font-bold text-green-600 mt-1">R$ {{ total_gastos|floatformat:2 }}</p>
+                </div>
+                <span class="text-4xl md:text-5xl">💰</span>
             </div>
-            <span class="text-5xl">💰</span>
+        </div>
+
+        <!-- Total Enviado ao Financeiro -->
+        <div class="bg-purple-50 rounded-xl shadow-sm border-2 border-purple-300 p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <span class="text-sm font-semibold text-purple-700">Enviado ao Financeiro</span>
+                    <p class="text-2xl md:text-3xl font-bold text-purple-600 mt-1">R$ {{ total_enviado|floatformat:2 }}</p>
+                </div>
+                <span class="text-4xl md:text-5xl">✅</span>
+            </div>
+        </div>
+
+        <!-- Total Pendente -->
+        <div class="bg-yellow-50 rounded-xl shadow-sm border-2 border-yellow-300 p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <span class="text-sm font-semibold text-yellow-700">Pendente de Envio</span>
+                    <p class="text-2xl md:text-3xl font-bold text-yellow-600 mt-1">R$ {{ total_pendente|floatformat:2 }}</p>
+                </div>
+                <span class="text-4xl md:text-5xl">⏳</span>
+            </div>
         </div>
     </div>
 
