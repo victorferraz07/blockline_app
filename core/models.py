@@ -134,6 +134,7 @@ class ItemEstoque(models.Model):
     local_armazenamento = models.CharField(max_length=100, blank=True, null=True, verbose_name="Local de Armazenamento")
     documentacao = models.FileField(upload_to='documentos_itens/', blank=True, null=True, verbose_name="Documentação")
     foto_principal = models.ImageField(upload_to='fotos_itens/', blank=True, null=True, verbose_name="Foto Principal")
+    links = models.TextField(blank=True, null=True, verbose_name="Links", help_text="Links úteis (um por linha)")
     fornecedores = models.ManyToManyField(Fornecedor, through=ItemFornecedor, blank=True)
     is_produto_fabricado = models.BooleanField(default=False)
     data_criacao = models.DateTimeField(auto_now_add=True, verbose_name="Data de Criação")

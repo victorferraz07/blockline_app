@@ -140,6 +140,31 @@
                 </div>
             </div>
 
+            <!-- Links Úteis -->
+            {% if item.links %}
+            <div class="mb-8">
+                <h3 class="font-semibold text-xl text-gray-700 mb-4">🔗 Links Úteis</h3>
+                <div class="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl border-2 border-blue-200">
+                    <div class="space-y-2">
+                        {% for link in item.links.splitlines %}
+                        {% if link.strip %}
+                        <a href="{{ link.strip }}" target="_blank" rel="noopener noreferrer"
+                           class="flex items-center gap-2 p-3 bg-white rounded-lg hover:bg-blue-50 transition-colors group">
+                            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                            </svg>
+                            <span class="text-blue-700 group-hover:text-blue-900 font-medium flex-1 truncate">{{ link.strip }}</span>
+                            <svg class="w-4 h-4 text-blue-400 group-hover:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                            </svg>
+                        </a>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
             <!-- Fornecedores -->
             <div class="mb-8">
                 <h3 class="font-semibold text-xl text-gray-700 mb-4">🏭 Fornecedores e Preços</h3>
