@@ -18,7 +18,8 @@ class Empresa(models.Model):
 class PerfilUsuario(models.Model):
     usuario = models.OneToOneField(User, on_delete=models.CASCADE)
     empresas_permitidas = models.ManyToManyField(Empresa, blank=True)
-    
+    is_financeiro = models.BooleanField(default=False, verbose_name="É do Financeiro")
+
     class Meta:
         verbose_name = "Perfil de Usuário"
         verbose_name_plural = "Perfis de Usuário"
@@ -539,6 +540,7 @@ class RequisicaoCompra(models.Model):
     # Informações da requisição
     proposito = models.CharField(max_length=200, verbose_name="Propósito")
     projeto = models.CharField(max_length=200, blank=True, null=True, verbose_name="Projeto")
+    link_item = models.URLField(blank=True, null=True, verbose_name="Link do Item")
     requerente = models.ForeignKey(User, on_delete=models.CASCADE, related_name='requisicoes', verbose_name="Requerente")
 
     # Status e controle
@@ -556,8 +558,37 @@ class RequisicaoCompra(models.Model):
     data_compra = models.DateTimeField(null=True, blank=True, verbose_name="Data da Compra")
     preco_real = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="Preço Real (R$)")
     fornecedor = models.ForeignKey(Fornecedor, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Fornecedor")
+    fornecedor_nome_digitado = models.CharField(max_length=200, blank=True, null=True, verbose_name="Nome do Fornecedor (digitado)")
     nota_fiscal = models.CharField(max_length=100, blank=True, null=True, verbose_name="Nota Fiscal")
     data_entrega_prevista = models.DateField(null=True, blank=True, verbose_name="Data de Entrega Prevista")
+
+    # Dados de pagamento
+    FORMA_PAGAMENTO_CHOICES = [
+        ('pix', 'PIX'),
+        ('dinheiro', 'Dinheiro'),
+        ('transferencia_bancaria', 'Transferência Bancária'),
+        ('boleto', 'Boleto'),
+        ('cartao', 'Cartão'),
+    ]
+    forma_pagamento = models.CharField(max_length=30, choices=FORMA_PAGAMENTO_CHOICES, blank=True, null=True, verbose_name="Forma de Pagamento")
+
+    # Campos específicos para boleto
+    quantidade_parcelas = models.IntegerField(blank=True, null=True, verbose_name="Quantidade de Parcelas")
+
+    # Tipo de dias de pagamento
+    TIPO_DIAS_CHOICES = [
+        ('15_em_15', 'De 15 em 15 dias'),
+        ('30_em_30', 'De 30 em 30 dias'),
+        ('especificos', 'Dias específicos'),
+    ]
+    tipo_dias_pagamento = models.CharField(max_length=20, choices=TIPO_DIAS_CHOICES, blank=True, null=True, verbose_name="Tipo de Dias de Pagamento")
+    dias_pagamento = models.TextField(blank=True, null=True, verbose_name="Dias de Pagamento", help_text="Exemplo: '15, 30, 45' ou '29 de fevereiro'")
+
+    documento_boleto = models.FileField(upload_to='requisicoes/boletos/', blank=True, null=True, verbose_name="Documento do Boleto")
+    dias_aviso_pagamento = models.IntegerField(blank=True, null=True, default=3, verbose_name="Dias de Antecedência para Aviso", help_text="Quantos dias antes do vencimento enviar alerta")
+
+    # Documento da nota fiscal
+    documento_nota_fiscal = models.FileField(upload_to='requisicoes/notas_fiscais/', blank=True, null=True, verbose_name="Documento da Nota Fiscal")
 
     # Recebimento
     recebido_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='recebimentos_compra', verbose_name="Recebido Por")

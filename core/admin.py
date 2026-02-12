@@ -22,6 +22,7 @@ class PerfilUsuarioInline(admin.StackedInline):
     verbose_name_plural = 'Perfil do Usuário'
     # 'filter_horizontal' melhora a seleção de ManyToManyField
     filter_horizontal = ('empresas_permitidas',)
+    fields = ('empresas_permitidas', 'is_financeiro')
 
 # 2. Crie uma nova classe de Admin para o Usuário que usa o inline
 class CustomUserAdmin(UserAdmin):

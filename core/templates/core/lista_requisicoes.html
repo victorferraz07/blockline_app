@@ -200,11 +200,7 @@
                     <div class="flex flex-wrap gap-2">
                         <button @click="showBuy = !showBuy"
                                 class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 font-semibold transition-colors tap-feedback">
-                            🛒 Aprovar
-                        </button>
-                        <button @click="showRejectBuy = !showRejectBuy"
-                                class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-semibold transition-colors tap-feedback">
-                            ❌ Rejeitar
+                            🛒 Marcar como Comprado
                         </button>
                     </div>
                 </div>
@@ -314,6 +310,7 @@
                                         <option value="m" {% if req.unidade == 'm' %}selected{% endif %}>m</option>
                                         <option value="l" {% if req.unidade == 'l' %}selected{% endif %}>l</option>
                                         <option value="cx" {% if req.unidade == 'cx' %}selected{% endif %}>cx</option>
+                                        <option value="rolo" {% if req.unidade == 'rolo' %}selected{% endif %}>rolo</option>
                                     </select>
                                 </div>
                                 <div>
@@ -331,6 +328,11 @@
                                     <label class="block text-sm font-semibold text-gray-700 mb-2">Projeto (opcional)</label>
                                     <input type="text" name="projeto" value="{{ req.projeto|default:'' }}" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">Link do Item (opcional)</label>
+                                <input type="url" name="link_item" value="{{ req.link_item|default:'' }}" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="https://exemplo.com/produto">
                             </div>
                         </div>
                     </div>
@@ -415,17 +417,12 @@
 
             <!-- Form de Aprovação -->
             <div x-show="showApprove" x-transition class="mt-4 pt-4 border-t border-gray-200">
-                <form method="post" action="{% url 'aprovar_requisicao' req.id %}" enctype="multipart/form-data">
+                <form method="post" action="{% url 'aprovar_requisicao' req.id %}">
                     {% csrf_token %}
                     <h4 class="font-semibold text-green-700 mb-3">✅ Aprovar Compra</h4>
                     <div class="mb-3">
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Observação (opcional)</label>
                         <textarea name="observacao" rows="2" class="w-full border border-gray-300 rounded-lg px-4 py-2" placeholder="Adicione uma observação..."></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">📎 Documento/Imagem de Aprovação (opcional)</label>
-                        <input type="file" name="documento_aprovacao" accept="image/*,.pdf,.doc,.docx" class="w-full border border-gray-300 rounded-lg px-4 py-2 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
-                        <p class="text-xs text-gray-500 mt-1">Formatos aceitos: imagens, PDF, DOC, DOCX</p>
                     </div>
                     <div class="flex gap-2">
                         <button type="submit" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 font-semibold">Confirmar</button>
@@ -449,17 +446,34 @@
             </div>
 
             <!-- Form de Compra -->
-            <div x-show="showBuy" x-transition class="mt-4 pt-4 border-t border-gray-200">
-                <form method="post" action="{% url 'marcar_como_comprado' req.id %}">
+            <div x-show="showBuy" x-transition class="mt-4 pt-4 border-t border-gray-200" x-data="{ formaPagamento: '' }">
+                <form method="post" action="{% url 'marcar_como_comprado' req.id %}" enctype="multipart/form-data">
                     {% csrf_token %}
-                    <h4 class="font-semibold text-purple-700 mb-3">🛒 Aprovar Compra</h4>
+                    <h4 class="font-semibold text-purple-700 mb-3">🛒 Marcar como Comprado</h4>
+
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Preço Real (R$) *</label>
                             <input type="number" step="0.01" name="preco_real" required class="w-full border border-gray-300 rounded-lg px-4 py-2">
                         </div>
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">Fornecedor</label>
+                    </div>
+
+                    <!-- Fornecedor: Escolher entre cadastrado ou digitar -->
+                    <div class="mb-3" x-data="{ tipoFornecedor: 'cadastrado' }">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Fornecedor</label>
+
+                        <div class="flex gap-4 mb-2">
+                            <label class="flex items-center cursor-pointer">
+                                <input type="radio" name="tipo_fornecedor" value="cadastrado" x-model="tipoFornecedor" class="mr-2">
+                                <span class="text-sm">Fornecedor cadastrado</span>
+                            </label>
+                            <label class="flex items-center cursor-pointer">
+                                <input type="radio" name="tipo_fornecedor" value="digitado" x-model="tipoFornecedor" class="mr-2">
+                                <span class="text-sm">Digitar nome</span>
+                            </label>
+                        </div>
+
+                        <div x-show="tipoFornecedor === 'cadastrado'" x-transition>
                             <select name="fornecedor_id" class="w-full border border-gray-300 rounded-lg px-4 py-2">
                                 <option value="">Selecione...</option>
                                 {% for forn in fornecedores %}
@@ -467,7 +481,150 @@
                                 {% endfor %}
                             </select>
                         </div>
+
+                        <div x-show="tipoFornecedor === 'digitado'" x-transition>
+                            <input type="text" name="fornecedor_nome_digitado" class="w-full border border-gray-300 rounded-lg px-4 py-2" placeholder="Digite o nome do fornecedor">
+                        </div>
                     </div>
+
+                    <!-- Forma de Pagamento -->
+                    <div class="mb-3">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Forma de Pagamento</label>
+                        <select name="forma_pagamento" x-model="formaPagamento" class="w-full border border-gray-300 rounded-lg px-4 py-2">
+                            <option value="">Selecione...</option>
+                            <option value="pix">PIX</option>
+                            <option value="dinheiro">Dinheiro</option>
+                            <option value="transferencia_bancaria">Transferência Bancária</option>
+                            <option value="boleto">Boleto</option>
+                            <option value="cartao">Cartão</option>
+                        </select>
+                    </div>
+
+                    <!-- Campos específicos para BOLETO (condicionais) -->
+                    <div x-show="formaPagamento === 'boleto'" x-transition class="border-2 border-orange-200 bg-orange-50 rounded-lg p-4 mb-3">
+                        <h5 class="font-semibold text-orange-700 mb-3">📋 Dados do Boleto</h5>
+
+                        <!-- Dias de Antecedência para Aviso -->
+                        <div class="mb-3">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Dias de Antecedência para Aviso</label>
+                            <input type="number" name="dias_aviso_pagamento" value="3" min="1" class="w-full border border-gray-300 rounded-lg px-4 py-2">
+                            <p class="text-xs text-gray-500 mt-1">Quantos dias antes do vencimento você quer receber o alerta por email</p>
+                        </div>
+
+                        <div class="mb-3" x-data="{
+                            tipoDias: '',
+                            datasVencimento: [],
+                            dataInicial: '',
+                            quantidadeParcelas: 3,
+                            get datasCalculadas() {
+                                if (!this.dataInicial || !this.quantidadeParcelas) return [];
+                                const intervalo = this.tipoDias === '15_em_15' ? 15 : 30;
+                                const datas = [];
+                                const inicial = new Date(this.dataInicial + 'T00:00:00');
+                                for (let i = 0; i < this.quantidadeParcelas; i++) {
+                                    const data = new Date(inicial);
+                                    data.setDate(data.getDate() + (intervalo * i));
+                                    datas.push(data);
+                                }
+                                return datas;
+                            }
+                        }">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Datas de Vencimento</label>
+
+                            <select name="tipo_dias_pagamento" x-model="tipoDias" class="w-full border border-gray-300 rounded-lg px-4 py-2 mb-3">
+                                <option value="">Selecione...</option>
+                                <option value="15_em_15">De 15 em 15 dias</option>
+                                <option value="30_em_30">De 30 em 30 dias</option>
+                                <option value="especificos">Selecionar datas específicas</option>
+                            </select>
+
+                            <!-- Quando escolher "15 em 15" ou "30 em 30", mostrar data inicial e parcelas -->
+                            <div x-show="tipoDias === '15_em_15' || tipoDias === '30_em_30'" x-transition class="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mb-3">
+                                <h5 class="font-semibold text-blue-700 mb-3">📅 Configurar Pagamentos Recorrentes</h5>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-700 mb-2">Data da 1ª Parcela</label>
+                                        <input type="date" x-model="dataInicial" name="data_inicial_boleto" class="w-full border border-gray-300 rounded-lg px-4 py-2">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-700 mb-2">Quantidade de Parcelas</label>
+                                        <input type="number" x-model.number="quantidadeParcelas" name="quantidade_parcelas_calc" min="1" max="24" class="w-full border border-gray-300 rounded-lg px-4 py-2" value="3">
+                                    </div>
+                                </div>
+
+                                <!-- Preview das datas calculadas -->
+                                <div x-show="dataInicial && quantidadeParcelas > 0" x-transition class="bg-white border-2 border-blue-300 rounded-lg p-3 mb-3">
+                                    <h6 class="text-sm font-bold text-blue-700 mb-2">📅 Datas de Vencimento:</h6>
+                                    <div class="space-y-1">
+                                        <template x-for="(data, index) in datasCalculadas" :key="index">
+                                            <div class="flex items-center gap-2 text-sm">
+                                                <span class="font-semibold text-blue-600" x-text="`${index + 1}ª parcela:`"></span>
+                                                <span class="text-gray-700" x-text="data.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+
+                                <p class="text-xs text-gray-500">
+                                    <strong>Como funciona:</strong>
+                                    <span x-show="tipoDias === '15_em_15'">O sistema calcula as datas somando 15 dias a cada parcela.</span>
+                                    <span x-show="tipoDias === '30_em_30'">O sistema calcula as datas somando 30 dias a cada parcela.</span>
+                                </p>
+                            </div>
+
+                            <!-- Quando escolher "datas específicas", mostrar calendário -->
+                            <div x-show="tipoDias === 'especificos'" x-transition class="bg-orange-50 border-2 border-orange-200 rounded-lg p-4">
+                                <label class="block text-sm font-semibold text-gray-700 mb-3">📅 Datas de Vencimento dos Boletos</label>
+
+                                <!-- Lista de datas adicionadas -->
+                                <div class="mb-3 space-y-2" x-show="datasVencimento.length > 0">
+                                    <template x-for="(data, index) in datasVencimento" :key="index">
+                                        <div class="flex items-center gap-2 bg-white p-2 rounded-lg border border-orange-300">
+                                            <span class="flex-1 text-sm font-semibold text-gray-700" x-text="new Date(data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })"></span>
+                                            <button type="button" @click="datasVencimento.splice(index, 1)" class="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 text-xs font-semibold">
+                                                ✕ Remover
+                                            </button>
+                                        </div>
+                                    </template>
+                                </div>
+
+                                <!-- Adicionar nova data -->
+                                <div class="flex gap-2">
+                                    <input type="date" x-ref="novaData" class="flex-1 border border-gray-300 rounded-lg px-4 py-2">
+                                    <button type="button" @click="
+                                        const valor = $refs.novaData.value;
+                                        if (valor && !datasVencimento.includes(valor)) {
+                                            datasVencimento.push(valor);
+                                            datasVencimento.sort();
+                                            $refs.novaData.value = '';
+                                        }
+                                    " class="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-semibold whitespace-nowrap">
+                                        ➕ Adicionar Data
+                                    </button>
+                                </div>
+
+                                <p class="text-xs text-gray-500 mt-2">
+                                    <strong>Dica:</strong> Selecione a data no calendário e clique em "Adicionar Data". Você pode adicionar várias datas de vencimento.
+                                </p>
+                            </div>
+
+                            <!-- Campo oculto para enviar as datas ao servidor -->
+                            <input type="hidden" name="dias_pagamento" x-model="datasVencimento.join(', ')">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">📎 Documento do Boleto (opcional)</label>
+                            <input type="file" name="documento_boleto" accept=".pdf,.doc,.docx,image/*" class="w-full border border-gray-300 rounded-lg px-4 py-2 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-orange-100 file:text-orange-700 hover:file:bg-orange-200">
+                        </div>
+                    </div>
+
+                    <!-- Upload de Nota Fiscal -->
+                    <div class="mb-3">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">📎 Nota Fiscal (documento) - opcional</label>
+                        <input type="file" name="documento_nota_fiscal" accept=".pdf,.doc,.docx,image/*" class="w-full border border-gray-300 rounded-lg px-4 py-2 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                    </div>
+
                     <div class="flex gap-2">
                         <button type="submit" class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 font-semibold">Confirmar</button>
                         <button type="button" @click="showBuy = false" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold">Cancelar</button>
@@ -571,6 +728,7 @@
                             <option value="m">m</option>
                             <option value="l">l</option>
                             <option value="cx">cx</option>
+                            <option value="rolo">rolo</option>
                         </select>
                     </div>
                     <div>
@@ -587,6 +745,11 @@
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Projeto (opcional)</label>
                     <input type="text" name="projeto" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Ex: Projeto X, Cliente Y">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Link do Item (opcional)</label>
+                    <input type="url" name="link_item" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="https://exemplo.com/produto">
                 </div>
             </div>
 

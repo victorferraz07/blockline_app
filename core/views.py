@@ -2119,6 +2119,7 @@ def criar_requisicao(request):
         preco_estimado=request.POST.get('preco_estimado'),
         proposito=request.POST.get('proposito'),
         projeto=request.POST.get('projeto', ''),
+        link_item=request.POST.get('link_item', ''),
         requerente=request.user,
         status='pendente'
     )
@@ -2146,6 +2147,7 @@ def editar_requisicao(request, requisicao_id):
         'preco_estimado': requisicao.preco_estimado,
         'proposito': requisicao.proposito,
         'projeto': requisicao.projeto,
+        'link_item': requisicao.link_item,
         'observacao_aprovacao': requisicao.observacao_aprovacao,
         'preco_real': requisicao.preco_real,
         'fornecedor_id': requisicao.fornecedor_id,
@@ -2153,6 +2155,10 @@ def editar_requisicao(request, requisicao_id):
         'nota_fiscal': requisicao.nota_fiscal,
         'data_entrega_prevista': requisicao.data_entrega_prevista,
         'observacao_recebimento': requisicao.observacao_recebimento,
+        'forma_pagamento': requisicao.forma_pagamento,
+        'quantidade_parcelas': requisicao.quantidade_parcelas,
+        'dias_pagamento': requisicao.dias_pagamento,
+        'dias_aviso_pagamento': requisicao.dias_aviso_pagamento,
     }
 
     changes = []
@@ -2195,6 +2201,56 @@ def editar_requisicao(request, requisicao_id):
         else:
             changes.append(f"Projeto removido")
     requisicao.projeto = new_projeto
+
+    new_link_item = request.POST.get('link_item', '')
+    if new_link_item != old_values['link_item']:
+        if new_link_item:
+            changes.append(f"Link do item alterado")
+        elif old_values['link_item']:
+            changes.append(f"Link do item removido")
+    requisicao.link_item = new_link_item
+
+    # Atualizar dados de pagamento
+    forma_pagamento = request.POST.get('forma_pagamento', '')
+    if forma_pagamento != old_values['forma_pagamento']:
+        if forma_pagamento:
+            changes.append(f"Forma de pagamento definida como '{dict(requisicao.FORMA_PAGAMENTO_CHOICES).get(forma_pagamento, forma_pagamento)}'")
+        elif old_values['forma_pagamento']:
+            changes.append(f"Forma de pagamento removida")
+    requisicao.forma_pagamento = forma_pagamento
+
+    if forma_pagamento == 'boleto':
+        quantidade_parcelas = request.POST.get('quantidade_parcelas', '')
+        if quantidade_parcelas:
+            new_parcelas = int(quantidade_parcelas)
+            if new_parcelas != old_values['quantidade_parcelas']:
+                changes.append(f"Quantidade de parcelas alterada de {old_values['quantidade_parcelas'] or '0'} para {new_parcelas}")
+            requisicao.quantidade_parcelas = new_parcelas
+
+        dias_pagamento = request.POST.get('dias_pagamento', '')
+        if dias_pagamento != old_values['dias_pagamento']:
+            if dias_pagamento:
+                changes.append(f"Dias de pagamento alterados")
+            elif old_values['dias_pagamento']:
+                changes.append(f"Dias de pagamento removidos")
+        requisicao.dias_pagamento = dias_pagamento
+
+        dias_aviso = request.POST.get('dias_aviso_pagamento', '')
+        if dias_aviso:
+            new_dias_aviso = int(dias_aviso)
+            if new_dias_aviso != old_values['dias_aviso_pagamento']:
+                changes.append(f"Dias de aviso alterados de {old_values['dias_aviso_pagamento'] or '3'} para {new_dias_aviso}")
+            requisicao.dias_aviso_pagamento = new_dias_aviso
+
+        # Upload de documento do boleto
+        if request.FILES.get('documento_boleto'):
+            changes.append(f"Documento do boleto atualizado")
+            requisicao.documento_boleto = request.FILES['documento_boleto']
+
+    # Upload de nota fiscal
+    if request.FILES.get('documento_nota_fiscal'):
+        changes.append(f"Documento da nota fiscal atualizado")
+        requisicao.documento_nota_fiscal = request.FILES['documento_nota_fiscal']
 
     # Atualizar dados de aprovação
     observacao_aprovacao = request.POST.get('observacao_aprovacao', '')
@@ -2288,10 +2344,6 @@ def aprovar_requisicao(request, requisicao_id):
     requisicao.data_aprovacao = timezone.now()
     requisicao.observacao_aprovacao = request.POST.get('observacao', '')
 
-    # Processar upload de documento
-    if request.FILES.get('documento_aprovacao'):
-        requisicao.documento_aprovacao = request.FILES['documento_aprovacao']
-
     requisicao.save()
 
     messages.success(request, f'Requisição "{requisicao.item}" aprovada!')
@@ -2364,7 +2416,16 @@ def marcar_como_comprado(request, requisicao_id):
     requisicao.comprado_por = request.user
     requisicao.data_compra = timezone.now()
     requisicao.preco_real = request.POST.get('preco_real')
-    requisicao.fornecedor_id = request.POST.get('fornecedor_id')
+
+    # Processar fornecedor (cadastrado ou digitado)
+    tipo_fornecedor = request.POST.get('tipo_fornecedor', 'cadastrado')
+    if tipo_fornecedor == 'cadastrado':
+        requisicao.fornecedor_id = request.POST.get('fornecedor_id')
+        requisicao.fornecedor_nome_digitado = None
+    else:
+        requisicao.fornecedor_id = None
+        requisicao.fornecedor_nome_digitado = request.POST.get('fornecedor_nome_digitado', '')
+
     requisicao.nota_fiscal = request.POST.get('nota_fiscal', '')
 
     # Processar data de entrega prevista
@@ -2375,6 +2436,57 @@ def marcar_como_comprado(request, requisicao_id):
             requisicao.data_entrega_prevista = datetime.strptime(data_entrega_str, '%Y-%m-%d').date()
         except ValueError:
             pass
+
+    # Dados de pagamento
+    requisicao.forma_pagamento = request.POST.get('forma_pagamento', '')
+
+    # Se for boleto, capturar campos específicos
+    if requisicao.forma_pagamento == 'boleto':
+        requisicao.quantidade_parcelas = request.POST.get('quantidade_parcelas') or None
+        dias_aviso = request.POST.get('dias_aviso_pagamento')
+        requisicao.dias_aviso_pagamento = int(dias_aviso) if dias_aviso else 3
+
+        # Processar tipo de dias de pagamento
+        tipo_dias = request.POST.get('tipo_dias_pagamento', '')
+        requisicao.tipo_dias_pagamento = tipo_dias
+
+        if tipo_dias == '15_em_15' or tipo_dias == '30_em_30':
+            # Calcular datas baseadas na data inicial
+            data_inicial_str = request.POST.get('data_inicial_boleto', '')
+            quantidade_str = request.POST.get('quantidade_parcelas_calc', '3')
+
+            if data_inicial_str:
+                from datetime import datetime, timedelta
+                try:
+                    data_inicial = datetime.strptime(data_inicial_str, '%Y-%m-%d').date()
+                    quantidade = int(quantidade_str) if quantidade_str else 3
+                    intervalo_dias = 15 if tipo_dias == '15_em_15' else 30
+
+                    # Calcular as datas somando o intervalo
+                    datas_list = []
+                    for i in range(quantidade):
+                        data_vencimento = data_inicial + timedelta(days=intervalo_dias * i)
+                        datas_list.append(data_vencimento.strftime('%Y-%m-%d'))
+
+                    requisicao.dias_pagamento = ', '.join(datas_list)
+                    requisicao.quantidade_parcelas = quantidade
+                except ValueError:
+                    # Se houver erro, deixar em branco
+                    requisicao.dias_pagamento = ''
+            else:
+                requisicao.dias_pagamento = ''
+
+        elif tipo_dias == 'especificos':
+            # Usar datas selecionadas pelo usuário
+            requisicao.dias_pagamento = request.POST.get('dias_pagamento', '')
+
+        # Upload de documento do boleto
+        if request.FILES.get('documento_boleto'):
+            requisicao.documento_boleto = request.FILES['documento_boleto']
+
+    # Upload de nota fiscal (para todas as formas de pagamento)
+    if request.FILES.get('documento_nota_fiscal'):
+        requisicao.documento_nota_fiscal = request.FILES['documento_nota_fiscal']
 
     requisicao.save()
 
