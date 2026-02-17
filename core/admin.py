@@ -7,10 +7,11 @@ from .models import (
     ImagemItemEstoque, ProdutoFabricado, DocumentoProdutoFabricado,
     ImagemProdutoFabricado, Componente, Expedicao,
     ItemExpedido, DocumentoExpedicao, ImagemExpedicao,
-    KanbanColumn, Task, TaskQuantidadeFeita, TaskHistorico,
     JornadaTrabalho, RegistroPonto, ResumoMensal, AbonoDia,
     MovimentacaoEstoque, RequisicaoCompra, HistoricoRequisicao,
-    GastoViagem, GastoCaixaInterno
+    GastoViagem, GastoCaixaInterno,
+    Project, Milestone, Sprint, Label, ProjectTask, ProjectAutomation, TaskQuantidadeFeita, TaskHistorico,
+    Notificacao
 )
 
 # --- Configurações de Administração Customizadas ---
@@ -79,34 +80,6 @@ class ExpedicaoAdmin(admin.ModelAdmin):
 admin.site.register(ItemExpedido)
 admin.site.register(DocumentoExpedicao)
 admin.site.register(ImagemExpedicao)
-
-# --- Registros Kanban ---
-@admin.register(KanbanColumn)
-class KanbanColumnAdmin(admin.ModelAdmin):
-    list_display = ('nome', 'cor', 'ordem')
-    list_editable = ('ordem',)
-    ordering = ('ordem',)
-
-@admin.register(Task)
-class TaskAdmin(admin.ModelAdmin):
-    list_display = ('titulo', 'coluna', 'quantidade_meta', 'get_quantidade_produzida', 'em_andamento', 'finalizado', 'criado_em')
-    list_filter = ('coluna', 'em_andamento', 'finalizado', 'criado_em')
-    search_fields = ('titulo', 'descricao')
-    filter_horizontal = ('responsaveis',)
-    readonly_fields = ('criado_em', 'atualizado_em')
-
-    def get_quantidade_produzida(self, obj):
-        return obj.quantidade_produzida
-    get_quantidade_produzida.short_description = 'Produzida'
-
-@admin.register(TaskHistorico)
-class TaskHistoricoAdmin(admin.ModelAdmin):
-    list_display = ('task', 'tipo_acao', 'usuario', 'data')
-    list_filter = ('tipo_acao', 'data')
-    search_fields = ('task__titulo', 'descricao')
-    readonly_fields = ('task', 'usuario', 'tipo_acao', 'descricao', 'data')
-
-admin.site.register(TaskQuantidadeFeita)
 
 # --- Registros de Ponto ---
 @admin.register(JornadaTrabalho)
@@ -250,3 +223,101 @@ class GastoCaixaInternoAdmin(admin.ModelAdmin):
     list_filter = ('data_gasto', 'categoria', 'enviado_financeiro')
     search_fields = ('descricao', 'categoria', 'nota_fiscal', 'usuario__username')
     readonly_fields = ('data_gasto',)
+
+
+# ==================================================
+# ADMIN - SISTEMA DE PLANEJAMENTO DE PROJETOS
+# ==================================================
+
+@admin.register(Project)
+class ProjectAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'criado_por', 'criado_em', 'ordem')
+    list_editable = ('ordem',)
+    list_filter = ('criado_em',)
+    search_fields = ('nome', 'descricao')
+    readonly_fields = ('criado_em', 'atualizado_em')
+    fieldsets = (
+        ('Informações Básicas', {'fields': ('nome', 'descricao', 'cor')}),
+        ('Organização', {'fields': ('ordem', 'criado_por')}),
+        ('Timestamps', {'fields': ('criado_em', 'atualizado_em')}),
+    )
+
+
+@admin.register(Milestone)
+class MilestoneAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'project', 'status', 'data_inicio', 'data_fim', 'ordem')
+    list_editable = ('ordem', 'status')
+    list_filter = ('project', 'status', 'data_inicio')
+    search_fields = ('nome', 'descricao')
+    fieldsets = (
+        ('Informações Básicas', {'fields': ('project', 'nome', 'descricao', 'cor')}),
+        ('Datas', {'fields': ('data_inicio', 'data_fim')}),
+        ('Status e Ordem', {'fields': ('status', 'ordem')}),
+    )
+
+
+@admin.register(Sprint)
+class SprintAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'project', 'data_inicio', 'data_fim', 'ativo')
+    list_filter = ('project', 'ativo', 'data_inicio')
+    search_fields = ('nome', 'objetivo')
+    fieldsets = (
+        ('Informações Básicas', {'fields': ('project', 'nome', 'objetivo')}),
+        ('Período', {'fields': ('data_inicio', 'data_fim')}),
+        ('Status', {'fields': ('ativo',)}),
+    )
+
+
+@admin.register(Label)
+class LabelAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'project', 'cor')
+    list_filter = ('project',)
+    search_fields = ('nome', 'descricao')
+    fieldsets = (
+        ('Informações', {'fields': ('project', 'nome', 'descricao', 'cor')}),
+    )
+
+
+@admin.register(ProjectTask)
+class ProjectTaskAdmin(admin.ModelAdmin):
+    list_display = ('titulo', 'project', 'milestone', 'sprint', 'priority', 'status', 'data_inicio', 'data_fim', 'percentual_completo')
+    list_filter = ('project', 'milestone', 'sprint', 'priority', 'status', 'finalizado')
+    search_fields = ('titulo', 'descricao')
+    filter_horizontal = ('responsaveis', 'labels')
+    readonly_fields = ('criado_em', 'atualizado_em', 'quantidade_produzida', 'percentual_completo', 'dias_restantes', 'esta_atrasado')
+
+    fieldsets = (
+        ('Informações Básicas', {'fields': ('project', 'titulo', 'descricao')}),
+        ('Organização', {'fields': ('milestone', 'sprint', 'parent_task', 'labels')}),
+        ('Prioridade e Status', {'fields': ('priority', 'status', 'finalizado', 'data_finalizacao')}),
+        ('Datas', {'fields': ('data_inicio', 'data_fim')}),
+        ('Estimativa e Tracking', {'fields': ('estimativa', 'quantidade_meta', 'quantidade_produzida', 'percentual_completo')}),
+        ('Responsáveis', {'fields': ('responsaveis', 'criado_por')}),
+        ('Meta', {'fields': ('dias_restantes', 'esta_atrasado')}),
+        ('Timestamps', {'fields': ('criado_em', 'atualizado_em', 'ordem')}),
+    )
+
+    def percentual_completo(self, obj):
+        return f"{obj.percentual_completo}%"
+    percentual_completo.short_description = 'Progresso'
+
+
+@admin.register(ProjectAutomation)
+class ProjectAutomationAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'project', 'trigger_type', 'action_type', 'ativo')
+    list_filter = ('project', 'ativo', 'trigger_type', 'action_type')
+    search_fields = ('nome',)
+    fieldsets = (
+        ('Informações Básicas', {'fields': ('project', 'nome', 'ativo')}),
+        ('Gatilho (Trigger)', {'fields': ('trigger_type', 'trigger_value')}),
+        ('Ação (Action)', {'fields': ('action_type', 'action_value')}),
+    )
+
+@admin.register(Notificacao)
+class NotificacaoAdmin(admin.ModelAdmin):
+    list_display = ('usuario', 'tipo', 'titulo', 'lida', 'criado_em')
+    list_filter = ('tipo', 'lida', 'criado_em')
+    search_fields = ('usuario__username', 'titulo', 'mensagem')
+    readonly_fields = ('criado_em', 'lida_em')
+    list_per_page = 50
+

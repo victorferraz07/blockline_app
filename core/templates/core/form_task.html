@@ -1,0 +1,254 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Editar Tarefa{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <!-- Header -->
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">✏️ Editar Tarefa</h1>
+        <p class="text-gray-600">Atualize as informações da tarefa "{{ task.titulo }}"</p>
+    </div>
+
+    <!-- Formulário -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+
+            <!-- Título -->
+            <div>
+                <label for="titulo" class="block text-sm font-medium text-gray-700 mb-2">
+                    Título <span class="text-red-500">*</span>
+                </label>
+                <input
+                    type="text"
+                    name="titulo"
+                    id="titulo"
+                    value="{{ task.titulo }}"
+                    required
+                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-lg"
+                >
+            </div>
+
+            <!-- Descrição -->
+            <div>
+                <label for="descricao" class="block text-sm font-medium text-gray-700 mb-2">
+                    Descrição
+                </label>
+                <textarea
+                    name="descricao"
+                    id="descricao"
+                    rows="5"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder="Descreva os detalhes da tarefa..."
+                >{{ task.descricao }}</textarea>
+            </div>
+
+            <!-- Status e Prioridade -->
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label for="status" class="block text-sm font-medium text-gray-700 mb-2">
+                        Status
+                    </label>
+                    <select name="status" id="status" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        <option value="todo" {% if task.status == 'todo' %}selected{% endif %}>📋 A Fazer</option>
+                        <option value="in_progress" {% if task.status == 'in_progress' %}selected{% endif %}>🔄 Em Progresso</option>
+                        <option value="review" {% if task.status == 'review' %}selected{% endif %}>👀 Em Revisão</option>
+                        <option value="done" {% if task.status == 'done' %}selected{% endif %}>✅ Concluído</option>
+                        <option value="blocked" {% if task.status == 'blocked' %}selected{% endif %}>🚫 Bloqueado</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="priority" class="block text-sm font-medium text-gray-700 mb-2">
+                        Prioridade
+                    </label>
+                    <select name="priority" id="priority" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        <option value="low" {% if task.priority == 'low' %}selected{% endif %}>🟢 Low</option>
+                        <option value="medium" {% if task.priority == 'medium' %}selected{% endif %}>🔵 Medium</option>
+                        <option value="high" {% if task.priority == 'high' %}selected{% endif %}>🟠 High</option>
+                        <option value="critical" {% if task.priority == 'critical' %}selected{% endif %}>🔴 Critical</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Datas -->
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label for="data_inicio" class="block text-sm font-medium text-gray-700 mb-2">
+                        Data de Início
+                    </label>
+                    <input
+                        type="date"
+                        name="data_inicio"
+                        id="data_inicio"
+                        value="{{ task.data_inicio|date:'Y-m-d'|default:'' }}"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    >
+                </div>
+
+                <div>
+                    <label for="data_fim" class="block text-sm font-medium text-gray-700 mb-2">
+                        Data de Término
+                    </label>
+                    <input
+                        type="date"
+                        name="data_fim"
+                        id="data_fim"
+                        value="{{ task.data_fim|date:'Y-m-d'|default:'' }}"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    >
+                </div>
+            </div>
+
+            <!-- Milestone e Sprint -->
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label for="milestone_id" class="block text-sm font-medium text-gray-700 mb-2">
+                        Milestone
+                    </label>
+                    <select name="milestone_id" id="milestone_id" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        <option value="">Sem milestone</option>
+                        {% for milestone in milestones %}
+                            <option value="{{ milestone.id }}" {% if task.milestone_id == milestone.id %}selected{% endif %}>
+                                {{ milestone.nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label for="sprint_id" class="block text-sm font-medium text-gray-700 mb-2">
+                        Sprint
+                    </label>
+                    <select name="sprint_id" id="sprint_id" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        <option value="">Sem sprint</option>
+                        {% for sprint in sprints %}
+                            <option value="{{ sprint.id }}" {% if task.sprint_id == sprint.id %}selected{% endif %}>
+                                {{ sprint.nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Estimativa e Quantidade Meta -->
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label for="estimativa" class="block text-sm font-medium text-gray-700 mb-2">
+                        Estimativa (horas ou story points)
+                    </label>
+                    <input
+                        type="number"
+                        step="0.5"
+                        name="estimativa"
+                        id="estimativa"
+                        value="{{ task.estimativa|default:'' }}"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="Ex: 8, 13, 21..."
+                    >
+                </div>
+
+                <div>
+                    <label for="quantidade_meta" class="block text-sm font-medium text-gray-700 mb-2">
+                        Quantidade Meta
+                    </label>
+                    <input
+                        type="number"
+                        name="quantidade_meta"
+                        id="quantidade_meta"
+                        value="{{ task.quantidade_meta }}"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="Ex: 100 unidades"
+                    >
+                    <p class="mt-1 text-xs text-gray-500">Produzido: {{ task.quantidade_produzida }} ({{ task.percentual_completo }}%)</p>
+                </div>
+            </div>
+
+            <!-- Responsáveis -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Responsáveis
+                </label>
+                <div class="border border-gray-300 rounded-md p-4 max-h-48 overflow-y-auto">
+                    {% for usuario in usuarios %}
+                        <div class="flex items-center gap-2 mb-2">
+                            <input
+                                type="checkbox"
+                                name="responsaveis"
+                                id="resp_{{ usuario.id }}"
+                                value="{{ usuario.id }}"
+                                {% if usuario in task.responsaveis.all %}checked{% endif %}
+                                class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                            >
+                            <label for="resp_{{ usuario.id }}" class="text-sm text-gray-700 cursor-pointer">
+                                {{ usuario.get_full_name|default:usuario.username }}
+                            </label>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Labels -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Labels
+                </label>
+                <div class="flex gap-2 flex-wrap border border-gray-300 rounded-md p-4">
+                    {% for label in labels %}
+                        <label class="inline-flex items-center cursor-pointer">
+                            <input
+                                type="checkbox"
+                                name="labels"
+                                value="{{ label.id }}"
+                                {% if label in task.labels.all %}checked{% endif %}
+                                class="sr-only peer"
+                            >
+                            <span class="px-3 py-1 rounded-full text-sm font-semibold transition-all peer-checked:ring-2 peer-checked:ring-offset-2" style="background-color: {{ label.cor }}22; color: {{ label.cor }}; border: 1px solid {{ label.cor }}44; ring-color: {{ label.cor }};">
+                                🏷️ {{ label.nome }}
+                            </span>
+                        </label>
+                    {% empty %}
+                        <p class="text-sm text-gray-500">Nenhuma label disponível. <a href="{% url 'criar_label' task.project.id %}" class="text-indigo-600 hover:underline">Criar primeira label</a></p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Botões -->
+            <div class="flex gap-3 pt-4 border-t border-gray-200">
+                <button
+                    type="submit"
+                    class="px-6 py-2 bg-indigo-600 text-white rounded-md font-medium hover:bg-indigo-700 transition-colors"
+                >
+                    💾 Salvar Alterações
+                </button>
+                <a
+                    href="{% url 'task_detail' task.id %}"
+                    class="px-6 py-2 bg-gray-100 text-gray-700 rounded-md font-medium hover:bg-gray-200 transition-colors"
+                >
+                    ❌ Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Ações Perigosas -->
+    <div class="mt-8 bg-red-50 border border-red-200 rounded-lg p-6">
+        <h3 class="text-lg font-semibold text-red-900 mb-2">⚠️ Zona de Perigo</h3>
+        <p class="text-sm text-red-700 mb-4">
+            Excluir a tarefa irá remover permanentemente todos os dados associados (histórico, quantidades produzidas, subtarefas).
+            Esta ação não pode ser desfeita.
+        </p>
+        <form method="post" action="{% url 'excluir_task' task.id %}" onsubmit="return confirm('Tem certeza que deseja excluir a tarefa \"{{ task.titulo }}\"? Esta ação não pode ser desfeita!');">
+            {% csrf_token %}
+            <button
+                type="submit"
+                class="px-4 py-2 bg-red-600 text-white rounded-md font-medium hover:bg-red-700 transition-colors"
+            >
+                🗑️ Excluir Tarefa
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

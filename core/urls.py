@@ -34,6 +34,51 @@ urlpatterns = [
     path('expedicao/<int:pk>/editar/', views.editar_expedicao, name='editar_expedicao'),
     path('expedicao/<int:pk>/excluir/', views.excluir_expedicao, name='excluir_expedicao'),
 
+    # --- Sistema de Planejamento de Projetos ---
+    # Timeline principal
+    path('projects/', views.roadmap_timeline, name='roadmap_timeline'),
+
+    # Projetos
+    path('projects/create/', views.criar_project, name='criar_project'),
+    path('projects/<int:project_id>/edit/', views.editar_project, name='editar_project'),
+    path('projects/<int:project_id>/delete/', views.excluir_project, name='excluir_project'),
+
+    # Milestones
+    path('projects/<int:project_id>/milestones/create/', views.criar_milestone, name='criar_milestone'),
+    path('projects/milestones/<int:milestone_id>/edit/', views.editar_milestone, name='editar_milestone'),
+    path('projects/milestones/<int:milestone_id>/delete/', views.excluir_milestone, name='excluir_milestone'),
+
+    # Sprints
+    path('projects/<int:project_id>/sprints/create/', views.criar_sprint, name='criar_sprint'),
+    path('projects/sprints/<int:sprint_id>/edit/', views.editar_sprint, name='editar_sprint'),
+    path('projects/sprints/<int:sprint_id>/delete/', views.excluir_sprint, name='excluir_sprint'),
+    path('projects/sprints/<int:sprint_id>/activate/', views.ativar_sprint, name='ativar_sprint'),
+
+    # Labels
+    path('projects/<int:project_id>/labels/create/', views.criar_label, name='criar_label'),
+    path('projects/labels/<int:label_id>/edit/', views.editar_label, name='editar_label'),
+    path('projects/labels/<int:label_id>/delete/', views.excluir_label, name='excluir_label'),
+
+    # Tasks
+    path('projects/tasks/create/', views.criar_task_modal, name='criar_task_modal'),  # AJAX
+    path('projects/tasks/<int:task_id>/', views.task_detail, name='task_detail'),
+    path('projects/tasks/<int:task_id>/edit/', views.editar_task, name='editar_task'),
+    path('projects/tasks/<int:task_id>/delete/', views.excluir_task, name='excluir_task'),
+    path('projects/tasks/<int:task_id>/update-dates/', views.atualizar_task_dates, name='atualizar_task_dates'),  # AJAX Gantt
+    path('projects/tasks/<int:task_id>/update-status/', views.alterar_status, name='alterar_status'),  # AJAX
+    path('projects/tasks/<int:task_id>/create-subtask/', views.criar_subtask, name='criar_subtask'),
+
+    # Tracking de Produção
+    path('projects/tasks/<int:task_id>/add-quantity/', views.registrar_quantidade_project, name='registrar_quantidade_project'),
+    path('projects/quantities/<int:quantidade_id>/edit/', views.editar_quantidade_project, name='editar_quantidade_project'),
+    path('projects/quantities/<int:quantidade_id>/delete/', views.excluir_quantidade_project, name='excluir_quantidade_project'),
+
+    # Notificações
+    path('notificacoes/', views.listar_notificacoes, name='listar_notificacoes'),
+    path('notificacoes/<int:notificacao_id>/marcar-lida/', views.marcar_notificacao_lida, name='marcar_notificacao_lida'),
+    path('notificacoes/marcar-todas-lidas/', views.marcar_todas_lidas, name='marcar_todas_lidas'),
+    path('notificacoes/contar/', views.contar_notificacoes, name='contar_notificacoes'),
+
     # --- Rotas Kanban ---
     path('kanban/', views.kanban_board, name='kanban_board'),
     path('kanban/metricas/', views.metricas_kanban, name='metricas_kanban'),
@@ -84,6 +129,7 @@ urlpatterns = [
     path('requisicoes/<int:requisicao_id>/rejeitar-compra/', views.rejeitar_compra, name='rejeitar_compra'),
     path('requisicoes/<int:requisicao_id>/comprado/', views.marcar_como_comprado, name='marcar_como_comprado'),
     path('requisicoes/<int:requisicao_id>/recebido/', views.marcar_como_recebido, name='marcar_como_recebido'),
+    path('requisicoes/parcela/<int:parcela_id>/marcar-paga/', views.marcar_parcela_paga, name='marcar_parcela_paga'),
 
     # --- Rotas de Gastos de Viagem ---
     path('gastos-viagem/', views.lista_gastos_viagem, name='lista_gastos_viagem'),
@@ -100,6 +146,12 @@ urlpatterns = [
     path('gastos-caixa/<int:gasto_id>/excluir/', views.excluir_gasto_caixa, name='excluir_gasto_caixa'),
     path('gastos-caixa/<int:gasto_id>/toggle-enviado/', views.toggle_enviado_financeiro, name='toggle_enviado_financeiro'),
     path('gastos-caixa/exportar-excel/', views.exportar_gastos_excel, name='exportar_gastos_excel'),
+
+    # --- Dashboard de Compras ---
+    path('dashboard-compras/', views.dashboard_compras, name='dashboard_compras'),
+
+    # --- API de Alertas ---
+    path('api/alertas-boletos/', views.alertas_boletos_api, name='alertas_boletos_api'),
 
     # --- Rotas de Perfil do Usuário ---
     path('perfil/', views.perfil_usuario, name='perfil_usuario'),

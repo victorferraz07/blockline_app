@@ -1,0 +1,1347 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Projetos - Roadmap{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ========================================
+       DESIGN SYSTEM
+       ======================================== */
+    :root {
+        /* GitHub Dark Colors */
+        --bg-primary: #0d1117;
+        --bg-secondary: #161b22;
+        --bg-tertiary: #21262d;
+        --bg-overlay: #1c2128;
+
+        --border-default: #30363d;
+        --border-muted: #21262d;
+
+        --text-primary: #e6edf3;
+        --text-secondary: #7d8590;
+        --text-link: #58a6ff;
+
+        --accent-success: #3fb950;
+        --accent-attention: #d29922;
+        --accent-danger: #f85149;
+        --accent-info: #58a6ff;
+
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
+        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.5);
+        --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.6);
+    }
+
+    /* Remove padding e margin do body e containers */
+    body {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    /* Remove padding de qualquer container pai */
+    main, .container, #content {
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: none !important;
+    }
+
+    /* ========================================
+       LAYOUT PRINCIPAL
+       ======================================== */
+    .roadmap-layout {
+        display: flex;
+        min-height: calc(100vh - 64px); /* Altura da navbar */
+        background: var(--bg-primary);
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100vw;
+        position: relative;
+        left: 50%;
+        right: 50%;
+        margin-left: -50vw !important;
+        margin-right: -50vw !important;
+    }
+
+    /* SIDEBAR */
+    .roadmap-sidebar {
+        width: 280px;
+        background: var(--bg-secondary);
+        border-right: 1px solid var(--border-default);
+        padding: 1.5rem 1rem;
+        overflow-y: auto;
+        flex-shrink: 0;
+    }
+
+    .sidebar-section {
+        margin-bottom: 2rem;
+    }
+
+    .sidebar-section-title {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .project-item {
+        padding: 0.625rem 0.75rem;
+        border-radius: 0.375rem;
+        margin-bottom: 0.25rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        transition: all 0.15s;
+        border: 1px solid transparent;
+    }
+
+    .project-item:hover {
+        background: var(--bg-tertiary);
+        border-color: var(--border-default);
+    }
+
+    .project-item.active {
+        background: var(--bg-tertiary);
+        border-color: var(--text-link);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .project-color {
+        width: 12px;
+        height: 12px;
+        border-radius: 2px;
+        flex-shrink: 0;
+    }
+
+    .project-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .project-name {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .project-meta {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        margin-top: 0.125rem;
+    }
+
+    .milestone-item, .sprint-item {
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.375rem;
+        margin-bottom: 0.25rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.15s;
+        font-size: 0.875rem;
+        border: 1px solid transparent;
+    }
+
+    .milestone-item:hover, .sprint-item:hover {
+        background: var(--bg-tertiary);
+    }
+
+    .milestone-item.active, .sprint-item.active {
+        background: var(--bg-tertiary);
+        border-color: var(--border-default);
+    }
+
+    .badge {
+        background: var(--bg-overlay);
+        color: var(--text-secondary);
+        border: 1px solid var(--border-default);
+        padding: 0.125rem 0.5rem;
+        border-radius: 1rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+        margin-left: auto;
+    }
+
+    .btn-sidebar {
+        width: 100%;
+        padding: 0.625rem 0.75rem;
+        background: var(--accent-success);
+        color: white;
+        border: none;
+        border-radius: 0.375rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .btn-sidebar:hover {
+        background: #2ea043;
+        box-shadow: var(--shadow-sm);
+        transform: translateY(-1px);
+    }
+
+    .btn-sidebar-secondary {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+        border: 1px solid var(--border-default);
+        margin-top: 0.5rem;
+    }
+
+    .btn-sidebar-secondary:hover {
+        background: var(--bg-overlay);
+        border-color: var(--text-secondary);
+    }
+
+    /* MAIN CONTENT */
+    .roadmap-main {
+        flex: 1;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        background: var(--bg-primary);
+    }
+
+    /* ========================================
+       HEADER & TOOLBAR
+       ======================================== */
+    .roadmap-header {
+        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--border-default);
+        padding: 1rem 1.5rem;
+        flex-shrink: 0;
+    }
+
+    .header-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+    }
+
+    .header-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-header {
+        padding: 0.5rem 1rem;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-default);
+        border-radius: 0.375rem;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .btn-header:hover {
+        background: var(--bg-overlay);
+        border-color: var(--text-secondary);
+    }
+
+    .btn-primary {
+        background: var(--accent-success);
+        border-color: var(--accent-success);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #2ea043;
+        border-color: #2ea043;
+    }
+
+    .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .toolbar-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .toolbar-label {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    .filter-select {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-default);
+        border-radius: 0.375rem;
+        padding: 0.5rem 0.75rem;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+        cursor: pointer;
+        min-width: 150px;
+    }
+
+    .filter-select:hover {
+        border-color: var(--text-secondary);
+    }
+
+    .view-switcher {
+        display: flex;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-default);
+        border-radius: 0.375rem;
+        overflow: hidden;
+        margin-left: auto;
+    }
+
+    .view-btn {
+        padding: 0.5rem 1rem;
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: all 0.15s;
+        border-right: 1px solid var(--border-default);
+    }
+
+    .view-btn:last-child {
+        border-right: none;
+    }
+
+    .view-btn:hover {
+        color: var(--text-primary);
+        background: var(--bg-overlay);
+    }
+
+    .view-btn.active {
+        color: var(--text-link);
+        background: var(--bg-primary);
+        font-weight: 500;
+    }
+
+    /* ========================================
+       TIMELINE VIEW
+       ======================================== */
+    .timeline-container {
+        flex: 1;
+        overflow: auto;
+        padding: 1.5rem;
+    }
+
+    .timeline-calendar {
+        min-width: max-content;
+    }
+
+    /* Calendar Header */
+    .calendar-header {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-default);
+        border-radius: 0.5rem 0.5rem 0 0;
+        padding: 1rem 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .month-nav {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .month-nav button {
+        width: 32px;
+        height: 32px;
+        border-radius: 0.375rem;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-default);
+        color: var(--text-primary);
+        cursor: pointer;
+        transition: all 0.15s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .month-nav button:hover {
+        background: var(--bg-overlay);
+        border-color: var(--text-secondary);
+    }
+
+    .month-name {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        min-width: 200px;
+        text-align: center;
+    }
+
+    /* Days Grid */
+    .days-grid {
+        display: grid;
+        background: var(--bg-secondary);
+        border-left: 1px solid var(--border-default);
+        border-right: 1px solid var(--border-default);
+        position: sticky;
+        top: 73px;
+        z-index: 9;
+    }
+
+    .day-cell {
+        padding: 0.75rem;
+        border-right: 1px solid var(--border-muted);
+        border-bottom: 1px solid var(--border-default);
+        text-align: center;
+    }
+
+    .day-cell:last-child {
+        border-right: none;
+    }
+
+    .day-number {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .day-name {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        margin-top: 0.25rem;
+    }
+
+    .day-cell.today {
+        background: rgba(88, 166, 255, 0.1);
+    }
+
+    .day-cell.today .day-number {
+        color: var(--text-link);
+    }
+
+    /* Swimlanes */
+    .swimlane {
+        background: var(--bg-secondary);
+        border-left: 1px solid var(--border-default);
+        border-right: 1px solid var(--border-default);
+        border-bottom: 1px solid var(--border-default);
+    }
+
+    .swimlane:last-child {
+        border-radius: 0 0 0.5rem 0.5rem;
+    }
+
+    .swimlane-header {
+        padding: 1rem 1.5rem;
+        background: var(--bg-tertiary);
+        border-bottom: 1px solid var(--border-default);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.15s;
+    }
+
+    .swimlane-header:hover {
+        background: var(--bg-overlay);
+    }
+
+    .swimlane-toggle {
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-secondary);
+        transition: transform 0.2s;
+        font-size: 0.75rem;
+    }
+
+    .swimlane-toggle.collapsed {
+        transform: rotate(-90deg);
+    }
+
+    .swimlane-title {
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .swimlane-count {
+        background: var(--bg-primary);
+        color: var(--text-secondary);
+        border: 1px solid var(--border-default);
+        padding: 0.125rem 0.625rem;
+        border-radius: 1rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+        margin-left: auto;
+    }
+
+    .swimlane-body {
+        position: relative;
+        min-height: 80px;
+        display: grid;
+    }
+
+    .timeline-row {
+        border-right: 1px solid var(--border-muted);
+        min-height: 80px;
+    }
+
+    .timeline-row:last-child {
+        border-right: none;
+    }
+
+    /* Task Cards */
+    .task-card {
+        position: absolute;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-default);
+        border-radius: 0.5rem;
+        padding: 0.625rem 0.75rem;
+        cursor: pointer;
+        transition: all 0.15s;
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        height: 40px;
+        margin: 8px 4px;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .task-card:hover {
+        border-color: var(--text-link);
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+        z-index: 5;
+    }
+
+    .task-card.priority-critical {
+        border-left: 3px solid var(--accent-danger);
+    }
+
+    .task-card.priority-high {
+        border-left: 3px solid var(--accent-attention);
+    }
+
+    .task-card.priority-medium {
+        border-left: 3px solid var(--text-link);
+    }
+
+    .task-card.priority-low {
+        border-left: 3px solid var(--text-secondary);
+    }
+
+    .task-status-dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        border: 2px solid;
+        flex-shrink: 0;
+        position: relative;
+    }
+
+    .task-status-dot.todo {
+        border-color: var(--text-secondary);
+        background: transparent;
+    }
+
+    .task-status-dot.in_progress {
+        border-color: var(--accent-info);
+        background: var(--accent-info);
+        animation: pulse 2s ease-in-out infinite;
+    }
+
+    .task-status-dot.review {
+        border-color: var(--accent-attention);
+        background: var(--accent-attention);
+    }
+
+    .task-status-dot.done {
+        border-color: var(--accent-success);
+        background: var(--accent-success);
+    }
+
+    .task-status-dot.done::after {
+        content: '✓';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: white;
+        font-size: 0.625rem;
+        font-weight: bold;
+    }
+
+    .task-status-dot.blocked {
+        border-color: var(--accent-danger);
+        background: var(--accent-danger);
+    }
+
+    .task-status-dot.blocked::after {
+        content: '!';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: white;
+        font-size: 0.625rem;
+        font-weight: bold;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
+    }
+
+    .task-title-text {
+        flex: 1;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .task-avatar {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--text-link);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        font-weight: 600;
+        flex-shrink: 0;
+    }
+
+    /* ========================================
+       EMPTY STATE
+       ======================================== */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: var(--text-secondary);
+    }
+
+    .empty-state svg {
+        color: var(--text-secondary);
+        margin-bottom: 1rem;
+    }
+
+    .empty-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .empty-description {
+        font-size: 0.9375rem;
+        color: var(--text-secondary);
+        margin-bottom: 1.5rem;
+    }
+
+    /* ========================================
+       MODAL
+       ======================================== */
+    .modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(1, 4, 9, 0.8);
+        backdrop-filter: blur(4px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 50;
+        padding: 1rem;
+    }
+
+    .modal-content {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-default);
+        border-radius: 0.75rem;
+        width: 100%;
+        max-width: 540px;
+        box-shadow: var(--shadow-lg);
+        max-height: 90vh;
+        overflow: auto;
+    }
+
+    .modal-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid var(--border-default);
+    }
+
+    .modal-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 0.625rem 0.75rem;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-default);
+        border-radius: 0.375rem;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+        transition: all 0.15s;
+        box-sizing: border-box;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: var(--text-link);
+        box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+    }
+
+    .modal-footer {
+        padding: 1.5rem;
+        border-top: 1px solid var(--border-default);
+        display: flex;
+        gap: 0.75rem;
+        justify-content: flex-end;
+    }
+
+    .btn-cancel {
+        padding: 0.625rem 1.25rem;
+        background: transparent;
+        border: 1px solid var(--border-default);
+        border-radius: 0.375rem;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    .btn-cancel:hover {
+        background: var(--bg-tertiary);
+    }
+
+    /* ========================================
+       LEGEND
+       ======================================== */
+    .legend {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-default);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-top: 1.5rem;
+    }
+
+    .legend-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.75rem;
+    }
+
+    .legend-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 0.75rem;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.8125rem;
+        color: var(--text-secondary);
+    }
+
+    /* ========================================
+       UTILITIES
+       ======================================== */
+    .mb-4 { margin-bottom: 1rem; }
+    .mt-4 { margin-top: 1rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="roadmap-layout" x-data="roadmapApp()">
+    <!-- ========================================
+         SIDEBAR
+         ======================================== -->
+    <div class="roadmap-sidebar">
+        <!-- Projetos -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">
+                <span>📁</span>
+                <span>Projetos</span>
+            </div>
+            {% if projects %}
+                {% for project in projects %}
+                <div class="project-item {% if project.id == project_selecionado.id %}active{% endif %}"
+                     onclick="window.location.href='{% url 'roadmap_timeline' %}?project={{ project.id }}'">
+                    <div class="project-color" style="background: {{ project.cor }}"></div>
+                    <div class="project-info">
+                        <div class="project-name">{{ project.nome }}</div>
+                        <div class="project-meta">{{ project.tasks.count }} tarefas</div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p style="font-size: 0.875rem; color: var(--text-secondary); padding: 0.5rem 0.75rem;">
+                    Nenhum projeto criado
+                </p>
+            {% endif %}
+            <button class="btn-sidebar" onclick="window.location.href='{% url 'criar_project' %}'">
+                <span>➕</span>
+                <span>Novo Projeto</span>
+            </button>
+        </div>
+
+        {% if project_selecionado %}
+        <!-- Milestones -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">
+                <span>🎯</span>
+                <span>Milestones</span>
+            </div>
+            {% if milestones %}
+                <div class="milestone-item {% if not request.GET.milestone %}active{% endif %}"
+                     onclick="window.location.href='{% url 'roadmap_timeline' %}?project={{ project_selecionado.id }}'">
+                    <span>Todos</span>
+                    <span class="badge">{{ project_selecionado.tasks.count }}</span>
+                </div>
+                {% for milestone in milestones %}
+                <div class="milestone-item {% if request.GET.milestone == milestone.id|stringformat:'s' %}active{% endif %}"
+                     onclick="window.location.href='{% url 'roadmap_timeline' %}?project={{ project_selecionado.id }}&milestone={{ milestone.id }}'">
+                    <span>{{ milestone.nome }}</span>
+                    <span class="badge">{{ milestone.tasks.count }}</span>
+                </div>
+                {% endfor %}
+            {% endif %}
+            <button class="btn-sidebar btn-sidebar-secondary"
+                    onclick="window.location.href='{% url 'criar_milestone' project_selecionado.id %}'">
+                <span>➕</span>
+                <span>Nova Milestone</span>
+            </button>
+        </div>
+
+        <!-- Sprints -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">
+                <span>🏃</span>
+                <span>Sprints</span>
+            </div>
+            {% if sprints %}
+                {% for sprint in sprints %}
+                <div class="sprint-item {% if request.GET.sprint == sprint.id|stringformat:'s' %}active{% endif %}"
+                     onclick="window.location.href='{% url 'roadmap_timeline' %}?project={{ project_selecionado.id }}&sprint={{ sprint.id }}'">
+                    <span>{{ sprint.nome }}</span>
+                    {% if sprint.ativo %}
+                    <span class="badge" style="background: var(--accent-success); color: white; border-color: var(--accent-success);">Ativo</span>
+                    {% else %}
+                    <span class="badge">{{ sprint.tasks.count }}</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% endif %}
+            <button class="btn-sidebar btn-sidebar-secondary"
+                    onclick="window.location.href='{% url 'criar_sprint' project_selecionado.id %}'">
+                <span>➕</span>
+                <span>Novo Sprint</span>
+            </button>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ========================================
+         MAIN CONTENT
+         ======================================== -->
+    <div class="roadmap-main">
+        <!-- Header & Toolbar -->
+        <div class="roadmap-header">
+            <div class="header-top">
+                <div class="header-title">
+                    <span>📅</span>
+                    <span>
+                        {% if project_selecionado %}
+                            {{ project_selecionado.nome }} - Roadmap
+                        {% else %}
+                            Planejamento de Projetos
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="header-actions">
+                    <button class="btn-header" onclick="window.location.reload()">
+                        <span>🔄</span>
+                        <span>Atualizar</span>
+                    </button>
+                    {% if project_selecionado %}
+                    <button class="btn-header btn-primary" @click="showCreateModal = true">
+                        <span>➕</span>
+                        <span>Nova Tarefa</span>
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if project_selecionado %}
+            <div class="toolbar">
+                <div class="toolbar-group">
+                    <span class="toolbar-label">Visualização:</span>
+                    <div class="view-switcher">
+                        <button class="view-btn" :class="{ 'active': viewMode === 'month' }" @click="viewMode = 'month'">
+                            Mês
+                        </button>
+                        <button class="view-btn" :class="{ 'active': viewMode === 'week' }" @click="viewMode = 'week'">
+                            Semana
+                        </button>
+                    </div>
+                </div>
+
+                <div class="toolbar-group">
+                    <span class="toolbar-label">Status:</span>
+                    <select class="filter-select">
+                        <option value="">Todos</option>
+                        <option value="todo">A Fazer</option>
+                        <option value="in_progress">Em Progresso</option>
+                        <option value="review">Em Revisão</option>
+                        <option value="done">Concluído</option>
+                        <option value="blocked">Bloqueado</option>
+                    </select>
+                </div>
+
+                <div class="toolbar-group">
+                    <span class="toolbar-label">Prioridade:</span>
+                    <select class="filter-select">
+                        <option value="">Todas</option>
+                        <option value="critical">Crítica</option>
+                        <option value="high">Alta</option>
+                        <option value="medium">Média</option>
+                        <option value="low">Baixa</option>
+                    </select>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Timeline Container -->
+        <div class="timeline-container">
+            {% if project_selecionado and tasks %}
+                <!-- Timeline Calendar -->
+                <div class="timeline-calendar">
+                    <!-- Calendar Header -->
+                    <div class="calendar-header">
+                        <div class="month-nav">
+                            <button @click="previousMonth">
+                                <span>←</span>
+                            </button>
+                            <span class="month-name" x-text="currentMonthName"></span>
+                            <button @click="nextMonth">
+                                <span>→</span>
+                            </button>
+                        </div>
+                        <div style="font-size: 0.875rem; color: var(--text-secondary);">
+                            <span x-text="daysInMonth"></span> dias
+                        </div>
+                    </div>
+
+                    <!-- Days Grid -->
+                    <div class="days-grid" :style="'grid-template-columns: repeat(' + daysInMonth + ', minmax(80px, 1fr))'">
+                        <template x-for="day in daysInMonth" :key="day">
+                            <div class="day-cell" :class="{ 'today': isToday(day) }">
+                                <div class="day-number" x-text="day"></div>
+                                <div class="day-name" x-text="getDayName(day)"></div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Swimlanes -->
+                    {% for milestone, milestone_tasks in tasks_por_milestone.items %}
+                    <div class="swimlane" x-data="{ collapsed: false }">
+                        <div class="swimlane-header" @click="collapsed = !collapsed">
+                            <span class="swimlane-toggle" :class="{ 'collapsed': collapsed }">▼</span>
+                            <span class="swimlane-title">
+                                {% if milestone %}
+                                    <span>🎯</span>
+                                    <span>{{ milestone.nome }}</span>
+                                {% else %}
+                                    <span>📋</span>
+                                    <span>Sem Milestone</span>
+                                {% endif %}
+                            </span>
+                            <span class="swimlane-count">{{ milestone_tasks.count }}</span>
+                        </div>
+
+                        <div x-show="!collapsed" x-collapse>
+                            <div class="swimlane-body" :style="'grid-template-columns: repeat(' + daysInMonth + ', minmax(80px, 1fr))'">
+                                <template x-for="day in daysInMonth" :key="day">
+                                    <div class="timeline-row"></div>
+                                </template>
+
+                                <!-- Task Cards -->
+                                {% for task in milestone_tasks %}
+                                <div class="task-card priority-{{ task.priority }}"
+                                     style="left: {{ task.position_left }}px; width: {{ task.card_width }}px;"
+                                     @click="window.location.href='{% url 'task_detail' task.id %}'"
+                                     x-init="positionTask({{ task.data_inicio|date:'j'|default:'1' }}, {{ task.data_fim|date:'j'|default:'5' }}, $el)">
+                                    <div class="task-status-dot {{ task.status }}"></div>
+                                    <div class="task-title-text">{{ task.titulo }}</div>
+                                    {% if task.responsaveis.first %}
+                                    <div class="task-avatar" title="{{ task.responsaveis.first.get_full_name|default:task.responsaveis.first.username }}">
+                                        {{ task.responsaveis.first.get_full_name.0|default:task.responsaveis.first.username.0|upper }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Legend -->
+                <div class="legend">
+                    <div class="legend-title">Legenda</div>
+                    <div class="legend-grid">
+                        <div class="legend-item">
+                            <div class="task-status-dot todo"></div>
+                            <span>A Fazer</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="task-status-dot in_progress"></div>
+                            <span>Em Progresso</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="task-status-dot review"></div>
+                            <span>Em Revisão</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="task-status-dot done"></div>
+                            <span>Concluído</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="task-status-dot blocked"></div>
+                            <span>Bloqueado</span>
+                        </div>
+                        <div class="legend-item">
+                            <div style="width: 3px; height: 20px; background: var(--accent-danger);"></div>
+                            <span>Prioridade Crítica</span>
+                        </div>
+                        <div class="legend-item">
+                            <div style="width: 3px; height: 20px; background: var(--accent-attention);"></div>
+                            <span>Prioridade Alta</span>
+                        </div>
+                        <div class="legend-item">
+                            <div style="width: 3px; height: 20px; background: var(--text-link);"></div>
+                            <span>Prioridade Média</span>
+                        </div>
+                    </div>
+                </div>
+
+            {% elif project_selecionado %}
+                <!-- Empty State - No Tasks -->
+                <div class="empty-state">
+                    <svg width="80" height="80" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                        <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                    </svg>
+                    <div class="empty-title">Nenhuma tarefa encontrada</div>
+                    <div class="empty-description">
+                        Comece criando sua primeira tarefa no projeto {{ project_selecionado.nome }}
+                    </div>
+                    <button class="btn-header btn-primary" @click="showCreateModal = true">
+                        <span>➕</span>
+                        <span>Criar Primeira Tarefa</span>
+                    </button>
+                </div>
+            {% else %}
+                <!-- Empty State - No Project -->
+                <div class="empty-state">
+                    <svg width="80" height="80" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M9.828 3h3.982a2 2 0 0 1 1.992 2.181l-.637 7A2 2 0 0 1 13.174 14H2.825a2 2 0 0 1-1.991-1.819l-.637-7a1.99 1.99 0 0 1 .342-1.31L.5 3a2 2 0 0 1 2-2h3.672a2 2 0 0 1 1.414.586l.828.828A2 2 0 0 0 9.828 3zm-8.322.12C1.72 3.042 1.95 3 2.19 3h5.396l-.707-.707A1 1 0 0 0 6.172 2H2.5a1 1 0 0 0-1 .981l.006.139z"/>
+                    </svg>
+                    <div class="empty-title">Selecione um projeto</div>
+                    <div class="empty-description">
+                        Escolha um projeto na sidebar ou crie um novo para começar
+                    </div>
+                    <button class="btn-header btn-primary" onclick="window.location.href='{% url 'criar_project' %}'">
+                        <span>➕</span>
+                        <span>Criar Novo Projeto</span>
+                    </button>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ========================================
+         MODAL - CRIAR TAREFA
+         ======================================== -->
+    <div x-show="showCreateModal" x-cloak x-transition class="modal" @click.self="showCreateModal = false">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">➕ Nova Tarefa</h2>
+            </div>
+
+            <form @submit.prevent="createTask">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Título *</label>
+                        <input type="text" x-model="newTask.titulo" required class="form-input"
+                               placeholder="Digite o nome da tarefa">
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label class="form-label">Data Início</label>
+                            <input type="date" x-model="newTask.data_inicio" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Data Fim</label>
+                            <input type="date" x-model="newTask.data_fim" class="form-input">
+                        </div>
+                    </div>
+
+                    {% if milestones %}
+                    <div class="form-group">
+                        <label class="form-label">Milestone</label>
+                        <select x-model="newTask.milestone_id" class="form-input">
+                            <option value="">Sem milestone</option>
+                            {% for milestone in milestones %}
+                            <option value="{{ milestone.id }}">{{ milestone.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+
+                    <div class="form-group">
+                        <label class="form-label">Prioridade</label>
+                        <select x-model="newTask.priority" class="form-input">
+                            <option value="low">Baixa</option>
+                            <option value="medium" selected>Média</option>
+                            <option value="high">Alta</option>
+                            <option value="critical">Crítica</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Responsáveis</label>
+                        <select x-model="newTask.responsaveis" class="form-input" multiple size="4">
+                            {% load static %}
+                            {% comment %}Buscar usuários disponíveis{% endcomment %}
+                            <option value="{{ user.id }}">{{ user.get_full_name|default:user.username }} (Você)</option>
+                            {% for usuario in users %}
+                                {% if usuario.id != user.id %}
+                                <option value="{{ usuario.id }}">{{ usuario.get_full_name|default:usuario.username }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                        <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                            Segure Ctrl (Cmd no Mac) para selecionar múltiplos usuários
+                        </p>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="submit" class="btn-header btn-primary">
+                        <span>✓</span>
+                        <span>Criar Tarefa</span>
+                    </button>
+                    <button type="button" class="btn-cancel" @click="showCreateModal = false">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function roadmapApp() {
+    return {
+        showCreateModal: false,
+        viewMode: 'month',
+        currentYear: new Date().getFullYear(),
+        currentMonth: new Date().getMonth(),
+        newTask: {
+            titulo: '',
+            data_inicio: '',
+            data_fim: '',
+            milestone_id: '',
+            priority: 'medium',
+            responsaveis: [{% if user %}'{{ user.id }}'{% endif %}],  // Usuário atual selecionado por padrão
+            project_id: {% if project_selecionado %}'{{ project_selecionado.id }}'{% else %}''{% endif %}
+        },
+
+        get currentMonthName() {
+            const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                          'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+            return `${months[this.currentMonth]} ${this.currentYear}`;
+        },
+
+        get daysInMonth() {
+            return new Date(this.currentYear, this.currentMonth + 1, 0).getDate();
+        },
+
+        previousMonth() {
+            if (this.currentMonth === 0) {
+                this.currentMonth = 11;
+                this.currentYear--;
+            } else {
+                this.currentMonth--;
+            }
+        },
+
+        nextMonth() {
+            if (this.currentMonth === 11) {
+                this.currentMonth = 0;
+                this.currentYear++;
+            } else {
+                this.currentMonth++;
+            }
+        },
+
+        isToday(day) {
+            const today = new Date();
+            return day === today.getDate() &&
+                   this.currentMonth === today.getMonth() &&
+                   this.currentYear === today.getFullYear();
+        },
+
+        getDayName(day) {
+            const date = new Date(this.currentYear, this.currentMonth, day);
+            const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+            return days[date.getDay()];
+        },
+
+        positionTask(startDay, endDay, element) {
+            // Calcula a posição e largura da tarefa no calendário
+            const cellWidth = 80; // minWidth from grid
+            const left = (startDay - 1) * cellWidth;
+            const duration = Math.max(1, endDay - startDay + 1);
+            const width = duration * cellWidth - 8; // -8 for margins
+
+            element.style.left = `${left}px`;
+            element.style.width = `${width}px`;
+        },
+
+        async createTask() {
+            if (!this.newTask.project_id) {
+                alert('Por favor, selecione um projeto');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('project_id', this.newTask.project_id);
+                formData.append('titulo', this.newTask.titulo);
+                formData.append('data_inicio', this.newTask.data_inicio);
+                formData.append('data_fim', this.newTask.data_fim);
+                formData.append('milestone_id', this.newTask.milestone_id);
+                formData.append('priority', this.newTask.priority);
+
+                // Adicionar responsáveis (array)
+                console.log('Responsaveis antes de enviar:', this.newTask.responsaveis);
+                if (Array.isArray(this.newTask.responsaveis)) {
+                    this.newTask.responsaveis.forEach(id => {
+                        formData.append('responsaveis[]', id);
+                        console.log('Adicionando responsavel ID:', id);
+                    });
+                } else {
+                    console.warn('newTask.responsaveis não é um array:', this.newTask.responsaveis);
+                }
+
+                const response = await fetch('{% url "criar_task_modal" %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert('Erro ao criar tarefa: ' + (data.message || 'Erro desconhecido'));
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao criar tarefa');
+            }
+        }
+    }
+}
+</script>
+
+<style>
+    [x-cloak] { display: none !important; }
+</style>
+{% endblock %}

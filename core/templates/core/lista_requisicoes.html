@@ -113,7 +113,9 @@
             showReject: false,
             showBuy: false,
             showRejectBuy: false,
-            showReceive: false
+            showReceive: false,
+            showPagarParcela: false,
+            parcelaParaPagar: null
         }">
             <!-- Cabeçalho da Compra -->
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
@@ -173,7 +175,7 @@
                     <div>
                         <h4 class="font-semibold text-gray-700 mb-2">Informações da Compra</h4>
                         <p class="text-sm"><strong>Propósito:</strong> {{ req.proposito }}</p>
-                        {% if req.projeto %}<p class="text-sm"><strong>Projeto:</strong> {{ req.projeto }}</p>{% endif %}
+                        {% if req.produto %}<p class="text-sm"><strong>Produto:</strong> {{ req.produto.nome }}</p>{% endif %}
                         <p class="text-sm"><strong>Requerente:</strong> {{ req.requerente.get_full_name|default:req.requerente.username }}</p>
                     </div>
                 </div>
@@ -273,6 +275,69 @@
                     </div>
                     {% endif %}
                     {% endif %}
+
+                    <!-- Parcelas do Boleto (se forma_pagamento = 'boleto') -->
+                    {% if req.forma_pagamento == 'boleto' and req.parcelas_boleto.all %}
+                    <div class="mt-4 pt-4 border-t-2 border-gray-200">
+                        <h4 class="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                            💳 Parcelas do Boleto
+                            <span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                                {{ req.parcelas_boleto.count }} parcela{{ req.parcelas_boleto.count|pluralize }}
+                            </span>
+                        </h4>
+
+                        <div class="space-y-2">
+                            {% for parcela in req.parcelas_boleto.all %}
+                            <div class="border-2 rounded-lg p-3 {% if parcela.pago %}bg-green-50 border-green-300{% else %}bg-orange-50 border-orange-300{% endif %}">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="flex-1">
+                                        <p class="text-sm font-semibold text-gray-800">
+                                            Parcela {{ parcela.numero_parcela }}/{{ req.quantidade_parcelas }}
+                                            {% if parcela.pago %}
+                                                <span class="text-green-600">✅ Paga</span>
+                                            {% else %}
+                                                <span class="text-orange-600">⏳ Pendente</span>
+                                            {% endif %}
+                                        </p>
+                                        <p class="text-xs text-gray-600 mt-1">
+                                            <strong>Vencimento:</strong> {{ parcela.data_vencimento|date:'d/m/Y' }}
+                                        </p>
+                                        <p class="text-sm font-bold text-gray-900 mt-1">
+                                            Valor: R$ {{ parcela.valor|floatformat:2 }}
+                                        </p>
+
+                                        {% if parcela.pago %}
+                                        <div class="mt-2 pt-2 border-t border-green-200">
+                                            <p class="text-xs text-green-700">
+                                                ✓ Pago em {{ parcela.data_pagamento|date:'d/m/Y' }} por {{ parcela.pago_por.username }}
+                                            </p>
+                                            {% if parcela.comprovante %}
+                                            <a href="{{ parcela.comprovante.url }}" target="_blank"
+                                               class="text-xs text-blue-600 hover:underline inline-block mt-1">
+                                                📄 Ver comprovante
+                                            </a>
+                                            {% endif %}
+                                            {% if parcela.observacoes %}
+                                            <p class="text-xs text-gray-600 mt-1">
+                                                <strong>Obs:</strong> {{ parcela.observacoes }}
+                                            </p>
+                                            {% endif %}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+
+                                    {% if not parcela.pago and user.perfil.is_financeiro %}
+                                    <button @click="parcelaParaPagar = {{ parcela.id }}; showPagarParcela = true"
+                                            class="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 font-semibold text-sm transition-all shadow-sm">
+                                        💰 Pagar
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
                 {% endif %}
             </div>
@@ -325,8 +390,13 @@
                                     <input type="text" name="proposito" value="{{ req.proposito }}" required class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-semibold text-gray-700 mb-2">Projeto (opcional)</label>
-                                    <input type="text" name="projeto" value="{{ req.projeto|default:'' }}" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">Produto (opcional)</label>
+                                    <select name="produto" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="">Selecione um produto...</option>
+                                        {% for prod in produtos %}
+                                        <option value="{{ prod.id }}" {% if req.produto_id == prod.id %}selected{% endif %}>{{ prod.nome }}</option>
+                                        {% endfor %}
+                                    </select>
                                 </div>
                             </div>
 
@@ -686,6 +756,66 @@
                 {% endif %}
             </p>
         </div>
+        <!-- Modal para Marcar Parcela como Paga (dentro do loop) -->
+        <div x-show="showPagarParcela"
+             x-transition
+             class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50"
+             @click.self="showPagarParcela = false">
+            <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
+                <h3 class="text-xl font-bold mb-4 text-gray-800">💰 Confirmar Pagamento de Parcela</h3>
+
+                <form method="post"
+                      action="{% url 'marcar_parcela_paga' 0 %}"
+                      onsubmit="this.action = this.action.replace('/0/', '/' + parcelaParaPagar + '/')"
+                      enctype="multipart/form-data">
+                    {% csrf_token %}
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            Data do Pagamento <span class="text-red-500">*</span>
+                        </label>
+                        <input type="date"
+                               name="data_pagamento"
+                               required
+                               value="{{ today|date:'Y-m-d' }}"
+                               class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            Comprovante (opcional)
+                        </label>
+                        <input type="file"
+                               name="comprovante"
+                               accept="image/*,.pdf"
+                               class="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm">
+                        <p class="text-xs text-gray-500 mt-1">PDF ou imagem até 5MB</p>
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            Observações (opcional)
+                        </label>
+                        <textarea name="observacoes"
+                                  rows="2"
+                                  placeholder="Ex: Pago via PIX, TED..."
+                                  class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500"></textarea>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button type="submit"
+                                class="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 font-semibold transition-all shadow">
+                            ✓ Confirmar Pagamento
+                        </button>
+                        <button type="button"
+                                @click="showPagarParcela = false"
+                                class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold transition-all">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
         {% endfor %}
     </div>
 </div>
@@ -743,8 +873,13 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">Projeto (opcional)</label>
-                    <input type="text" name="projeto" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Ex: Projeto X, Cliente Y">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Produto (opcional)</label>
+                    <select name="produto" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="">Selecione um produto...</option>
+                        {% for prod in produtos %}
+                        <option value="{{ prod.id }}">{{ prod.nome }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
 
                 <div>

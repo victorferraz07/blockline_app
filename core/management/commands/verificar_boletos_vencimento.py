@@ -10,52 +10,38 @@ class Command(BaseCommand):
     help = 'Verifica boletos próximos do vencimento e envia alertas por email'
 
     def handle(self, *args, **options):
-        self.stdout.write(self.style.WARNING('=== VERIFICAÇÃO DE BOLETOS ===\n'))
+        from core.models import ParcelaBoleto
 
-        # Buscar requisições com forma_pagamento='boleto' e status='comprado' ou 'recebido'
-        requisicoes_boleto = RequisicaoCompra.objects.filter(
-            forma_pagamento='boleto',
-            status__in=['comprado', 'recebido']
-        ).exclude(
-            dias_pagamento__isnull=True
-        ).exclude(
-            dias_pagamento=''
-        )
+        self.stdout.write(self.style.WARNING('=== VERIFICAÇÃO DE BOLETOS ===\n'))
 
         hoje = timezone.now().date()
         alertas_enviados = 0
 
-        for req in requisicoes_boleto:
-            # Parsear dias_pagamento (pode ser "15, 30, 45" ou "2025-01-15, 2025-02-15")
-            dias_str = req.dias_pagamento.strip()
+        # Buscar parcelas não pagas
+        parcelas_pendentes = ParcelaBoleto.objects.filter(
+            pago=False,
+            data_vencimento__gte=hoje
+        ).select_related('requisicao')
 
-            try:
-                # Verificar se são datas completas (YYYY-MM-DD) ou apenas dias do mês
-                datas_vencimento = self.parsear_datas_vencimento(dias_str, hoje)
-                dias_aviso = req.dias_aviso_pagamento or 3
+        for parcela in parcelas_pendentes:
+            req = parcela.requisicao
+            dias_aviso = req.dias_aviso_pagamento or 3
 
-                for data_vencimento in datas_vencimento:
-                    # Calcular data do alerta
-                    data_alerta = data_vencimento - timedelta(days=dias_aviso)
+            # Calcular data do alerta (X dias antes do vencimento)
+            data_alerta = parcela.data_vencimento - timedelta(days=dias_aviso)
 
-                    # Se hoje é dia de alerta (hoje >= data_alerta e hoje <= data_vencimento)
-                    if hoje >= data_alerta and hoje <= data_vencimento:
-                        dias_restantes = (data_vencimento - hoje).days
+            # Se hoje >= data_alerta e hoje <= vencimento, enviar alerta
+            if hoje >= data_alerta and hoje <= parcela.data_vencimento:
+                dias_restantes = (parcela.data_vencimento - hoje).days
 
-                        self.stdout.write(
-                            self.style.WARNING(
-                                f'⚠️  Boleto próximo: {req.item} - Vence em {dias_restantes} dia(s)'
-                            )
-                        )
-
-                        # Enviar email para usuários do financeiro
-                        self.enviar_alerta_email(req, data_vencimento, dias_restantes)
-                        alertas_enviados += 1
-
-            except Exception as e:
                 self.stdout.write(
-                    self.style.ERROR(f'Erro ao processar requisição {req.id}: {str(e)}')
+                    self.style.WARNING(
+                        f'⚠️  Boleto: {req.item} - Parcela {parcela.numero_parcela} - Vence em {dias_restantes} dia(s)'
+                    )
                 )
+
+                self.enviar_alerta_email(req, parcela, dias_restantes)
+                alertas_enviados += 1
 
         self.stdout.write(
             self.style.SUCCESS(f'\n✅ Verificação concluída. {alertas_enviados} alerta(s) enviado(s).')
@@ -132,7 +118,7 @@ class Command(BaseCommand):
 
         return data_vencimento
 
-    def enviar_alerta_email(self, requisicao, data_vencimento, dias_restantes):
+    def enviar_alerta_email(self, requisicao, parcela, dias_restantes):
         """Envia email de alerta para usuários do financeiro"""
         # Buscar usuários do financeiro
         perfis_financeiro = PerfilUsuario.objects.filter(is_financeiro=True).select_related('usuario')
@@ -154,8 +140,9 @@ class Command(BaseCommand):
         # Montar mensagem
         assunto = f'⚠️ Alerta: Boleto vencendo em {dias_restantes} dia(s) - {requisicao.item}'
 
-        valor = requisicao.preco_real or requisicao.preco_estimado
-        fornecedor = requisicao.fornecedor.nome if requisicao.fornecedor else 'Não informado'
+        fornecedor = requisicao.fornecedor.nome if requisicao.fornecedor else (
+            requisicao.fornecedor_nome_digitado or 'Não informado'
+        )
 
         mensagem = f"""
 Olá, equipe do Financeiro!
@@ -164,15 +151,16 @@ Este é um alerta automático sobre um boleto próximo do vencimento:
 
 📋 Item: {requisicao.item}
 📝 Descrição: {requisicao.descricao}
-💰 Valor: R$ {valor}
+🔢 Parcela: {parcela.numero_parcela}/{requisicao.quantidade_parcelas or '?'}
+💰 Valor da Parcela: R$ {parcela.valor}
 🏢 Fornecedor: {fornecedor}
-📅 Data de Vencimento: {data_vencimento.strftime('%d/%m/%Y')}
+📅 Data de Vencimento: {parcela.data_vencimento.strftime('%d/%m/%Y')}
 ⏰ Dias Restantes: {dias_restantes} dia(s)
 
-Status: {requisicao.get_status_display()}
+Status da Requisição: {requisicao.get_status_display()}
 
 ---
-Acesse o sistema para mais detalhes: https://picsart.com.br/blockline/requisicoes/
+Acesse o sistema para marcar como pago: https://picsart.com.br/blockline/requisicoes/
 
 Este é um email automático. Não responda.
         """

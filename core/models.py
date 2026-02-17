@@ -16,7 +16,7 @@ class Empresa(models.Model):
         return self.nome
 
 class PerfilUsuario(models.Model):
-    usuario = models.OneToOneField(User, on_delete=models.CASCADE)
+    usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='perfil')
     empresas_permitidas = models.ManyToManyField(Empresa, blank=True)
     is_financeiro = models.BooleanField(default=False, verbose_name="É do Financeiro")
 
@@ -261,89 +261,312 @@ class ImagemExpedicao(models.Model):
     def __str__(self):
         return f"Imagem para a Expedição #{self.expedicao.pk}"
 
-# --- MODELOS KANBAN ---
 
-class KanbanColumn(models.Model):
-    nome = models.CharField(max_length=100)
-    cor = models.CharField(max_length=20, default='#f3f4f6')  # cor de fundo
+# ==================================================
+# SISTEMA DE PLANEJAMENTO DE PROJETOS
+# ==================================================
+
+class Project(models.Model):
+    """Projeto - agrupador principal de trabalho"""
+    nome = models.CharField(max_length=200, verbose_name="Nome do Projeto")
+    descricao = models.TextField(blank=True, verbose_name="Descrição")
+    cor = models.CharField(max_length=20, default='#6366f1', verbose_name="Cor")  # Indigo
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+    criado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='projetos_criados')
     ordem = models.PositiveIntegerField(default=0)
+    membros = models.ManyToManyField(User, blank=True, related_name='projetos_participando', verbose_name="Membros")
 
     class Meta:
-        ordering = ['ordem']
+        ordering = ['ordem', 'nome']
+        verbose_name = "Projeto"
+        verbose_name_plural = "Projetos"
+
     def __str__(self):
         return self.nome
 
-class Task(models.Model):
-    coluna = models.ForeignKey(KanbanColumn, on_delete=models.CASCADE, related_name='tasks')
-    titulo = models.CharField(max_length=200)
-    descricao = models.TextField(blank=True)
-    quantidade_meta = models.PositiveIntegerField(default=0, verbose_name="Quantidade Meta")
-    em_andamento = models.BooleanField(default=False)
-    finalizado = models.BooleanField(default=False)
-    data_finalizacao = models.DateTimeField(null=True, blank=True)
-    responsaveis = models.ManyToManyField(User, blank=True, related_name='tasks_responsaveis')
+
+class Milestone(models.Model):
+    """Marco importante do projeto - agrupa tarefas relacionadas"""
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='milestones')
+    nome = models.CharField(max_length=200, verbose_name="Nome do Milestone")
+    descricao = models.TextField(blank=True, verbose_name="Descrição")
+    data_inicio = models.DateField(null=True, blank=True, verbose_name="Data de Início")
+    data_fim = models.DateField(null=True, blank=True, verbose_name="Data de Término")
+    cor = models.CharField(max_length=20, default='#10b981', verbose_name="Cor")  # Green
+    status = models.CharField(max_length=20, choices=[
+        ('planejado', 'Planejado'),
+        ('em_progresso', 'Em Progresso'),
+        ('concluido', 'Concluído'),
+        ('atrasado', 'Atrasado'),
+    ], default='planejado', verbose_name="Status")
     ordem = models.PositiveIntegerField(default=0)
-    criado_em = models.DateTimeField(auto_now_add=True)
-    atualizado_em = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['ordem']
+        ordering = ['ordem', 'data_fim']
+        verbose_name = "Milestone"
+        verbose_name_plural = "Milestones"
 
     def __str__(self):
-        return self.titulo
+        return f"{self.nome} ({self.project.nome})"
+
+
+class Sprint(models.Model):
+    """Ciclo de trabalho (iteração) - para metodologia Agile"""
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='sprints')
+    nome = models.CharField(max_length=200, verbose_name="Nome do Sprint")  # Ex: "Sprint 1", "Q1 2026"
+    data_inicio = models.DateField(verbose_name="Data de Início")
+    data_fim = models.DateField(verbose_name="Data de Término")
+    objetivo = models.TextField(blank=True, verbose_name="Objetivo do Sprint")
+    ativo = models.BooleanField(default=False, verbose_name="Sprint Ativo")  # Apenas 1 sprint ativo por projeto
+
+    class Meta:
+        ordering = ['-data_inicio']
+        unique_together = ['project', 'nome']
+        verbose_name = "Sprint"
+        verbose_name_plural = "Sprints"
+
+    def __str__(self):
+        return f"{self.nome} ({self.project.nome})"
+
+
+class Label(models.Model):
+    """Sistema de tags/etiquetas para categorização de tarefas"""
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='labels')
+    nome = models.CharField(max_length=100, verbose_name="Nome da Label")
+    cor = models.CharField(max_length=20, default='#6b7280', verbose_name="Cor")  # Gray
+    descricao = models.TextField(blank=True, verbose_name="Descrição")
+
+    class Meta:
+        ordering = ['nome']
+        unique_together = ['project', 'nome']
+        verbose_name = "Label"
+        verbose_name_plural = "Labels"
+
+    def __str__(self):
+        return f"{self.nome} ({self.project.nome})"
+
+
+class ProjectTask(models.Model):
+    """Tarefa do projeto com campos customizados completos"""
+    # Relações
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='tasks', verbose_name="Projeto")
+    milestone = models.ForeignKey(Milestone, on_delete=models.SET_NULL, null=True, blank=True, related_name='tasks', verbose_name="Milestone")
+    sprint = models.ForeignKey(Sprint, on_delete=models.SET_NULL, null=True, blank=True, related_name='tasks', verbose_name="Sprint")
+    parent_task = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='subtasks', verbose_name="Tarefa Pai")
+
+    # Informações básicas
+    titulo = models.CharField(max_length=300, verbose_name="Título")
+    descricao = models.TextField(blank=True, verbose_name="Descrição")
+
+    # Campos customizados
+    priority = models.CharField(max_length=20, choices=[
+        ('low', 'Baixa'),
+        ('medium', 'Média'),
+        ('high', 'Alta'),
+        ('critical', 'Crítica'),
+    ], default='medium', verbose_name="Prioridade")
+    labels = models.ManyToManyField(Label, blank=True, related_name='tasks', verbose_name="Labels")
+
+    # Datas
+    data_inicio = models.DateField(null=True, blank=True, verbose_name="Data de Início")
+    data_fim = models.DateField(null=True, blank=True, verbose_name="Data de Término")
+
+    # Estimativa e tracking
+    estimativa = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
+                                      help_text="Horas ou Story Points", verbose_name="Estimativa")
+    quantidade_meta = models.PositiveIntegerField(default=0, help_text="Quantidade a produzir", verbose_name="Quantidade Meta")
+
+    # Status
+    status = models.CharField(max_length=20, choices=[
+        ('todo', 'A Fazer'),
+        ('in_progress', 'Em Progresso'),
+        ('review', 'Em Revisão'),
+        ('done', 'Concluído'),
+        ('blocked', 'Bloqueado'),
+    ], default='todo', verbose_name="Status")
+
+    # Responsáveis
+    responsaveis = models.ManyToManyField(User, blank=True, related_name='project_tasks', verbose_name="Responsáveis")
+
+    # Flags
+    finalizado = models.BooleanField(default=False, verbose_name="Finalizado")
+    data_finalizacao = models.DateTimeField(null=True, blank=True, verbose_name="Data de Finalização")
+
+    # Timestamps
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+    criado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='tasks_criadas', verbose_name="Criado por")
+    ordem = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['ordem', '-criado_em']
+        indexes = [
+            models.Index(fields=['project', 'status']),
+            models.Index(fields=['data_inicio', 'data_fim']),
+        ]
+        verbose_name = "Tarefa"
+        verbose_name_plural = "Tarefas"
 
     @property
     def quantidade_produzida(self):
-        """Soma total de quantidade produzida por todos os usuários"""
-        return self.quantidades_feitas.aggregate(total=Sum('quantidade'))['total'] or 0
-
-    @property
-    def quantidade_restante(self):
-        """Quantidade que ainda falta produzir"""
-        return max(0, self.quantidade_meta - self.quantidade_produzida)
+        """Total produzido somando todas as entradas"""
+        total = self.quantidades_feitas.aggregate(total=Sum('quantidade'))['total']
+        return total or 0
 
     @property
     def percentual_completo(self):
-        """Percentual de conclusão da tarefa"""
+        """Percentual de conclusão baseado em quantidade"""
         if self.quantidade_meta == 0:
-            return 0
+            return 100 if self.finalizado else 0
         return min(100, int((self.quantidade_produzida / self.quantidade_meta) * 100))
 
+    @property
+    def dias_restantes(self):
+        """Dias até data_fim"""
+        if not self.data_fim:
+            return None
+        delta = self.data_fim - timezone.now().date()
+        return delta.days
+
+    @property
+    def esta_atrasado(self):
+        """Verifica se está atrasado"""
+        if not self.data_fim or self.finalizado:
+            return False
+        return timezone.now().date() > self.data_fim
+
+    def __str__(self):
+        return f"{self.titulo} ({self.project.nome})"
+
+
 class TaskQuantidadeFeita(models.Model):
-    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='quantidades_feitas')
-    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    quantidade = models.PositiveIntegerField()
-    data = models.DateTimeField(default=timezone.now)
+    """Registro de produção - tracking de quantidade produzida"""
+    task = models.ForeignKey(ProjectTask, on_delete=models.CASCADE, related_name='quantidades_feitas', verbose_name="Tarefa")
+    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Usuário")
+    quantidade = models.PositiveIntegerField(verbose_name="Quantidade")
+    data = models.DateTimeField(default=timezone.now, verbose_name="Data")
+    observacoes = models.TextField(blank=True, verbose_name="Observações")
 
     class Meta:
         ordering = ['-data']
+        verbose_name = "Quantidade Produzida"
+        verbose_name_plural = "Quantidades Produzidas"
+
     def __str__(self):
-        return f"{self.quantidade} feita por {self.usuario} em {self.data.strftime('%d/%m/%Y %H:%M')}"
+        return f"{self.quantidade} unidades - {self.task.titulo}"
+
 
 class TaskHistorico(models.Model):
+    """Histórico completo de ações nas tarefas"""
     TIPO_ACAO_CHOICES = [
         ('criado', 'Criado'),
-        ('movido', 'Movido'),
         ('editado', 'Editado'),
+        ('movido', 'Movido para outro milestone'),
         ('iniciado', 'Iniciado'),
         ('finalizado', 'Finalizado'),
+        ('reaberto', 'Reaberto'),
+        ('bloqueado', 'Bloqueado'),
+        ('desbloqueado', 'Desbloqueado'),
         ('quantidade_adicionada', 'Quantidade Adicionada'),
         ('responsavel_adicionado', 'Responsável Adicionado'),
         ('responsavel_removido', 'Responsável Removido'),
+        ('label_adicionada', 'Label Adicionada'),
+        ('label_removida', 'Label Removida'),
+        ('prazo_alterado', 'Prazo Alterado'),
+        ('priority_alterada', 'Prioridade Alterada'),
+        ('subtask_criada', 'Subtarefa Criada'),
     ]
-    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='historico')
-    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    tipo_acao = models.CharField(max_length=30, choices=TIPO_ACAO_CHOICES)
-    descricao = models.TextField()
-    data = models.DateTimeField(default=timezone.now)
+    task = models.ForeignKey(ProjectTask, on_delete=models.CASCADE, related_name='historico', verbose_name="Tarefa")
+    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Usuário")
+    tipo_acao = models.CharField(max_length=30, choices=TIPO_ACAO_CHOICES, verbose_name="Tipo de Ação")
+    descricao = models.TextField(verbose_name="Descrição")
+    data = models.DateTimeField(default=timezone.now, verbose_name="Data")
 
     class Meta:
         ordering = ['-data']
-        verbose_name = "Histórico da Tarefa"
-        verbose_name_plural = "Históricos das Tarefas"
+        verbose_name = "Histórico de Tarefa"
+        verbose_name_plural = "Histórico de Tarefas"
 
     def __str__(self):
-        return f"{self.get_tipo_acao_display()} - {self.task.titulo} ({self.data.strftime('%d/%m/%Y %H:%M')})"
+        return f"{self.tipo_acao} - {self.task.titulo}"
+
+
+class ProjectAutomation(models.Model):
+    """Sistema de automações configuráveis"""
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='automations', verbose_name="Projeto")
+    nome = models.CharField(max_length=200, verbose_name="Nome da Automação")
+    ativo = models.BooleanField(default=True, verbose_name="Ativo")
+
+    # Trigger (gatilho)
+    trigger_type = models.CharField(max_length=50, choices=[
+        ('status_changed', 'Status Alterado'),
+        ('task_created', 'Tarefa Criada'),
+        ('task_assigned', 'Tarefa Atribuída'),
+        ('due_date_approaching', 'Prazo Próximo'),
+        ('task_overdue', 'Tarefa Atrasada'),
+    ], verbose_name="Tipo de Gatilho")
+    trigger_value = models.JSONField(null=True, blank=True, verbose_name="Configuração do Gatilho")
+
+    # Action (ação)
+    action_type = models.CharField(max_length=50, choices=[
+        ('set_status', 'Definir Status'),
+        ('assign_user', 'Atribuir Usuário'),
+        ('add_label', 'Adicionar Label'),
+        ('move_to_sprint', 'Mover para Sprint'),
+        ('send_notification', 'Enviar Notificação'),
+    ], verbose_name="Tipo de Ação")
+    action_value = models.JSONField(null=True, blank=True, verbose_name="Configuração da Ação")
+
+    class Meta:
+        ordering = ['nome']
+        verbose_name = "Automação"
+        verbose_name_plural = "Automações"
+
+    def __str__(self):
+        return f"{self.nome} ({self.project.nome})"
+
+
+# --- SISTEMA DE NOTIFICAÇÕES ---
+
+class Notificacao(models.Model):
+    """Notificações para usuários sobre tarefas e eventos"""
+    TIPO_CHOICES = [
+        ('tarefa_atribuida', 'Tarefa Atribuída'),
+        ('tarefa_concluida', 'Tarefa Concluída'),
+        ('prazo_proximo', 'Prazo Próximo'),
+        ('tarefa_atrasada', 'Tarefa Atrasada'),
+        ('comentario', 'Novo Comentário'),
+    ]
+
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notificacoes', verbose_name="Usuário")
+    tipo = models.CharField(max_length=30, choices=TIPO_CHOICES, verbose_name="Tipo")
+    titulo = models.CharField(max_length=200, verbose_name="Título")
+    mensagem = models.TextField(verbose_name="Mensagem")
+
+    # Link para a tarefa relacionada
+    task = models.ForeignKey('ProjectTask', on_delete=models.CASCADE, null=True, blank=True, related_name='notificacoes', verbose_name="Tarefa")
+
+    # Controle
+    lida = models.BooleanField(default=False, verbose_name="Lida")
+    criado_em = models.DateTimeField(auto_now_add=True, verbose_name="Criado em")
+    lida_em = models.DateTimeField(null=True, blank=True, verbose_name="Lida em")
+
+    class Meta:
+        ordering = ['-criado_em']
+        verbose_name = "Notificação"
+        verbose_name_plural = "Notificações"
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} - {self.usuario.username}"
+
+    def marcar_como_lida(self):
+        """Marca a notificação como lida"""
+        if not self.lida:
+            self.lida = True
+            self.lida_em = timezone.now()
+            self.save()
+
 
 # --- MODELOS DE CONTROLE DE PONTO ---
 
@@ -539,7 +762,7 @@ class RequisicaoCompra(models.Model):
 
     # Informações da requisição
     proposito = models.CharField(max_length=200, verbose_name="Propósito")
-    projeto = models.CharField(max_length=200, blank=True, null=True, verbose_name="Projeto")
+    produto = models.ForeignKey('ProdutoFabricado', on_delete=models.SET_NULL, blank=True, null=True, related_name='requisicoes', verbose_name="Produto")
     link_item = models.URLField(blank=True, null=True, verbose_name="Link do Item")
     requerente = models.ForeignKey(User, on_delete=models.CASCADE, related_name='requisicoes', verbose_name="Requerente")
 
@@ -627,6 +850,60 @@ class HistoricoRequisicao(models.Model):
 
     def __str__(self):
         return f"{self.requisicao.item} - {self.tipo_alteracao} por {self.usuario} em {self.data_alteracao.strftime('%d/%m/%Y %H:%M')}"
+
+
+class ParcelaBoleto(models.Model):
+    """Controle de parcelas individuais de boletos"""
+    requisicao = models.ForeignKey(
+        RequisicaoCompra,
+        on_delete=models.CASCADE,
+        related_name='parcelas_boleto',
+        verbose_name="Requisição"
+    )
+    numero_parcela = models.IntegerField(verbose_name="Número da Parcela")
+    data_vencimento = models.DateField(verbose_name="Data de Vencimento")
+    valor = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name="Valor da Parcela"
+    )
+
+    # Controle de pagamento
+    pago = models.BooleanField(default=False, verbose_name="Pago")
+    data_pagamento = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Data do Pagamento"
+    )
+    comprovante = models.FileField(
+        upload_to='comprovantes_boleto/',
+        null=True,
+        blank=True,
+        verbose_name="Comprovante"
+    )
+    pago_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='boletos_pagos',
+        verbose_name="Pago por"
+    )
+    observacoes = models.TextField(blank=True, null=True, verbose_name="Observações")
+
+    # Timestamps
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['data_vencimento', 'numero_parcela']
+        verbose_name = "Parcela de Boleto"
+        verbose_name_plural = "Parcelas de Boleto"
+        unique_together = ['requisicao', 'numero_parcela']
+
+    def __str__(self):
+        status = "✅ Pago" if self.pago else "⏳ Pendente"
+        return f"Parcela {self.numero_parcela} - {self.requisicao.item} - {status}"
 
 
 # ==================================================

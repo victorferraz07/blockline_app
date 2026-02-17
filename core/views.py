@@ -15,7 +15,7 @@ from .models import (
     DocumentoProdutoFabricado, Componente, Setor, Fornecedor,
     ImagemProdutoFabricado, ImagemItemEstoque, ItemFornecedor, Expedicao, ItemExpedido, DocumentoExpedicao, ImagemExpedicao,
     Empresa, PerfilUsuario,
-    KanbanColumn, Task, TaskQuantidadeFeita, TaskHistorico,
+    TaskQuantidadeFeita, TaskHistorico,
     JornadaTrabalho, RegistroPonto, ResumoMensal, AbonoDia,
     MovimentacaoEstoque, Cliente,
 )
@@ -908,6 +908,824 @@ def excluir_expedicao(request, pk):
         return redirect('lista_expedicoes')
     
     return redirect('detalhe_expedicao', pk=pk)
+
+
+# ==================================================
+# VIEWS - SISTEMA DE PLANEJAMENTO DE PROJETOS
+# ==================================================
+
+@login_required
+def roadmap_timeline(request):
+    """Visualização principal: Timeline/Roadmap estilo Gantt"""
+    from .models import Project, Milestone, Sprint, ProjectTask
+    from django.contrib.auth.models import User
+
+    # Filtros
+    project_id = request.GET.get('project')
+    view_mode = request.GET.get('view', 'month')  # 'month' ou 'week'
+
+    # Buscar projetos — filtra por membros (superusuário vê todos)
+    if request.user.is_superuser:
+        projects = Project.objects.all().order_by('ordem')
+    else:
+        projects = Project.objects.filter(membros=request.user).order_by('ordem')
+
+    project_selecionado = None
+
+    if project_id:
+        if request.user.is_superuser:
+            project_selecionado = get_object_or_404(Project, id=project_id)
+        else:
+            project_selecionado = get_object_or_404(Project, id=project_id, membros=request.user)
+
+    # Buscar tarefas
+    tasks = ProjectTask.objects.filter(project=project_selecionado).select_related('milestone', 'project').prefetch_related('responsaveis') if project_selecionado else ProjectTask.objects.none()
+
+    # Buscar milestones e sprints
+    milestones = Milestone.objects.filter(project=project_selecionado) if project_selecionado else []
+    sprints = Sprint.objects.filter(project=project_selecionado) if project_selecionado else []
+
+    # Buscar usuários ativos
+    users = User.objects.filter(is_active=True).order_by('first_name', 'username')
+
+    # Organizar tarefas por milestone
+    tasks_por_milestone = {}
+    for milestone in milestones:
+        tasks_por_milestone[milestone] = tasks.filter(milestone=milestone)
+
+    # Tarefas sem milestone
+    tasks_por_milestone[None] = tasks.filter(milestone__isnull=True)
+
+    context = {
+        'projects': projects,
+        'project_selecionado': project_selecionado,
+        'tasks': tasks,
+        'tasks_por_milestone': tasks_por_milestone,
+        'users': users,
+        'milestones': milestones,
+        'sprints': sprints,
+        'view_mode': view_mode,
+    }
+
+    return render(request, 'core/roadmap_timeline.html', context)
+
+
+# --- CRUD: Projects ---
+
+@login_required
+def criar_project(request):
+    """Criar novo projeto"""
+    from .models import Project
+    from django.contrib.auth.models import User as UserModel
+
+    if request.method == 'POST':
+        nome = request.POST.get('nome')
+        descricao = request.POST.get('descricao', '')
+        cor = request.POST.get('cor', '#6366f1')
+
+        project = Project.objects.create(
+            nome=nome,
+            descricao=descricao,
+            cor=cor,
+            criado_por=request.user,
+        )
+
+        # Criador sempre é membro
+        project.membros.add(request.user)
+
+        # Adicionar membros selecionados
+        membros_ids = request.POST.getlist('membros[]')
+        if membros_ids:
+            project.membros.add(*UserModel.objects.filter(id__in=membros_ids, is_active=True))
+
+        messages.success(request, f'Projeto "{project.nome}" criado com sucesso!')
+        return redirect('roadmap_timeline')
+
+    users = UserModel.objects.filter(is_active=True).order_by('first_name', 'username')
+    return render(request, 'core/form_project.html', {'users': users, 'membros_atuais': []})
+
+
+@login_required
+def editar_project(request, project_id):
+    """Editar projeto existente"""
+    from .models import Project
+    from django.contrib.auth.models import User as UserModel
+
+    project = get_object_or_404(Project, id=project_id)
+
+    if request.method == 'POST':
+        project.nome = request.POST.get('nome')
+        project.descricao = request.POST.get('descricao', '')
+        project.cor = request.POST.get('cor', '#6366f1')
+        project.save()
+
+        # Somente o criador ou superusuário pode alterar membros
+        if request.user == project.criado_por or request.user.is_superuser:
+            membros_ids = request.POST.getlist('membros[]')
+            novos_membros = UserModel.objects.filter(id__in=membros_ids, is_active=True)
+            project.membros.set(novos_membros)
+            # Criador sempre permanece membro
+            if project.criado_por:
+                project.membros.add(project.criado_por)
+
+        messages.success(request, f'Projeto "{project.nome}" atualizado com sucesso!')
+        return redirect('roadmap_timeline')
+
+    users = UserModel.objects.filter(is_active=True).order_by('first_name', 'username')
+    membros_atuais = list(project.membros.values_list('id', flat=True))
+    eh_criador = request.user == project.criado_por or request.user.is_superuser
+    context = {
+        'project': project,
+        'users': users,
+        'membros_atuais': membros_atuais,
+        'eh_criador': eh_criador,
+    }
+    return render(request, 'core/form_project.html', context)
+
+
+@login_required
+def excluir_project(request, project_id):
+    """Excluir projeto"""
+    from .models import Project
+
+    project = get_object_or_404(Project, id=project_id)
+
+    if request.method == 'POST':
+        nome = project.nome
+        project.delete()
+        messages.success(request, f'Projeto "{nome}" excluído com sucesso!')
+        return redirect('roadmap_timeline')
+
+    return redirect('roadmap_timeline')
+
+
+# --- CRUD: Milestones ---
+
+@login_required
+def criar_milestone(request, project_id):
+    """Criar novo milestone"""
+    from .models import Project, Milestone
+
+    project = get_object_or_404(Project, id=project_id)
+
+    if request.method == 'POST':
+        nome = request.POST.get('nome')
+        descricao = request.POST.get('descricao', '')
+        data_inicio = request.POST.get('data_inicio') or None
+        data_fim = request.POST.get('data_fim') or None
+        cor = request.POST.get('cor', '#10b981')
+        status = request.POST.get('status', 'planejado')
+
+        milestone = Milestone.objects.create(
+            project=project,
+            nome=nome,
+            descricao=descricao,
+            data_inicio=data_inicio,
+            data_fim=data_fim,
+            cor=cor,
+            status=status,
+        )
+
+        messages.success(request, f'Milestone "{milestone.nome}" criado com sucesso!')
+        return redirect('roadmap_timeline') + f'?project={project_id}'
+
+    context = {'project': project}
+    return render(request, 'core/form_milestone.html', context)
+
+
+@login_required
+def editar_milestone(request, milestone_id):
+    """Editar milestone existente"""
+    from .models import Milestone
+
+    milestone = get_object_or_404(Milestone, id=milestone_id)
+
+    if request.method == 'POST':
+        milestone.nome = request.POST.get('nome')
+        milestone.descricao = request.POST.get('descricao', '')
+        milestone.data_inicio = request.POST.get('data_inicio') or None
+        milestone.data_fim = request.POST.get('data_fim') or None
+        milestone.cor = request.POST.get('cor', '#10b981')
+        milestone.status = request.POST.get('status', 'planejado')
+        milestone.save()
+
+        messages.success(request, f'Milestone "{milestone.nome}" atualizado com sucesso!')
+        return redirect('roadmap_timeline') + f'?project={milestone.project.id}'
+
+    context = {'milestone': milestone}
+    return render(request, 'core/form_milestone.html', context)
+
+
+@login_required
+def excluir_milestone(request, milestone_id):
+    """Excluir milestone"""
+    from .models import Milestone
+
+    milestone = get_object_or_404(Milestone, id=milestone_id)
+    project_id = milestone.project.id
+
+    if request.method == 'POST':
+        nome = milestone.nome
+        milestone.delete()
+        messages.success(request, f'Milestone "{nome}" excluído com sucesso!')
+        return redirect('roadmap_timeline') + f'?project={project_id}'
+
+    return redirect('roadmap_timeline')
+
+
+# --- CRUD: Sprints ---
+
+@login_required
+def criar_sprint(request, project_id):
+    """Criar novo sprint"""
+    from .models import Project, Sprint
+
+    project = get_object_or_404(Project, id=project_id)
+
+    if request.method == 'POST':
+        nome = request.POST.get('nome')
+        data_inicio = request.POST.get('data_inicio')
+        data_fim = request.POST.get('data_fim')
+        objetivo = request.POST.get('objetivo', '')
+        ativo = request.POST.get('ativo') == 'on'
+
+        # Se ativo, desativar outros sprints do projeto
+        if ativo:
+            Sprint.objects.filter(project=project).update(ativo=False)
+
+        sprint = Sprint.objects.create(
+            project=project,
+            nome=nome,
+            data_inicio=data_inicio,
+            data_fim=data_fim,
+            objetivo=objetivo,
+            ativo=ativo,
+        )
+
+        messages.success(request, f'Sprint "{sprint.nome}" criado com sucesso!')
+        return redirect('roadmap_timeline') + f'?project={project_id}'
+
+    context = {'project': project}
+    return render(request, 'core/form_sprint.html', context)
+
+
+@login_required
+def editar_sprint(request, sprint_id):
+    """Editar sprint existente"""
+    from .models import Sprint
+
+    sprint = get_object_or_404(Sprint, id=sprint_id)
+
+    if request.method == 'POST':
+        sprint.nome = request.POST.get('nome')
+        sprint.data_inicio = request.POST.get('data_inicio')
+        sprint.data_fim = request.POST.get('data_fim')
+        sprint.objetivo = request.POST.get('objetivo', '')
+        ativo = request.POST.get('ativo') == 'on'
+
+        # Se ativo, desativar outros sprints do projeto
+        if ativo:
+            Sprint.objects.filter(project=sprint.project).exclude(id=sprint.id).update(ativo=False)
+
+        sprint.ativo = ativo
+        sprint.save()
+
+        messages.success(request, f'Sprint "{sprint.nome}" atualizado com sucesso!')
+        return redirect('roadmap_timeline') + f'?project={sprint.project.id}'
+
+    context = {'sprint': sprint}
+    return render(request, 'core/form_sprint.html', context)
+
+
+@login_required
+def excluir_sprint(request, sprint_id):
+    """Excluir sprint"""
+    from .models import Sprint
+
+    sprint = get_object_or_404(Sprint, id=sprint_id)
+    project_id = sprint.project.id
+
+    if request.method == 'POST':
+        nome = sprint.nome
+        sprint.delete()
+        messages.success(request, f'Sprint "{nome}" excluído com sucesso!')
+        return redirect('roadmap_timeline') + f'?project={project_id}'
+
+    return redirect('roadmap_timeline')
+
+
+@login_required
+def ativar_sprint(request, sprint_id):
+    """Ativar sprint (desativa outros do projeto)"""
+    from .models import Sprint
+
+    sprint = get_object_or_404(Sprint, id=sprint_id)
+
+    if request.method == 'POST':
+        # Desativar todos os sprints do projeto
+        Sprint.objects.filter(project=sprint.project).update(ativo=False)
+
+        # Ativar este sprint
+        sprint.ativo = True
+        sprint.save()
+
+        messages.success(request, f'Sprint "{sprint.nome}" ativado com sucesso!')
+
+    return redirect('roadmap_timeline') + f'?project={sprint.project.id}'
+
+
+# --- CRUD: Labels ---
+
+@login_required
+def criar_label(request, project_id):
+    """Criar nova label"""
+    from .models import Project, Label
+
+    project = get_object_or_404(Project, id=project_id)
+
+    if request.method == 'POST':
+        nome = request.POST.get('nome')
+        cor = request.POST.get('cor', '#6b7280')
+        descricao = request.POST.get('descricao', '')
+
+        label = Label.objects.create(
+            project=project,
+            nome=nome,
+            cor=cor,
+            descricao=descricao,
+        )
+
+        messages.success(request, f'Label "{label.nome}" criada com sucesso!')
+        return redirect('roadmap_timeline') + f'?project={project_id}'
+
+    context = {'project': project}
+    return render(request, 'core/form_label.html', context)
+
+
+@login_required
+def editar_label(request, label_id):
+    """Editar label existente"""
+    from .models import Label
+
+    label = get_object_or_404(Label, id=label_id)
+
+    if request.method == 'POST':
+        label.nome = request.POST.get('nome')
+        label.cor = request.POST.get('cor', '#6b7280')
+        label.descricao = request.POST.get('descricao', '')
+        label.save()
+
+        messages.success(request, f'Label "{label.nome}" atualizada com sucesso!')
+        return redirect('roadmap_timeline') + f'?project={label.project.id}'
+
+    context = {'label': label}
+    return render(request, 'core/form_label.html', context)
+
+
+@login_required
+def excluir_label(request, label_id):
+    """Excluir label"""
+    from .models import Label
+
+    label = get_object_or_404(Label, id=label_id)
+    project_id = label.project.id
+
+    if request.method == 'POST':
+        nome = label.nome
+        label.delete()
+        messages.success(request, f'Label "{nome}" excluída com sucesso!')
+        return redirect('roadmap_timeline') + f'?project={project_id}'
+
+    return redirect('roadmap_timeline')
+
+
+# --- CRUD: Tasks ---
+
+@login_required
+@require_POST
+def criar_task_modal(request):
+    """Criar tarefa via modal rápido (AJAX)"""
+    from .models import Project, ProjectTask, TaskHistorico, Notificacao
+    from django.contrib.auth.models import User
+    import json
+
+    try:
+        project_id = request.POST.get('project_id')
+        titulo = request.POST.get('titulo')
+        data_inicio = request.POST.get('data_inicio') or None
+        data_fim = request.POST.get('data_fim') or None
+        milestone_id = request.POST.get('milestone_id') or None
+        priority = request.POST.get('priority', 'medium')
+        responsavel_ids = request.POST.getlist('responsaveis[]')  # Lista de IDs dos responsáveis
+
+        project = get_object_or_404(Project, id=project_id)
+
+        task = ProjectTask.objects.create(
+            project=project,
+            titulo=titulo,
+            data_inicio=data_inicio,
+            data_fim=data_fim,
+            milestone_id=milestone_id,
+            priority=priority,
+            criado_por=request.user,
+            status='todo',
+        )
+
+        # Adicionar responsáveis
+        if responsavel_ids:
+            for user_id in responsavel_ids:
+                user = User.objects.get(id=user_id)
+                task.responsaveis.add(user)
+
+                # Criar notificação para o responsável
+                Notificacao.objects.create(
+                    usuario=user,
+                    tipo='tarefa_atribuida',
+                    titulo=f'Nova tarefa atribuída: {titulo}',
+                    mensagem=f'{request.user.get_full_name() or request.user.username} atribuiu você à tarefa "{titulo}" no projeto {project.nome}.',
+                    task=task,
+                    lida=False
+                )
+
+        # Registrar no histórico
+        TaskHistorico.objects.create(
+            task=task,
+            usuario=request.user,
+            tipo_acao='criado',
+            descricao=f'Tarefa criada: {titulo}'
+        )
+
+        return JsonResponse({
+            'success': True,
+            'task_id': task.id,
+            'message': 'Tarefa criada com sucesso!'
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Erro ao criar tarefa: {str(e)}'
+        }, status=400)
+
+
+@login_required
+def task_detail(request, task_id):
+    """Visualização detalhada da tarefa"""
+    from .models import ProjectTask
+
+    try:
+        task = ProjectTask.objects.get(id=task_id)
+    except ProjectTask.DoesNotExist:
+        messages.warning(request, 'Esta tarefa não existe mais ou foi deletada.')
+        return redirect('roadmap_timeline')
+
+    # Buscar subtarefas
+    subtasks = task.subtasks.all()
+
+    # Histórico
+    historico = task.historico.select_related('usuario').all()[:50]
+
+    # Quantidades produzidas
+    quantidades = task.quantidades_feitas.select_related('usuario').all()
+
+    # Usuários que trabalharam
+    usuarios_trabalharam = User.objects.filter(
+        id__in=task.quantidades_feitas.values_list('usuario_id', flat=True).distinct()
+    )
+
+    context = {
+        'task': task,
+        'subtasks': subtasks,
+        'historico': historico,
+        'quantidades': quantidades,
+        'usuarios_trabalharam': usuarios_trabalharam,
+        'labels_disponiveis': task.project.labels.all(),
+        'usuarios_disponiveis': User.objects.filter(is_active=True),
+    }
+
+    return render(request, 'core/task_detail.html', context)
+
+
+@login_required
+def editar_task(request, task_id):
+    """Editar tarefa completa"""
+    from .models import ProjectTask, TaskHistorico
+
+    task = get_object_or_404(ProjectTask, id=task_id)
+
+    if request.method == 'POST':
+        # Campos básicos
+        task.titulo = request.POST.get('titulo')
+        task.descricao = request.POST.get('descricao', '')
+
+        # Datas
+        task.data_inicio = request.POST.get('data_inicio') or None
+        task.data_fim = request.POST.get('data_fim') or None
+
+        # Campos customizados
+        task.priority = request.POST.get('priority', 'medium')
+        task.status = request.POST.get('status', 'todo')
+        task.estimativa = request.POST.get('estimativa') or None
+        task.quantidade_meta = int(request.POST.get('quantidade_meta', 0))
+
+        # Relações
+        task.milestone_id = request.POST.get('milestone_id') or None
+        task.sprint_id = request.POST.get('sprint_id') or None
+
+        # Responsáveis (ManyToMany)
+        responsaveis_ids = request.POST.getlist('responsaveis')
+        task.responsaveis.set(responsaveis_ids)
+
+        # Labels (ManyToMany)
+        labels_ids = request.POST.getlist('labels')
+        task.labels.set(labels_ids)
+
+        task.save()
+
+        # Registrar no histórico
+        TaskHistorico.objects.create(
+            task=task,
+            usuario=request.user,
+            tipo_acao='editado',
+            descricao=f'Tarefa editada: {task.titulo}'
+        )
+
+        messages.success(request, f'Tarefa "{task.titulo}" atualizada com sucesso!')
+        return redirect('task_detail', task_id=task.id)
+
+    context = {
+        'task': task,
+        'milestones': task.project.milestones.all(),
+        'sprints': task.project.sprints.all(),
+        'labels': task.project.labels.all(),
+        'usuarios': User.objects.filter(is_active=True),
+    }
+
+    return render(request, 'core/form_task.html', context)
+
+
+@login_required
+def excluir_task(request, task_id):
+    """Excluir tarefa"""
+    from .models import ProjectTask
+
+    task = get_object_or_404(ProjectTask, id=task_id)
+    project_id = task.project.id
+
+    if request.method == 'POST':
+        titulo = task.titulo
+        task.delete()
+        messages.success(request, f'Tarefa "{titulo}" excluída com sucesso!')
+        from django.urls import reverse
+        url = reverse('roadmap_timeline') + f'?project={project_id}'
+        return redirect(url)
+
+    return redirect('task_detail', task_id=task_id)
+
+
+@login_required
+@require_POST
+def atualizar_task_dates(request, task_id):
+    """Atualizar datas da tarefa via drag & drop no Gantt (AJAX)"""
+    from .models import ProjectTask, TaskHistorico
+    from datetime import datetime
+    import json
+
+    try:
+        task = get_object_or_404(ProjectTask, id=task_id)
+
+        nova_data_inicio = request.POST.get('data_inicio')
+        nova_data_fim = request.POST.get('data_fim')
+
+        data_inicio_antiga = task.data_inicio
+        data_fim_antiga = task.data_fim
+
+        if nova_data_inicio:
+            task.data_inicio = datetime.strptime(nova_data_inicio, '%Y-%m-%d').date()
+        if nova_data_fim:
+            task.data_fim = datetime.strptime(nova_data_fim, '%Y-%m-%d').date()
+
+        task.save()
+
+        # Registrar no histórico
+        TaskHistorico.objects.create(
+            task=task,
+            usuario=request.user,
+            tipo_acao='prazo_alterado',
+            descricao=f'Prazo alterado: {data_inicio_antiga} - {data_fim_antiga} → {task.data_inicio} - {task.data_fim}'
+        )
+
+        return JsonResponse({'success': True})
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Erro ao atualizar datas: {str(e)}'
+        }, status=400)
+
+
+@login_required
+@require_POST
+def alterar_status(request, task_id):
+    """Alterar status da tarefa (AJAX)"""
+    from .models import ProjectTask, TaskHistorico
+    from django.utils import timezone
+    import json
+
+    try:
+        task = get_object_or_404(ProjectTask, id=task_id)
+
+        novo_status = request.POST.get('status')
+        status_anterior = task.status
+
+        task.status = novo_status
+
+        # Se mudou para 'done', marcar como finalizado
+        if novo_status == 'done' and not task.finalizado:
+            task.finalizado = True
+            task.data_finalizacao = timezone.now()
+        elif novo_status != 'done' and task.finalizado:
+            task.finalizado = False
+            task.data_finalizacao = None
+
+        task.save()
+
+        # Registrar no histórico
+        TaskHistorico.objects.create(
+            task=task,
+            usuario=request.user,
+            tipo_acao='editado',
+            descricao=f'Status alterado: {status_anterior} → {novo_status}'
+        )
+
+        # Notificar responsáveis quando tarefa é concluída
+        if novo_status == 'done' and status_anterior != 'done':
+            from .models import Notificacao
+            quem_concluiu = request.user.get_full_name() or request.user.username
+            for responsavel in task.responsaveis.all():
+                Notificacao.objects.create(
+                    usuario=responsavel,
+                    tipo='tarefa_concluida',
+                    titulo=f'Tarefa concluída: {task.titulo}',
+                    mensagem=f'{quem_concluiu} marcou a tarefa "{task.titulo}" como concluída no projeto {task.project.nome}.',
+                    task=task,
+                    lida=False
+                )
+
+        return JsonResponse({
+            'success': True,
+            'message': f'Status alterado para {task.get_status_display()}'
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Erro ao alterar status: {str(e)}'
+        }, status=400)
+
+
+@login_required
+def criar_subtask(request, task_id):
+    """Criar subtarefa"""
+    from .models import ProjectTask, TaskHistorico
+
+    parent_task = get_object_or_404(ProjectTask, id=task_id)
+
+    if request.method == 'POST':
+        titulo = request.POST.get('titulo')
+        descricao = request.POST.get('descricao', '')
+
+        subtask = ProjectTask.objects.create(
+            project=parent_task.project,
+            parent_task=parent_task,
+            titulo=titulo,
+            descricao=descricao,
+            criado_por=request.user,
+            status='todo',
+        )
+
+        # Registrar no histórico da tarefa pai
+        TaskHistorico.objects.create(
+            task=parent_task,
+            usuario=request.user,
+            tipo_acao='subtask_criada',
+            descricao=f'Subtarefa criada: {titulo}'
+        )
+
+        # Registrar no histórico da subtarefa
+        TaskHistorico.objects.create(
+            task=subtask,
+            usuario=request.user,
+            tipo_acao='criado',
+            descricao=f'Subtarefa criada (pai: {parent_task.titulo})'
+        )
+
+        messages.success(request, f'Subtarefa "{titulo}" criada com sucesso!')
+        return redirect('task_detail', task_id=task_id)
+
+    context = {
+        'parent_task': parent_task,
+    }
+
+    return render(request, 'core/form_subtask.html', context)
+
+
+# --- Tracking de Produção (adaptado para ProjectTask) ---
+
+@login_required
+def registrar_quantidade_project(request, task_id):
+    """Registrar quantidade produzida em ProjectTask"""
+    from .models import ProjectTask, TaskQuantidadeFeita, TaskHistorico
+    from django.utils import timezone
+
+    task = get_object_or_404(ProjectTask, id=task_id)
+
+    if request.method == 'POST':
+        quantidade = int(request.POST.get('quantidade', 0))
+        observacoes = request.POST.get('observacoes', '')
+
+        # Criar registro de quantidade
+        TaskQuantidadeFeita.objects.create(
+            task=task,
+            usuario=request.user,
+            quantidade=quantidade,
+            observacoes=observacoes,
+            data=timezone.now()
+        )
+
+        # Registrar no histórico
+        TaskHistorico.objects.create(
+            task=task,
+            usuario=request.user,
+            tipo_acao='quantidade_adicionada',
+            descricao=f'{request.user.get_full_name() or request.user.username} adicionou {quantidade} unidades'
+        )
+
+        messages.success(request, f'{quantidade} unidades registradas com sucesso!')
+        return redirect('task_detail', task_id=task.id)
+
+    context = {'task': task}
+    return render(request, 'core/form_quantidade.html', context)
+
+
+@login_required
+def editar_quantidade_project(request, quantidade_id):
+    """Editar quantidade produzida"""
+    from .models import TaskQuantidadeFeita, TaskHistorico
+
+    quantidade_obj = get_object_or_404(TaskQuantidadeFeita, id=quantidade_id)
+    task = quantidade_obj.task
+
+    if request.method == 'POST':
+        quantidade_antiga = quantidade_obj.quantidade
+        quantidade_obj.quantidade = int(request.POST.get('quantidade', 0))
+        quantidade_obj.observacoes = request.POST.get('observacoes', '')
+        quantidade_obj.save()
+
+        # Registrar no histórico
+        TaskHistorico.objects.create(
+            task=task,
+            usuario=request.user,
+            tipo_acao='editado',
+            descricao=f'Quantidade alterada: {quantidade_antiga} → {quantidade_obj.quantidade}'
+        )
+
+        messages.success(request, 'Quantidade atualizada com sucesso!')
+        return redirect('task_detail', task_id=task.id)
+
+    context = {
+        'quantidade': quantidade_obj,
+        'task': task,
+    }
+
+    return render(request, 'core/form_quantidade.html', context)
+
+
+@login_required
+def excluir_quantidade_project(request, quantidade_id):
+    """Excluir quantidade produzida"""
+    from .models import TaskQuantidadeFeita, TaskHistorico
+
+    quantidade_obj = get_object_or_404(TaskQuantidadeFeita, id=quantidade_id)
+    task = quantidade_obj.task
+
+    if request.method == 'POST':
+        quantidade_valor = quantidade_obj.quantidade
+        quantidade_obj.delete()
+
+        # Registrar no histórico
+        TaskHistorico.objects.create(
+            task=task,
+            usuario=request.user,
+            tipo_acao='editado',
+            descricao=f'Registro de quantidade removido: {quantidade_valor} unidades'
+        )
+
+        messages.success(request, 'Quantidade removida com sucesso!')
+        return redirect('task_detail', task_id=task.id)
+
+    return redirect('task_detail', task_id=task.id)
+
 
 # --- Views do Kanban ---
 
@@ -2066,7 +2884,7 @@ def manifest_json(request):
 @login_required
 def lista_requisicoes(request):
     """Lista todas as requisições filtradas por status e nota fiscal"""
-    from .models import RequisicaoCompra, Fornecedor
+    from .models import RequisicaoCompra, Fornecedor, ProdutoFabricado
     from django.db.models import Q
 
     status_filtro = request.GET.get('status', 'todas')
@@ -2089,6 +2907,7 @@ def lista_requisicoes(request):
     total_rejeitado = RequisicaoCompra.objects.filter(status='rejeitado').count()
 
     fornecedores = Fornecedor.objects.all()
+    produtos = ProdutoFabricado.objects.all().order_by('nome')
 
     context = {
         'requisicoes': requisicoes,
@@ -2100,6 +2919,7 @@ def lista_requisicoes(request):
         'total_recebido': total_recebido,
         'total_rejeitado': total_rejeitado,
         'fornecedores': fornecedores,
+        'produtos': produtos,
     }
 
     return render(request, 'core/lista_requisicoes.html', context)
@@ -2111,6 +2931,7 @@ def criar_requisicao(request):
     """Cria uma nova requisição de compra"""
     from .models import RequisicaoCompra
 
+    produto_id = request.POST.get('produto')
     requisicao = RequisicaoCompra.objects.create(
         item=request.POST.get('item'),
         descricao=request.POST.get('descricao'),
@@ -2118,7 +2939,7 @@ def criar_requisicao(request):
         unidade=request.POST.get('unidade', 'un'),
         preco_estimado=request.POST.get('preco_estimado'),
         proposito=request.POST.get('proposito'),
-        projeto=request.POST.get('projeto', ''),
+        produto_id=produto_id if produto_id else None,
         link_item=request.POST.get('link_item', ''),
         requerente=request.user,
         status='pendente'
@@ -2146,7 +2967,8 @@ def editar_requisicao(request, requisicao_id):
         'unidade': requisicao.unidade,
         'preco_estimado': requisicao.preco_estimado,
         'proposito': requisicao.proposito,
-        'projeto': requisicao.projeto,
+        'produto_id': requisicao.produto_id,
+        'produto_nome': requisicao.produto.nome if requisicao.produto else None,
         'link_item': requisicao.link_item,
         'observacao_aprovacao': requisicao.observacao_aprovacao,
         'preco_real': requisicao.preco_real,
@@ -2194,13 +3016,20 @@ def editar_requisicao(request, requisicao_id):
         changes.append(f"Propósito alterado")
     requisicao.proposito = new_proposito
 
-    new_projeto = request.POST.get('projeto', '')
-    if new_projeto != old_values['projeto']:
-        if new_projeto:
-            changes.append(f"Projeto definido como '{new_projeto}'")
+    new_produto_id = request.POST.get('produto')
+    if new_produto_id:
+        new_produto_id = int(new_produto_id)
+    else:
+        new_produto_id = None
+
+    if new_produto_id != old_values['produto_id']:
+        if new_produto_id:
+            from .models import ProdutoFabricado
+            produto = ProdutoFabricado.objects.get(id=new_produto_id)
+            changes.append(f"Produto definido como '{produto.nome}'")
         else:
-            changes.append(f"Projeto removido")
-    requisicao.projeto = new_projeto
+            changes.append(f"Produto removido")
+    requisicao.produto_id = new_produto_id
 
     new_link_item = request.POST.get('link_item', '')
     if new_link_item != old_values['link_item']:
@@ -2490,6 +3319,41 @@ def marcar_como_comprado(request, requisicao_id):
 
     requisicao.save()
 
+    # Se forma de pagamento é boleto, criar parcelas automaticamente
+    if requisicao.forma_pagamento == 'boleto' and requisicao.dias_pagamento:
+        from .models import ParcelaBoleto
+        from datetime import datetime
+
+        # Parsear datas de vencimento
+        dias_str = requisicao.dias_pagamento.strip()
+        datas_vencimento = []
+
+        for parte in dias_str.split(','):
+            parte = parte.strip()
+            # Tentar como data completa (YYYY-MM-DD)
+            if '-' in parte and len(parte) >= 8:
+                try:
+                    data_vencimento = datetime.strptime(parte, '%Y-%m-%d').date()
+                    datas_vencimento.append(data_vencimento)
+                except ValueError:
+                    pass
+
+        if datas_vencimento:
+            # Calcular valor da parcela
+            valor_total = requisicao.preco_real or requisicao.preco_estimado or Decimal('0')
+            quantidade = len(datas_vencimento)
+            valor_parcela = valor_total / quantidade if quantidade > 0 else Decimal('0')
+
+            # Criar parcelas
+            for i, data_vencimento in enumerate(datas_vencimento, start=1):
+                ParcelaBoleto.objects.create(
+                    requisicao=requisicao,
+                    numero_parcela=i,
+                    data_vencimento=data_vencimento,
+                    valor=valor_parcela,
+                    pago=False
+                )
+
     messages.success(request, f'Requisição "{requisicao.item}" marcada como comprada!')
     return redirect('lista_requisicoes')
 
@@ -2530,6 +3394,85 @@ def marcar_como_recebido(request, requisicao_id):
 
     messages.success(request, f'Requisição "{requisicao.item}" marcada como recebida!')
     return redirect('lista_requisicoes')
+
+
+@login_required
+@require_POST
+def marcar_parcela_paga(request, parcela_id):
+    """Marca parcela de boleto como paga"""
+    from .models import ParcelaBoleto
+
+    # Verificar se usuário é do financeiro
+    if not hasattr(request.user, 'perfil') or not request.user.perfil.is_financeiro:
+        messages.error(request, 'Apenas usuários do financeiro podem marcar parcelas como pagas.')
+        return redirect('lista_requisicoes')
+
+    parcela = get_object_or_404(ParcelaBoleto, id=parcela_id)
+
+    if parcela.pago:
+        messages.warning(request, 'Esta parcela já foi marcada como paga.')
+        return redirect('lista_requisicoes')
+
+    # Marcar como pago
+    parcela.pago = True
+    parcela.pago_por = request.user
+
+    # Data do pagamento
+    data_pagamento_str = request.POST.get('data_pagamento')
+    if data_pagamento_str:
+        from datetime import datetime
+        parcela.data_pagamento = datetime.strptime(data_pagamento_str, '%Y-%m-%d').date()
+    else:
+        parcela.data_pagamento = timezone.now().date()
+
+    # Comprovante
+    if 'comprovante' in request.FILES:
+        parcela.comprovante = request.FILES['comprovante']
+
+    # Observações
+    parcela.observacoes = request.POST.get('observacoes', '')
+
+    parcela.save()
+
+    messages.success(request, f'Parcela {parcela.numero_parcela} marcada como paga com sucesso!')
+    return redirect('lista_requisicoes')
+
+
+@login_required
+def alertas_boletos_api(request):
+    """API que retorna alertas de boletos para usuários do financeiro"""
+    from .models import ParcelaBoleto
+    from datetime import timedelta
+    from django.http import JsonResponse
+
+    # Apenas para usuários do financeiro
+    if not hasattr(request.user, 'perfil') or not request.user.perfil.is_financeiro:
+        return JsonResponse({'alertas': [], 'total': 0})
+
+    hoje = timezone.now().date()
+
+    # Buscar parcelas não pagas com vencimento próximo (próximos 7 dias)
+    parcelas_alerta = ParcelaBoleto.objects.filter(
+        pago=False,
+        data_vencimento__gte=hoje,
+        data_vencimento__lte=hoje + timedelta(days=7)
+    ).select_related('requisicao').order_by('data_vencimento')
+
+    alertas = []
+    for parcela in parcelas_alerta:
+        dias_restantes = (parcela.data_vencimento - hoje).days
+        alertas.append({
+            'id': parcela.id,
+            'requisicao_id': parcela.requisicao.id,
+            'item': parcela.requisicao.item,
+            'parcela': f"{parcela.numero_parcela}/{parcela.requisicao.quantidade_parcelas or '?'}",
+            'valor': float(parcela.valor),
+            'data_vencimento': parcela.data_vencimento.strftime('%d/%m/%Y'),
+            'dias_restantes': dias_restantes,
+            'urgente': dias_restantes <= 3
+        })
+
+    return JsonResponse({'alertas': alertas, 'total': len(alertas)})
 
 
 # ==================================================
@@ -3114,6 +4057,165 @@ def exportar_gastos_excel(request):
 
 
 # ==================================================
+# DASHBOARD DE COMPRAS
+# ==================================================
+
+@login_required
+def dashboard_compras(request):
+    """
+    Dashboard consolidado de gastos de compras com:
+    - Totais mensais por categoria (viagem, caixa, compras)
+    - Filtro por produto
+    - Filtro por mês/ano
+    - Gráfico de evolução dos últimos 12 meses
+    """
+    from .models import GastoViagem, GastoCaixaInterno, RequisicaoCompra, ProdutoFabricado
+    from django.db.models import Sum, F, ExpressionWrapper, DecimalField
+    from datetime import datetime, timedelta
+    from decimal import Decimal
+    import calendar
+
+    # 1. Obter filtros (produto, mês, ano)
+    produto_id = request.GET.get('produto_id', None)
+
+    hoje = datetime.now()
+
+    # Obter mês e ano dos parâmetros GET (ou usar mês/ano atual como padrão)
+    try:
+        mes_selecionado = int(request.GET.get('mes', hoje.month))
+    except (ValueError, TypeError):
+        mes_selecionado = hoje.month
+
+    try:
+        ano_selecionado = int(request.GET.get('ano', hoje.year))
+    except (ValueError, TypeError):
+        ano_selecionado = hoje.year
+
+    # Validar mês (1-12)
+    if mes_selecionado < 1 or mes_selecionado > 12:
+        mes_selecionado = hoje.month
+
+    # 2. Query base para requisições (já filtra por data_compra não nula)
+    requisicoes_qs = RequisicaoCompra.objects.filter(
+        data_compra__isnull=False,
+        preco_real__isnull=False
+    )
+
+    # Aplicar filtro de produto se selecionado
+    if produto_id:
+        requisicoes_qs = requisicoes_qs.filter(produto_id=produto_id)
+
+    # 3. Calcular totais do mês selecionado
+    mes_atual = mes_selecionado
+    ano_atual = ano_selecionado
+
+    # Total de Gastos de Viagem (mês atual)
+    total_viagem_mes = GastoViagem.objects.filter(
+        data_gasto__month=mes_atual,
+        data_gasto__year=ano_atual
+    ).aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
+
+    # Total de Gastos de Caixa (mês atual)
+    total_caixa_mes = GastoCaixaInterno.objects.filter(
+        data_gasto__month=mes_atual,
+        data_gasto__year=ano_atual
+    ).aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
+
+    # Total de Compras (mês atual) - preco_real × quantidade
+    compras_mes = requisicoes_qs.filter(
+        data_compra__month=mes_atual,
+        data_compra__year=ano_atual
+    ).annotate(
+        valor_total=ExpressionWrapper(
+            F('preco_real') * F('quantidade'),
+            output_field=DecimalField()
+        )
+    ).aggregate(total=Sum('valor_total'))['total'] or Decimal('0.00')
+
+    # Total Geral do Mês
+    total_mes = total_viagem_mes + total_caixa_mes + compras_mes
+
+    # 5. Preparar dados para gráfico (últimos 12 meses)
+    meses_labels = []
+    dados_viagem = []
+    dados_caixa = []
+    dados_compras = []
+
+    for i in range(11, -1, -1):
+        # Calcular mês e ano (subtraindo meses do atual)
+        meses_atras = i
+        data_ref = hoje.replace(day=1) - timedelta(days=meses_atras * 30)
+        mes = data_ref.month
+        ano = data_ref.year
+
+        # Label do mês
+        try:
+            nome_mes = calendar.month_abbr[mes]  # Jan, Feb, etc
+        except:
+            nome_mes = str(mes)
+        meses_labels.append(f"{nome_mes}/{str(ano)[2:]}")
+
+        # Viagem
+        viagem = GastoViagem.objects.filter(
+            data_gasto__month=mes,
+            data_gasto__year=ano
+        ).aggregate(total=Sum('valor'))['total'] or 0
+        dados_viagem.append(float(viagem))
+
+        # Caixa
+        caixa = GastoCaixaInterno.objects.filter(
+            data_gasto__month=mes,
+            data_gasto__year=ano
+        ).aggregate(total=Sum('valor'))['total'] or 0
+        dados_caixa.append(float(caixa))
+
+        # Compras
+        compras = requisicoes_qs.filter(
+            data_compra__month=mes,
+            data_compra__year=ano
+        ).annotate(
+            valor_total=ExpressionWrapper(
+                F('preco_real') * F('quantidade'),
+                output_field=DecimalField()
+            )
+        ).aggregate(total=Sum('valor_total'))['total'] or 0
+        dados_compras.append(float(compras))
+
+    # 6. Lista de produtos para filtro
+    produtos = ProdutoFabricado.objects.all().order_by('nome')
+
+    # 7. Preparar lista de anos disponíveis (últimos 5 anos + ano atual + próximo ano)
+    ano_inicial = hoje.year - 5
+    ano_final = hoje.year + 1
+    anos_disponiveis = list(range(ano_inicial, ano_final + 1))
+
+    # 8. Nome do mês selecionado para exibição
+    try:
+        nome_mes_selecionado = calendar.month_name[mes_selecionado]  # Janeiro, Fevereiro, etc.
+    except:
+        nome_mes_selecionado = f"Mês {mes_selecionado}"
+
+    context = {
+        'total_viagem_mes': total_viagem_mes,
+        'total_caixa_mes': total_caixa_mes,
+        'total_compras_mes': compras_mes,
+        'total_mes': total_mes,
+        'meses_labels': meses_labels,
+        'dados_viagem': dados_viagem,
+        'dados_caixa': dados_caixa,
+        'dados_compras': dados_compras,
+        'produtos': produtos,
+        'produto_selecionado': produto_id,
+        'mes_selecionado': mes_selecionado,
+        'ano_selecionado': ano_selecionado,
+        'anos_disponiveis': anos_disponiveis,
+        'nome_mes_selecionado': nome_mes_selecionado,
+    }
+
+    return render(request, 'core/dashboard_compras.html', context)
+
+
+# ==================================================
 # VIEWS DE PERFIL DO USUÁRIO
 # ==================================================
 
@@ -3186,3 +4288,102 @@ def editar_perfil(request):
         return redirect('perfil_usuario')
 
     return redirect('perfil_usuario')
+
+
+# ==================================================
+# VIEWS - SISTEMA DE NOTIFICAÇÕES
+# ==================================================
+
+@login_required
+def listar_notificacoes(request):
+    """Listar notificações do usuário (AJAX)"""
+    from .models import Notificacao
+    from datetime import datetime, timedelta
+
+    def tempo_relativo(data_criacao):
+        """Calcula tempo relativo em português"""
+        agora = timezone.now()
+        diff = agora - data_criacao
+
+        if diff < timedelta(minutes=1):
+            return "Agora"
+        elif diff < timedelta(hours=1):
+            minutos = int(diff.total_seconds() / 60)
+            return f"{minutos} min atrás"
+        elif diff < timedelta(days=1):
+            horas = int(diff.total_seconds() / 3600)
+            return f"{horas}h atrás"
+        elif diff < timedelta(days=7):
+            dias = diff.days
+            return f"{dias} dia{'s' if dias > 1 else ''} atrás"
+        elif diff < timedelta(days=30):
+            semanas = diff.days // 7
+            return f"{semanas} semana{'s' if semanas > 1 else ''} atrás"
+        else:
+            return data_criacao.strftime('%d/%m/%Y')
+
+    notificacoes = Notificacao.objects.filter(usuario=request.user).order_by('-criado_em')[:20]
+
+    data = {
+        'notificacoes': [
+            {
+                'id': n.id,
+                'tipo': n.tipo,
+                'titulo': n.titulo,
+                'mensagem': n.mensagem,
+                'lida': n.lida,
+                'criado_em': n.criado_em.strftime('%d/%m/%Y %H:%M'),
+                'tempo_relativo': tempo_relativo(n.criado_em),
+                'task_id': n.task.id if n.task else None,
+            }
+            for n in notificacoes
+        ],
+        'nao_lidas': Notificacao.objects.filter(usuario=request.user, lida=False).count()
+    }
+
+    return JsonResponse(data)
+
+
+@login_required
+@require_POST
+def marcar_notificacao_lida(request, notificacao_id):
+    """Marcar notificação como lida (AJAX)"""
+    from .models import Notificacao
+
+    try:
+        notificacao = Notificacao.objects.get(id=notificacao_id, usuario=request.user)
+        notificacao.marcar_como_lida()
+
+        return JsonResponse({
+            'success': True,
+            'nao_lidas': Notificacao.objects.filter(usuario=request.user, lida=False).count()
+        })
+    except Notificacao.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Notificação não encontrada'}, status=404)
+
+
+@login_required
+@require_POST
+def marcar_todas_lidas(request):
+    """Marcar todas notificações como lidas (AJAX)"""
+    from .models import Notificacao
+
+    Notificacao.objects.filter(usuario=request.user, lida=False).update(
+        lida=True,
+        lida_em=timezone.now()
+    )
+
+    return JsonResponse({
+        'success': True,
+        'nao_lidas': 0
+    })
+
+
+@login_required
+def contar_notificacoes(request):
+    """Contar notificações não lidas (AJAX)"""
+    from .models import Notificacao
+
+    count = Notificacao.objects.filter(usuario=request.user, lida=False).count()
+
+    return JsonResponse({'nao_lidas': count})

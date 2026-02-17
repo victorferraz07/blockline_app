@@ -1,0 +1,217 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}{% if label %}Editar{% else %}Nova{% endif %} Label{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <!-- Header -->
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">
+            {% if label %}
+                ✏️ Editar Label
+            {% else %}
+                🏷️ Nova Label
+            {% endif %}
+        </h1>
+        <p class="text-gray-600">
+            {% if label %}
+                Atualize as informações da label "{{ label.nome }}"
+            {% else %}
+                Crie uma nova label/tag para categorizar tarefas do projeto "{{ project.nome }}"
+            {% endif %}
+        </p>
+    </div>
+
+    <!-- Formulário -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+
+            <!-- Nome -->
+            <div>
+                <label for="nome" class="block text-sm font-medium text-gray-700 mb-2">
+                    Nome da Label <span class="text-red-500">*</span>
+                </label>
+                <input
+                    type="text"
+                    name="nome"
+                    id="nome"
+                    value="{{ label.nome|default:'' }}"
+                    required
+                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder="Ex: Bug, Feature, Urgente, Backend, Frontend..."
+                >
+            </div>
+
+            <!-- Descrição -->
+            <div>
+                <label for="descricao" class="block text-sm font-medium text-gray-700 mb-2">
+                    Descrição
+                </label>
+                <textarea
+                    name="descricao"
+                    id="descricao"
+                    rows="2"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder="Descreva quando usar esta label..."
+                >{{ label.descricao|default:'' }}</textarea>
+            </div>
+
+            <!-- Cor -->
+            <div>
+                <label for="cor" class="block text-sm font-medium text-gray-700 mb-2">
+                    Cor da Label
+                </label>
+                <div class="flex gap-3 items-center mb-3">
+                    <input
+                        type="color"
+                        name="cor"
+                        id="cor"
+                        value="{{ label.cor|default:'#6b7280' }}"
+                        class="h-12 w-24 border border-gray-300 rounded cursor-pointer"
+                    >
+                    <div class="flex-1">
+                        <div class="inline-block px-3 py-1 rounded-full text-sm font-semibold" id="preview" style="background-color: {{ label.cor|default:'#6b7280' }}22; color: {{ label.cor|default:'#6b7280' }}; border: 1px solid {{ label.cor|default:'#6b7280' }}44;">
+                            🏷️ <span id="preview-text">{{ label.nome|default:'Exemplo' }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Paleta de cores pré-definidas -->
+                <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <p class="text-sm font-medium text-gray-700 mb-3">🎨 Cores Sugeridas:</p>
+                    <div class="grid grid-cols-4 gap-3">
+                        <!-- Vermelhos -->
+                        <button type="button" onclick="setColor('#ef4444', 'Bug')" class="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm">
+                            <span class="w-6 h-6 rounded-full" style="background: #ef4444;"></span>
+                            <span class="text-gray-700">Bug</span>
+                        </button>
+                        <button type="button" onclick="setColor('#dc2626', 'Critical')" class="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm">
+                            <span class="w-6 h-6 rounded-full" style="background: #dc2626;"></span>
+                            <span class="text-gray-700">Urgente</span>
+                        </button>
+
+                        <!-- Laranjas -->
+                        <button type="button" onclick="setColor('#f59e0b', 'Important')" class="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm">
+                            <span class="w-6 h-6 rounded-full" style="background: #f59e0b;"></span>
+                            <span class="text-gray-700">Important</span>
+                        </button>
+                        <button type="button" onclick="setColor('#ea580c', 'Security')" class="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm">
+                            <span class="w-6 h-6 rounded-full" style="background: #ea580c;"></span>
+                            <span class="text-gray-700">Security</span>
+                        </button>
+
+                        <!-- Verdes -->
+                        <button type="button" onclick="setColor('#10b981', 'Feature')" class="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm">
+                            <span class="w-6 h-6 rounded-full" style="background: #10b981;"></span>
+                            <span class="text-gray-700">Feature</span>
+                        </button>
+                        <button type="button" onclick="setColor('#059669', 'Enhancement')" class="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm">
+                            <span class="w-6 h-6 rounded-full" style="background: #059669;"></span>
+                            <span class="text-gray-700">Enhancement</span>
+                        </button>
+
+                        <!-- Azuis -->
+                        <button type="button" onclick="setColor('#3b82f6', 'Backend')" class="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm">
+                            <span class="w-6 h-6 rounded-full" style="background: #3b82f6;"></span>
+                            <span class="text-gray-700">Backend</span>
+                        </button>
+                        <button type="button" onclick="setColor('#06b6d4', 'Frontend')" class="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm">
+                            <span class="w-6 h-6 rounded-full" style="background: #06b6d4;"></span>
+                            <span class="text-gray-700">Frontend</span>
+                        </button>
+
+                        <!-- Roxos -->
+                        <button type="button" onclick="setColor('#8b5cf6', 'Design')" class="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm">
+                            <span class="w-6 h-6 rounded-full" style="background: #8b5cf6;"></span>
+                            <span class="text-gray-700">Design</span>
+                        </button>
+                        <button type="button" onclick="setColor('#a855f7', 'UI/UX')" class="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm">
+                            <span class="w-6 h-6 rounded-full" style="background: #a855f7;"></span>
+                            <span class="text-gray-700">UI/UX</span>
+                        </button>
+
+                        <!-- Rosas -->
+                        <button type="button" onclick="setColor('#ec4899', 'Documentation')" class="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm">
+                            <span class="w-6 h-6 rounded-full" style="background: #ec4899;"></span>
+                            <span class="text-gray-700">Docs</span>
+                        </button>
+                        <button type="button" onclick="setColor('#d946ef', 'Testing')" class="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm">
+                            <span class="w-6 h-6 rounded-full" style="background: #d946ef;"></span>
+                            <span class="text-gray-700">Testing</span>
+                        </button>
+
+                        <!-- Cinzas -->
+                        <button type="button" onclick="setColor('#6b7280', 'Other')" class="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm">
+                            <span class="w-6 h-6 rounded-full" style="background: #6b7280;"></span>
+                            <span class="text-gray-700">Other</span>
+                        </button>
+                        <button type="button" onclick="setColor('#475569', 'Blocked')" class="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm">
+                            <span class="w-6 h-6 rounded-full" style="background: #475569;"></span>
+                            <span class="text-gray-700">Blocked</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botões -->
+            <div class="flex gap-3 pt-4 border-t border-gray-200">
+                <button
+                    type="submit"
+                    class="px-6 py-2 bg-indigo-600 text-white rounded-md font-medium hover:bg-indigo-700 transition-colors"
+                >
+                    {% if label %}💾 Salvar Alterações{% else %}🏷️ Criar Label{% endif %}
+                </button>
+                <a
+                    href="{% url 'roadmap_timeline' %}{% if label %}?project={{ label.project.id }}{% elif project %}?project={{ project.id }}{% endif %}"
+                    class="px-6 py-2 bg-gray-100 text-gray-700 rounded-md font-medium hover:bg-gray-200 transition-colors"
+                >
+                    ❌ Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+
+    {% if label %}
+    <!-- Ações Perigosas -->
+    <div class="mt-8 bg-red-50 border border-red-200 rounded-lg p-6">
+        <h3 class="text-lg font-semibold text-red-900 mb-2">⚠️ Zona de Perigo</h3>
+        <p class="text-sm text-red-700 mb-4">
+            Excluir a label irá removê-la de todas as tarefas associadas.
+        </p>
+        <form method="post" action="{% url 'excluir_label' label.id %}" onsubmit="return confirm('Tem certeza que deseja excluir a label \"{{ label.nome }}\"?');">
+            {% csrf_token %}
+            <button
+                type="submit"
+                class="px-4 py-2 bg-red-600 text-white rounded-md font-medium hover:bg-red-700 transition-colors"
+            >
+                🗑️ Excluir Label
+            </button>
+        </form>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function setColor(color, suggestion) {
+    document.getElementById('cor').value = color;
+    updatePreview();
+}
+
+function updatePreview() {
+    const color = document.getElementById('cor').value;
+    const nome = document.getElementById('nome').value || 'Exemplo';
+    const preview = document.getElementById('preview');
+
+    preview.style.backgroundColor = color + '22';
+    preview.style.color = color;
+    preview.style.borderColor = color + '44';
+    document.getElementById('preview-text').textContent = nome;
+}
+
+// Atualizar preview quando mudar cor ou nome
+document.getElementById('cor').addEventListener('input', updatePreview);
+document.getElementById('nome').addEventListener('input', updatePreview);
+</script>
+{% endblock %}

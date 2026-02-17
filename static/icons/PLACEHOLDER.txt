@@ -1,0 +1,42 @@
+# 🎨 Ícones PWA Temporários
+
+⚠️ **IMPORTANTE**: Estes ícones precisam ser gerados!
+
+## Opção Rápida (5 minutos):
+
+1. Acesse: https://www.pwabuilder.com/imageGenerator
+
+2. Faça upload de uma imagem quadrada 512x512px
+   - Pode ser o logo da empresa
+   - Ou criar uma letra "B" em qualquer editor de imagem
+   - Fundo indigo (#4F46E5)
+
+3. Clique em "Generate ZIP"
+
+4. Extraia os arquivos nesta pasta
+
+5. Pronto! 🎉
+
+## Arquivos Necessários:
+
+- icon-72.png (72x72px)
+- icon-96.png (96x96px)
+- icon-128.png (128x128px)
+- icon-144.png (144x144px)
+- icon-152.png (152x152px)
+- icon-192.png (192x192px) ⭐
+- icon-384.png (384x384px)
+- icon-512.png (512x512px) ⭐
+
+## Alternativa Simples:
+
+Use o Canva gratuitamente:
+1. https://www.canva.com/
+2. Criar design 512x512px
+3. Fundo indigo com letra "B" branca
+4. Download PNG
+5. Usar PWA Builder para gerar os tamanhos
+
+---
+
+**O PWA funcionará sem ícones, mas não terá ícone bonito quando instalado.**
