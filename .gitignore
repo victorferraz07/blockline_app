@@ -48,3 +48,16 @@ __pycache__/
 
 # Secrets
 .env
+
+# Configurações locais de desenvolvimento (contém senhas)
+config/settings_dev.py
+
+# Arquivos de backup e scripts temporários
+backup_*.json
+create_test*.py
+create_visual_test*.py
+check_notifications.py
+reset_password.py
+
+# Artefato Windows
+NUL
