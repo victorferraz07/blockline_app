@@ -73,6 +73,9 @@ urlpatterns = [
     path('projects/quantities/<int:quantidade_id>/edit/', views.editar_quantidade_project, name='editar_quantidade_project'),
     path('projects/quantities/<int:quantidade_id>/delete/', views.excluir_quantidade_project, name='excluir_quantidade_project'),
 
+    # Service Worker (servido via Django para ter escopo correto)
+    path('sw.js', views.service_worker, name='service_worker'),
+
     # Notificações
     path('notificacoes/', views.listar_notificacoes, name='listar_notificacoes'),
     path('notificacoes/<int:notificacao_id>/marcar-lida/', views.marcar_notificacao_lida, name='marcar_notificacao_lida'),

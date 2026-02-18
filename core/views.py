@@ -4387,3 +4387,22 @@ def contar_notificacoes(request):
     count = Notificacao.objects.filter(usuario=request.user, lida=False).count()
 
     return JsonResponse({'nao_lidas': count})
+
+
+def service_worker(request):
+    """Serve o Service Worker no escopo raiz do app (necessário para controlar todas as páginas)"""
+    import os
+    from django.http import HttpResponse
+    from django.contrib.staticfiles import finders
+
+    sw_path = finders.find('sw.js')
+    if sw_path and os.path.exists(sw_path):
+        with open(sw_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+    else:
+        content = '// Service Worker não encontrado'
+
+    response = HttpResponse(content, content_type='application/javascript')
+    response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response['Service-Worker-Allowed'] = '/'
+    return response
