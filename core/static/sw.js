@@ -1,12 +1,10 @@
 // Blockline PWA Service Worker
-const CACHE_NAME = 'blockline-v1.1.0';
+const CACHE_NAME = 'blockline-v1.2.0';
 const OFFLINE_URL = '/offline/';
 
-// Arquivos essenciais para cache (apenas recursos do próprio servidor)
-const ESSENTIAL_CACHE = [
-  '/',
-  '/static/manifest.json',
-];
+// Arquivos essenciais para cache
+// Mantido vazio — cache preenchido sob demanda durante uso
+const ESSENTIAL_CACHE = [];
 
 // Páginas principais para cache
 const PAGE_CACHE = [
@@ -27,9 +25,14 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('[SW] Cache aberto');
-        return cache.addAll(ESSENTIAL_CACHE);
+        // Cache individual com tolerância a falhas (evita quebrar o install)
+        return Promise.allSettled(
+          ESSENTIAL_CACHE.map(url =>
+            cache.add(url).catch(err => console.warn('[SW] Falha ao cachear:', url, err))
+          )
+        );
       })
-      .then(() => self.skipWaiting()) // Ativa imediatamente
+      .then(() => self.skipWaiting())
   );
 });
 
