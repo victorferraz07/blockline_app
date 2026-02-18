@@ -1,20 +1,18 @@
 // Blockline PWA Service Worker
-const CACHE_NAME = 'blockline-v1.0.0';
+const CACHE_NAME = 'blockline-v1.1.0';
 const OFFLINE_URL = '/offline/';
 
-// Arquivos essenciais para cache
+// Arquivos essenciais para cache (apenas recursos do próprio servidor)
 const ESSENTIAL_CACHE = [
   '/',
   '/static/manifest.json',
-  'https://cdn.tailwindcss.com',
-  'https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js',
 ];
 
 // Páginas principais para cache
 const PAGE_CACHE = [
   '/',
   '/estoque/',
-  '/kanban/',
+  '/projects/',
   '/ponto/',
   '/recebimento/',
   '/expedicao/',
@@ -58,11 +56,9 @@ self.addEventListener('fetch', (event) => {
   // Ignorar requisições que não são GET
   if (event.request.method !== 'GET') return;
 
-  // Ignorar requisições externas (exceto CDNs essenciais)
+  // Ignorar requisições externas (CDNs não permitem cache via SW)
   const url = new URL(event.request.url);
-  if (url.origin !== location.origin &&
-      !url.hostname.includes('cdn.tailwindcss.com') &&
-      !url.hostname.includes('cdn.jsdelivr.net')) {
+  if (url.origin !== location.origin) {
     return;
   }
 
