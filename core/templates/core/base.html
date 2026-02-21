@@ -122,6 +122,26 @@
     }
   </style>
 
+  <style>
+    /* Dropdown de notificações — responsivo em mobile */
+    .notif-dropdown {
+      width: 24rem; /* w-96 */
+    }
+    @media (max-width: 480px) {
+      .notif-dropdown {
+        position: fixed !important;
+        top: auto !important;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100% !important;
+        max-height: 80vh;
+        border-radius: 1rem 1rem 0 0;
+        margin-top: 0;
+      }
+    }
+  </style>
+
   {% block extra_css %}{% endblock %}
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -307,7 +327,7 @@
                 <div x-show="open"
                      @click.away="open = false"
                      x-transition
-                     class="absolute right-0 top-full mt-2 w-96 bg-white rounded-xl shadow-2xl border-2 border-gray-200 z-50 max-h-[32rem] overflow-hidden flex flex-col">
+                     class="notif-dropdown absolute right-0 top-full mt-2 bg-white rounded-xl shadow-2xl border-2 border-gray-200 z-50 max-h-[32rem] overflow-hidden flex flex-col">
 
                     <!-- Header -->
                     <div class="p-4 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-indigo-50 to-purple-50">

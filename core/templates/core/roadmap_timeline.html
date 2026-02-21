@@ -705,7 +705,26 @@
         max-width: 540px;
         box-shadow: var(--shadow-lg);
         max-height: 90vh;
-        overflow: auto;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .modal-body {
+        overflow-y: auto;
+        flex: 1;
+        min-height: 0;
+        padding: 1.5rem;
+    }
+
+    .modal-footer {
+        flex-shrink: 0;
+        padding: 1.25rem 1.5rem;
+        border-top: 1px solid var(--border-default);
+        display: flex;
+        gap: 0.75rem;
+        justify-content: flex-end;
+        background: var(--bg-secondary);
     }
 
     .modal-header {
@@ -720,9 +739,7 @@
         margin: 0;
     }
 
-    .modal-body {
-        padding: 1.5rem;
-    }
+    /* .modal-body padding — layout e scroll definidos em .modal-content */
 
     .form-group {
         margin-bottom: 1.25rem;
@@ -752,14 +769,6 @@
         outline: none;
         border-color: var(--text-link);
         box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
-    }
-
-    .modal-footer {
-        padding: 1.5rem;
-        border-top: 1px solid var(--border-default);
-        display: flex;
-        gap: 0.75rem;
-        justify-content: flex-end;
     }
 
     .btn-cancel {
