@@ -710,10 +710,14 @@
         overflow: hidden;
     }
 
-    .modal-body {
-        overflow-y: auto;
+    /* Form é filho direto do modal-content (flex) — precisa crescer e scrollar */
+    .modal-content > form {
         flex: 1;
+        overflow-y: auto;
         min-height: 0;
+    }
+
+    .modal-body {
         padding: 1.5rem;
     }
 
@@ -738,8 +742,6 @@
         color: var(--text-primary);
         margin: 0;
     }
-
-    /* .modal-body padding — layout e scroll definidos em .modal-content */
 
     .form-group {
         margin-bottom: 1.25rem;
@@ -974,14 +976,21 @@
 
         /* Modal responsivo */
         .modal {
-            align-items: flex-end;
-            padding: 0;
+            align-items: flex-start;
+            padding: 0.5rem;
+            padding-top: 4.5rem; /* abaixo da navbar */
         }
 
         .modal-content {
-            border-radius: 0.75rem 0.75rem 0 0;
-            max-height: 92vh;
+            border-radius: 0.75rem;
+            max-height: calc(100vh - 5rem - 4rem); /* viewport - navbar - bottom nav */
             max-width: 100%;
+        }
+
+        .modal-content > form {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
         }
 
         /* Grid de datas do modal em coluna única */
@@ -1363,7 +1372,7 @@
                 <h2 class="modal-title">➕ Nova Tarefa</h2>
             </div>
 
-            <form @submit.prevent="createTask">
+            <form id="create-task-form" @submit.prevent="createTask">
                 <div class="modal-body">
                     <div class="form-group">
                         <label class="form-label">Título *</label>
@@ -1406,7 +1415,7 @@
 
                     <div class="form-group">
                         <label class="form-label">Responsáveis</label>
-                        <select x-model="newTask.responsaveis" class="form-input" multiple size="4">
+                        <select x-model="newTask.responsaveis" class="form-input" multiple size="3">
                             {% load static %}
                             {% comment %}Buscar usuários disponíveis{% endcomment %}
                             <option value="{{ user.id }}">{{ user.get_full_name|default:user.username }} (Você)</option>
@@ -1421,17 +1430,17 @@
                         </p>
                     </div>
                 </div>
-
-                <div class="modal-footer">
-                    <button type="submit" class="btn-header btn-primary">
-                        <span>✓</span>
-                        <span>Criar Tarefa</span>
-                    </button>
-                    <button type="button" class="btn-cancel" @click="showCreateModal = false">
-                        Cancelar
-                    </button>
-                </div>
             </form>
+
+            <div class="modal-footer">
+                <button type="submit" form="create-task-form" class="btn-header btn-primary">
+                    <span>✓</span>
+                    <span>Criar Tarefa</span>
+                </button>
+                <button type="button" class="btn-cancel" @click="showCreateModal = false">
+                    Cancelar
+                </button>
+            </div>
         </div>
     </div>
 </div>
