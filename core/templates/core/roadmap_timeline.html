@@ -1297,9 +1297,10 @@
                                 <!-- Task Cards -->
                                 {% for task in milestone_tasks %}
                                 <div class="task-card priority-{{ task.priority }}"
-                                     style="left: {{ task.position_left }}px; width: {{ task.card_width }}px;"
+                                     data-start="{{ task.data_inicio|date:'Y-m-d'|default:'' }}"
+                                     data-end="{{ task.data_fim|date:'Y-m-d'|default:'' }}"
                                      @click="window.location.href='{% url 'task_detail' task.id %}'"
-                                     x-init="positionTask({{ task.data_inicio|date:'j'|default:'1' }}, {{ task.data_fim|date:'j'|default:'5' }}, $el)">
+                                     x-init="positionTask('{{ task.data_inicio|date:'Y-m-d'|default:'' }}', '{{ task.data_fim|date:'Y-m-d'|default:'' }}', $el)">
                                     <div class="task-status-dot {{ task.status }}"></div>
                                     <div class="task-title-text">{{ task.titulo }}</div>
                                     {% if task.responsaveis.first %}
@@ -1601,6 +1602,7 @@ function roadmapApp() {
             } else {
                 this.currentMonth--;
             }
+            this.repositionTasks();
         },
 
         nextMonth() {
@@ -1610,6 +1612,7 @@ function roadmapApp() {
             } else {
                 this.currentMonth++;
             }
+            this.repositionTasks();
         },
 
         isToday(day) {
@@ -1625,15 +1628,37 @@ function roadmapApp() {
             return days[date.getDay()];
         },
 
-        positionTask(startDay, endDay, element) {
-            // Calcula posição responsiva: 44px no mobile, 80px no desktop
+        positionTask(startStr, endStr, element) {
             const cellWidth = window.innerWidth < 768 ? 44 : 80;
-            const left = (startDay - 1) * cellWidth;
-            const duration = Math.max(1, endDay - startDay + 1);
-            const width = duration * cellWidth - 4;
+            const daysTotal = new Date(this.currentYear, this.currentMonth + 1, 0).getDate();
+            const monthStart = new Date(this.currentYear, this.currentMonth, 1);
+            const monthEnd = new Date(this.currentYear, this.currentMonth, daysTotal);
 
+            if (!startStr || !endStr) { element.style.display = 'none'; return; }
+            const start = new Date(startStr + 'T00:00:00');
+            const end = new Date(endStr + 'T00:00:00');
+
+            if (end < monthStart || start > monthEnd) {
+                element.style.display = 'none';
+                return;
+            }
+            element.style.display = '';
+            const clampedStart = start < monthStart ? monthStart : start;
+            const clampedEnd = end > monthEnd ? monthEnd : end;
+            const startDay = clampedStart.getDate();
+            const endDay = clampedEnd.getDate();
+            const left = (startDay - 1) * cellWidth;
+            const width = Math.max(1, endDay - startDay + 1) * cellWidth - 4;
             element.style.left = `${left}px`;
             element.style.width = `${width}px`;
+        },
+
+        repositionTasks() {
+            this.$nextTick(() => {
+                document.querySelectorAll('.task-card').forEach(el => {
+                    this.positionTask(el.dataset.start || '', el.dataset.end || '', el);
+                });
+            });
         },
 
         async createTask() {
