@@ -212,7 +212,7 @@
     /* MAIN CONTENT */
     .roadmap-main {
         flex: 1;
-        overflow: hidden;
+        min-width: 0;
         display: flex;
         flex-direction: column;
         background: var(--bg-primary);
@@ -353,9 +353,15 @@
        TIMELINE VIEW
        ======================================== */
     .timeline-container {
-        flex: 1;
         overflow: auto;
+        -webkit-overflow-scrolling: touch;
         padding: 1.5rem;
+        cursor: grab;
+        user-select: none;
+    }
+
+    .timeline-container:active {
+        cursor: grabbing;
     }
 
     .timeline-calendar {
@@ -366,14 +372,13 @@
     .calendar-header {
         background: var(--bg-secondary);
         border: 1px solid var(--border-default);
+        border-bottom: none;
         border-radius: 0.5rem 0.5rem 0 0;
         padding: 1rem 1.5rem;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        position: sticky;
-        top: 0;
-        z-index: 10;
+        flex-shrink: 0;
     }
 
     .month-nav {
@@ -416,7 +421,7 @@
         border-left: 1px solid var(--border-default);
         border-right: 1px solid var(--border-default);
         position: sticky;
-        top: 73px;
+        top: 0;
         z-index: 9;
     }
 
@@ -794,10 +799,9 @@
        ======================================== */
     .legend {
         background: var(--bg-secondary);
-        border: 1px solid var(--border-default);
-        border-radius: 0.5rem;
-        padding: 1rem;
-        margin-top: 1.5rem;
+        border-top: 1px solid var(--border-default);
+        padding: 1rem 1.5rem;
+        flex-shrink: 0;
     }
 
     .legend-title {
@@ -808,9 +812,9 @@
     }
 
     .legend-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 0.75rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem 1.5rem;
     }
 
     .legend-item {
@@ -969,9 +973,16 @@
             flex-shrink: 0;
         }
 
-        /* Timeline com scroll horizontal */
+        /* Timeline com scroll horizontal no mobile */
         .timeline-container {
-            padding: 0.75rem;
+            padding: 0.5rem;
+            overflow-x: auto;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .timeline-calendar {
+            min-width: max-content;
         }
 
         /* Modal responsivo */
@@ -1015,6 +1026,19 @@
         /* Swimlane header compacto */
         .swimlane-header {
             padding: 0.75rem 1rem;
+        }
+
+        /* Células do calendário compactas */
+        .day-cell {
+            padding: 0.375rem 0.25rem;
+        }
+
+        .day-number {
+            font-size: 0.75rem;
+        }
+
+        .day-name {
+            font-size: 0.625rem;
         }
     }
 
@@ -1214,29 +1238,31 @@
             {% endif %}
         </div>
 
+        <!-- Calendar Header — fora do scroll, sempre visível -->
+        {% if project_selecionado and tasks %}
+        <div class="calendar-header">
+            <div class="month-nav">
+                <button @click="previousMonth">
+                    <span>←</span>
+                </button>
+                <span class="month-name" x-text="currentMonthName"></span>
+                <button @click="nextMonth">
+                    <span>→</span>
+                </button>
+            </div>
+            <div style="font-size: 0.875rem; color: var(--text-secondary);">
+                <span x-text="daysInMonth"></span> dias
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Timeline Container -->
         <div class="timeline-container">
             {% if project_selecionado and tasks %}
                 <!-- Timeline Calendar -->
                 <div class="timeline-calendar">
-                    <!-- Calendar Header -->
-                    <div class="calendar-header">
-                        <div class="month-nav">
-                            <button @click="previousMonth">
-                                <span>←</span>
-                            </button>
-                            <span class="month-name" x-text="currentMonthName"></span>
-                            <button @click="nextMonth">
-                                <span>→</span>
-                            </button>
-                        </div>
-                        <div style="font-size: 0.875rem; color: var(--text-secondary);">
-                            <span x-text="daysInMonth"></span> dias
-                        </div>
-                    </div>
-
                     <!-- Days Grid -->
-                    <div class="days-grid" :style="'grid-template-columns: repeat(' + daysInMonth + ', minmax(80px, 1fr))'">
+                    <div class="days-grid" :style="gridCols">
                         <template x-for="day in daysInMonth" :key="day">
                             <div class="day-cell" :class="{ 'today': isToday(day) }">
                                 <div class="day-number" x-text="day"></div>
@@ -1263,7 +1289,7 @@
                         </div>
 
                         <div x-show="!collapsed" x-collapse>
-                            <div class="swimlane-body" :style="'grid-template-columns: repeat(' + daysInMonth + ', minmax(80px, 1fr))'">
+                            <div class="swimlane-body" :style="gridCols">
                                 <template x-for="day in daysInMonth" :key="day">
                                     <div class="timeline-row"></div>
                                 </template>
@@ -1287,45 +1313,6 @@
                         </div>
                     </div>
                     {% endfor %}
-                </div>
-
-                <!-- Legend -->
-                <div class="legend">
-                    <div class="legend-title">Legenda</div>
-                    <div class="legend-grid">
-                        <div class="legend-item">
-                            <div class="task-status-dot todo"></div>
-                            <span>A Fazer</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="task-status-dot in_progress"></div>
-                            <span>Em Progresso</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="task-status-dot review"></div>
-                            <span>Em Revisão</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="task-status-dot done"></div>
-                            <span>Concluído</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="task-status-dot blocked"></div>
-                            <span>Bloqueado</span>
-                        </div>
-                        <div class="legend-item">
-                            <div style="width: 3px; height: 20px; background: var(--accent-danger);"></div>
-                            <span>Prioridade Crítica</span>
-                        </div>
-                        <div class="legend-item">
-                            <div style="width: 3px; height: 20px; background: var(--accent-attention);"></div>
-                            <span>Prioridade Alta</span>
-                        </div>
-                        <div class="legend-item">
-                            <div style="width: 3px; height: 20px; background: var(--text-link);"></div>
-                            <span>Prioridade Média</span>
-                        </div>
-                    </div>
                 </div>
 
             {% elif project_selecionado %}
@@ -1361,6 +1348,47 @@
                 </div>
             {% endif %}
         </div>
+
+        <!-- Legend — fora do scroll, fixa abaixo do calendário -->
+        {% if project_selecionado and tasks %}
+        <div class="legend">
+            <div class="legend-title">Legenda</div>
+            <div class="legend-grid">
+                <div class="legend-item">
+                    <div class="task-status-dot todo"></div>
+                    <span>A Fazer</span>
+                </div>
+                <div class="legend-item">
+                    <div class="task-status-dot in_progress"></div>
+                    <span>Em Progresso</span>
+                </div>
+                <div class="legend-item">
+                    <div class="task-status-dot review"></div>
+                    <span>Em Revisão</span>
+                </div>
+                <div class="legend-item">
+                    <div class="task-status-dot done"></div>
+                    <span>Concluído</span>
+                </div>
+                <div class="legend-item">
+                    <div class="task-status-dot blocked"></div>
+                    <span>Bloqueado</span>
+                </div>
+                <div class="legend-item">
+                    <div style="width: 3px; height: 20px; background: var(--accent-danger);"></div>
+                    <span>Prioridade Crítica</span>
+                </div>
+                <div class="legend-item">
+                    <div style="width: 3px; height: 20px; background: var(--accent-attention);"></div>
+                    <span>Prioridade Alta</span>
+                </div>
+                <div class="legend-item">
+                    <div style="width: 3px; height: 20px; background: var(--text-link);"></div>
+                    <span>Prioridade Média</span>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     <!-- ========================================
@@ -1446,6 +1474,76 @@
 </div>
 
 <script>
+// Drag-to-pan no calendário (touch e mouse)
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.querySelector('.timeline-container');
+    if (!container) return;
+
+    let isDown = false;
+    let startX;
+    let scrollLeft;
+    let moved = false;
+
+    // Touch events
+    container.addEventListener('touchstart', function(e) {
+        isDown = true;
+        moved = false;
+        startX = e.touches[0].pageX - container.offsetLeft;
+        scrollLeft = container.scrollLeft;
+    }, { passive: true });
+
+    container.addEventListener('touchmove', function(e) {
+        if (!isDown) return;
+        const x = e.touches[0].pageX - container.offsetLeft;
+        const delta = x - startX;
+        if (Math.abs(delta) > 5) moved = true;
+        container.scrollLeft = scrollLeft - delta;
+    }, { passive: true });
+
+    container.addEventListener('touchend', function() {
+        isDown = false;
+    });
+
+    // Mouse events (desktop drag)
+    container.addEventListener('mousedown', function(e) {
+        isDown = true;
+        moved = false;
+        container.style.cursor = 'grabbing';
+        startX = e.pageX - container.offsetLeft;
+        scrollLeft = container.scrollLeft;
+    });
+
+    container.addEventListener('mouseleave', function() {
+        isDown = false;
+        container.style.cursor = 'grab';
+    });
+
+    container.addEventListener('mouseup', function() {
+        isDown = false;
+        container.style.cursor = 'grab';
+    });
+
+    container.addEventListener('mousemove', function(e) {
+        if (!isDown) return;
+        e.preventDefault();
+        const x = e.pageX - container.offsetLeft;
+        const delta = x - startX;
+        if (Math.abs(delta) > 5) moved = true;
+        container.scrollLeft = scrollLeft - delta;
+    });
+
+    // Bloqueia click em tarefa se foi um pan
+    container.addEventListener('click', function(e) {
+        if (moved) {
+            e.stopPropagation();
+            e.preventDefault();
+            moved = false;
+        }
+    }, true);
+
+    container.style.cursor = 'grab';
+});
+
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -1488,6 +1586,14 @@ function roadmapApp() {
             return new Date(this.currentYear, this.currentMonth + 1, 0).getDate();
         },
 
+        get dayWidth() {
+            return window.innerWidth < 768 ? 44 : 80;
+        },
+
+        get gridCols() {
+            return `grid-template-columns: repeat(${this.daysInMonth}, minmax(${this.dayWidth}px, 1fr))`;
+        },
+
         previousMonth() {
             if (this.currentMonth === 0) {
                 this.currentMonth = 11;
@@ -1520,11 +1626,11 @@ function roadmapApp() {
         },
 
         positionTask(startDay, endDay, element) {
-            // Calcula a posição e largura da tarefa no calendário
-            const cellWidth = 80; // minWidth from grid
+            // Calcula posição responsiva: 44px no mobile, 80px no desktop
+            const cellWidth = window.innerWidth < 768 ? 44 : 80;
             const left = (startDay - 1) * cellWidth;
             const duration = Math.max(1, endDay - startDay + 1);
-            const width = duration * cellWidth - 8; // -8 for margins
+            const width = duration * cellWidth - 4;
 
             element.style.left = `${left}px`;
             element.style.width = `${width}px`;
