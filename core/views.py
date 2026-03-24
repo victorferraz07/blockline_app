@@ -18,6 +18,7 @@ from .models import (
     TaskQuantidadeFeita, TaskHistorico,
     JornadaTrabalho, RegistroPonto, ResumoMensal, AbonoDia,
     MovimentacaoEstoque, Cliente,
+    EmprestimoItem, Notificacao, ProjectTask,
 )
 from .forms import (
     ItemEstoqueForm, RetiradaItemForm, AdicaoItemForm, RecebimentoForm,
@@ -101,7 +102,11 @@ def lista_estoque(request):
         itens = itens.filter(
             Q(nome__icontains=query) |
             Q(descricao__icontains=query) |
-            Q(tipo__icontains=query)
+            Q(tipo__icontains=query) |
+            Q(tipo_local__icontains=query) |
+            Q(identificador_local__icontains=query) |
+            Q(posicao_local__icontains=query) |
+            Q(local_armazenamento__icontains=query)
         )
 
     # Filtro por tipo
@@ -221,6 +226,15 @@ def gerenciar_item(request, pk):
             'quantidade': estoque_dia
         })
 
+    # Verifica empréstimos vencidos e emite notificações
+    verificar_emprestimos_vencidos()
+
+    # Dados de empréstimo
+    emprestimos_ativos = item.emprestimos.filter(status__in=['ativo', 'atrasado']).select_related('funcionario', 'tarefa')
+    emprestimos_historico = item.emprestimos.filter(status='devolvido').select_related('funcionario')[:10]
+    todos_usuarios = User.objects.filter(is_active=True).order_by('first_name', 'username')
+    tarefas_abertas = ProjectTask.objects.filter(status__in=['todo', 'in_progress']).order_by('titulo')
+
     contexto = {
         'form': form,
         'item': item,
@@ -237,6 +251,11 @@ def gerenciar_item(request, pk):
         'galeria_imagens': galeria_imagens,
         # Gráfico (convertido para JSON)
         'evolucao_estoque': json.dumps(evolucao_estoque),
+        # Empréstimos
+        'emprestimos_ativos': emprestimos_ativos,
+        'emprestimos_historico': emprestimos_historico,
+        'todos_usuarios': todos_usuarios,
+        'tarefas_abertas': tarefas_abertas,
     }
     return render(request, 'core/gerenciar_item.html', contexto)
 
@@ -356,6 +375,130 @@ def duplicar_item(request, pk):
 
     messages.success(request, f'Item "{item_duplicado.nome}" foi criado com sucesso!')
     return redirect('gerenciar_item', pk=item_duplicado.pk)
+
+
+# --- Empréstimo de Itens ---
+
+def verificar_emprestimos_vencidos():
+    """Verifica empréstimos vencidos e envia notificações pendentes."""
+    hoje = timezone.now().date()
+    vencidos = EmprestimoItem.objects.filter(
+        status='ativo',
+        prazo_devolucao__lt=hoje,
+        notificacao_atraso_enviada=False,
+    ).select_related('item', 'funcionario')
+
+    for emprestimo in vencidos:
+        emprestimo.status = 'atrasado'
+        emprestimo.notificacao_atraso_enviada = True
+        emprestimo.save(update_fields=['status', 'notificacao_atraso_enviada'])
+
+        msg = (
+            f'O item "{emprestimo.item.nome}" (qtd: {emprestimo.quantidade}) emprestado a '
+            f'{emprestimo.funcionario.get_full_name() or emprestimo.funcionario.username} '
+            f'venceu em {emprestimo.prazo_devolucao.strftime("%d/%m/%Y")} e ainda não foi devolvido.'
+        )
+
+        # Notifica o funcionário que pegou emprestado
+        if emprestimo.funcionario:
+            Notificacao.objects.create(
+                usuario=emprestimo.funcionario,
+                tipo='emprestimo_atrasado',
+                titulo=f'Devolução atrasada: {emprestimo.item.nome}',
+                mensagem=f'Você ainda não devolveu o item "{emprestimo.item.nome}". O prazo era {emprestimo.prazo_devolucao.strftime("%d/%m/%Y")}.',
+            )
+
+        # Notifica todos os estoquistas
+        from django.contrib.auth.models import User as AuthUser
+        estoquistas = AuthUser.objects.filter(perfil__is_estoquista=True)
+        for estoquista in estoquistas:
+            Notificacao.objects.create(
+                usuario=estoquista,
+                tipo='emprestimo_atrasado',
+                titulo=f'Empréstimo atrasado: {emprestimo.item.nome}',
+                mensagem=msg,
+            )
+
+
+@login_required
+@require_POST
+def emprestar_item(request, pk):
+    item = get_object_or_404(ItemEstoque, pk=pk)
+    funcionario_id = request.POST.get('funcionario_id')
+    tarefa_id = request.POST.get('tarefa_id') or None
+    quantidade = int(request.POST.get('quantidade', 1))
+    prazo = request.POST.get('prazo_devolucao')
+    observacoes = request.POST.get('observacoes', '')
+
+    if quantidade <= 0 or quantidade > item.quantidade:
+        messages.error(request, f'Quantidade inválida. Disponível em estoque: {item.quantidade}.')
+        return redirect('gerenciar_item', pk=pk)
+
+    try:
+        funcionario = User.objects.get(pk=funcionario_id)
+    except User.DoesNotExist:
+        messages.error(request, 'Funcionário não encontrado.')
+        return redirect('gerenciar_item', pk=pk)
+
+    tarefa = None
+    if tarefa_id:
+        tarefa = ProjectTask.objects.filter(pk=tarefa_id).first()
+
+    # Reduz estoque e registra o empréstimo
+    with transaction.atomic():
+        item.quantidade -= quantidade
+        item.save(update_fields=['quantidade'])
+        MovimentacaoEstoque.objects.create(
+            item=item,
+            tipo='saida',
+            quantidade=quantidade,
+            usuario=request.user,
+            observacoes=f'Empréstimo para {funcionario.get_full_name() or funcionario.username}',
+        )
+        emprestimo = EmprestimoItem.objects.create(
+            item=item,
+            funcionario=funcionario,
+            tarefa=tarefa,
+            quantidade=quantidade,
+            prazo_devolucao=prazo,
+            emprestado_por=request.user,
+            observacoes=observacoes,
+        )
+
+    # Notifica o funcionário
+    Notificacao.objects.create(
+        usuario=funcionario,
+        tipo='emprestimo_novo',
+        titulo=f'Item emprestado: {item.nome}',
+        mensagem=f'{request.user.get_full_name() or request.user.username} emprestou {quantidade}x "{item.nome}" para você. Prazo de devolução: {prazo}.',
+    )
+
+    messages.success(request, f'{quantidade}x "{item.nome}" emprestado para {funcionario.get_full_name() or funcionario.username}.')
+    return redirect('gerenciar_item', pk=pk)
+
+
+@login_required
+@require_POST
+def devolver_emprestimo(request, emprestimo_pk):
+    emprestimo = get_object_or_404(EmprestimoItem, pk=emprestimo_pk)
+    item = emprestimo.item
+
+    with transaction.atomic():
+        item.quantidade += emprestimo.quantidade
+        item.save(update_fields=['quantidade'])
+        MovimentacaoEstoque.objects.create(
+            item=item,
+            tipo='entrada',
+            quantidade=emprestimo.quantidade,
+            usuario=request.user,
+            observacoes=f'Devolução de empréstimo de {emprestimo.funcionario.get_full_name() or emprestimo.funcionario.username}',
+        )
+        emprestimo.status = 'devolvido'
+        emprestimo.data_devolucao = timezone.now()
+        emprestimo.save(update_fields=['status', 'data_devolucao'])
+
+    messages.success(request, f'"{item.nome}" devolvido com sucesso.')
+    return redirect('gerenciar_item', pk=item.pk)
 
 
 # --- Views de Recebimento ---

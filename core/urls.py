@@ -12,6 +12,8 @@ urlpatterns = [
     path('estoque/<int:pk>/adicionar-estoque/', views.adicionar_estoque, name='adicionar_estoque'),
     path('estoque/<int:pk>/duplicar/', views.duplicar_item, name='duplicar_item'),
     path('estoque/<int:pk>/excluir/', views.excluir_item, name='excluir_item'),
+    path('estoque/<int:pk>/emprestar/', views.emprestar_item, name='emprestar_item'),
+    path('estoque/emprestimo/<int:emprestimo_pk>/devolver/', views.devolver_emprestimo, name='devolver_emprestimo'),
     
     # --- Rotas de Recebimento ---
     path('recebimento/', views.lista_recebimentos, name='lista_recebimentos'),

@@ -19,6 +19,7 @@ class PerfilUsuario(models.Model):
     usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='perfil')
     empresas_permitidas = models.ManyToManyField(Empresa, blank=True)
     is_financeiro = models.BooleanField(default=False, verbose_name="É do Financeiro")
+    is_estoquista = models.BooleanField(default=False, verbose_name="É Estoquista")
 
     class Meta:
         verbose_name = "Perfil de Usuário"
@@ -132,7 +133,10 @@ class ItemEstoque(models.Model):
     nome = models.CharField(max_length=200, unique=True, verbose_name="Nome do Item")
     descricao = models.TextField(blank=True, null=True, verbose_name="Descrição")
     quantidade = models.PositiveIntegerField(default=0, verbose_name="Quantidade em Estoque")
-    local_armazenamento = models.CharField(max_length=100, blank=True, null=True, verbose_name="Local de Armazenamento")
+    local_armazenamento = models.CharField(max_length=100, blank=True, null=True, verbose_name="Local de Armazenamento (legado)")
+    tipo_local = models.CharField(max_length=50, blank=True, null=True, verbose_name="Tipo de Local")
+    identificador_local = models.CharField(max_length=50, blank=True, null=True, verbose_name="Identificador do Local")
+    posicao_local = models.CharField(max_length=100, blank=True, null=True, verbose_name="Posição / Subdivisão")
     documentacao = models.FileField(upload_to='documentos_itens/', blank=True, null=True, verbose_name="Documentação")
     foto_principal = models.ImageField(upload_to='fotos_itens/', blank=True, null=True, verbose_name="Foto Principal")
     links = models.TextField(blank=True, null=True, verbose_name="Links", help_text="Links úteis (um por linha)")
@@ -140,6 +144,20 @@ class ItemEstoque(models.Model):
     is_produto_fabricado = models.BooleanField(default=False)
     data_criacao = models.DateTimeField(auto_now_add=True, verbose_name="Data de Criação")
     data_atualizacao = models.DateTimeField(auto_now=True, verbose_name="Última Atualização")
+
+    def get_local_completo(self):
+        """Retorna a localização formatada, priorizando os novos campos estruturados."""
+        if self.tipo_local or self.posicao_local:
+            partes = []
+            if self.tipo_local:
+                partes.append(self.tipo_local)
+            if self.identificador_local:
+                partes.append(self.identificador_local)
+            resultado = ' '.join(partes)
+            if self.posicao_local:
+                resultado = f"{resultado} - {self.posicao_local}" if resultado else self.posicao_local
+            return resultado
+        return self.local_armazenamento or ''
 
     def __str__(self): return f"{self.nome} ({self.quantidade} em estoque)"
 
@@ -537,6 +555,8 @@ class Notificacao(models.Model):
         ('prazo_proximo', 'Prazo Próximo'),
         ('tarefa_atrasada', 'Tarefa Atrasada'),
         ('comentario', 'Novo Comentário'),
+        ('emprestimo_atrasado', 'Empréstimo Atrasado'),
+        ('emprestimo_novo', 'Novo Empréstimo'),
     ]
 
     usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notificacoes', verbose_name="Usuário")
@@ -566,6 +586,41 @@ class Notificacao(models.Model):
             self.lida = True
             self.lida_em = timezone.now()
             self.save()
+
+
+# --- EMPRÉSTIMO DE ITENS ---
+
+class EmprestimoItem(models.Model):
+    STATUS_CHOICES = [
+        ('ativo', 'Emprestado'),
+        ('devolvido', 'Devolvido'),
+        ('atrasado', 'Atrasado'),
+    ]
+    item = models.ForeignKey(ItemEstoque, on_delete=models.PROTECT, related_name='emprestimos', verbose_name="Item")
+    funcionario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='emprestimos_recebidos', verbose_name="Funcionário")
+    tarefa = models.ForeignKey('ProjectTask', on_delete=models.SET_NULL, null=True, blank=True, related_name='emprestimos', verbose_name="Tarefa Relacionada")
+    quantidade = models.PositiveIntegerField(default=1, verbose_name="Quantidade")
+    prazo_devolucao = models.DateField(verbose_name="Prazo de Devolução")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ativo', verbose_name="Status")
+    data_emprestimo = models.DateTimeField(auto_now_add=True, verbose_name="Data do Empréstimo")
+    emprestado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='emprestimos_concedidos', verbose_name="Emprestado por")
+    data_devolucao = models.DateTimeField(null=True, blank=True, verbose_name="Data de Devolução")
+    observacoes = models.TextField(blank=True, verbose_name="Observações")
+    notificacao_atraso_enviada = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['-data_emprestimo']
+        verbose_name = "Empréstimo de Item"
+        verbose_name_plural = "Empréstimos de Itens"
+
+    def __str__(self):
+        return f"{self.item.nome} → {self.funcionario} (prazo: {self.prazo_devolucao})"
+
+    @property
+    def esta_atrasado(self):
+        if self.status == 'devolvido':
+            return False
+        return timezone.now().date() > self.prazo_devolucao
 
 
 # --- MODELOS DE CONTROLE DE PONTO ---
