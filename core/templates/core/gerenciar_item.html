@@ -143,6 +143,9 @@
                         {% with local=item.get_local_completo %}
                         <p class="text-sm text-gray-500 mt-2">📍 {{ local|default:"Local não especificado" }}</p>
                         {% endwith %}
+                        {% if item.numero_serie %}
+                        <p class="text-xs text-gray-400 mt-1">S/N: <span class="font-mono font-semibold text-gray-600">{{ item.numero_serie }}</span></p>
+                        {% endif %}
                     </div>
                 </div>
             </div>
