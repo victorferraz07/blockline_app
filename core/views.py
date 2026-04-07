@@ -176,7 +176,13 @@ def gerenciar_item(request, pk):
             messages.success(request, 'Item atualizado com sucesso!')
             return redirect('gerenciar_item', pk=item.pk)
         else:
-            # Exibir erros de validação
+            # Erros do formulário principal
+            if form.errors:
+                if 'numero_serie' in form.errors:
+                    messages.error(request, f'Número de série já cadastrado para outro item.')
+                else:
+                    messages.error(request, 'Erro ao salvar. Verifique os campos destacados.')
+            # Exibir erros de validação do formset
             if not formset_fornecedores.is_valid():
                 for form_error in formset_fornecedores.errors:
                     if form_error:
