@@ -138,6 +138,9 @@
                         <p class="text-xs text-gray-500 mt-1">📍 {{ local|truncatechars:28 }}</p>
                     {% endif %}
                     {% endwith %}
+                    {% if item.numero_serie %}
+                        <p class="text-xs text-gray-400 mt-0.5">S/N: <span class="font-mono font-semibold text-gray-600">{{ item.numero_serie }}</span></p>
+                    {% endif %}
                 </div>
 
                 <a href="{% url 'gerenciar_item' item.pk %}" class="block text-center mt-4 w-full bg-indigo-600 text-white py-2.5 rounded-lg hover:bg-indigo-700 transition-all font-semibold shadow-md hover:shadow-lg">

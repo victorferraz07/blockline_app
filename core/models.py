@@ -137,7 +137,7 @@ class ItemEstoque(models.Model):
     tipo_local = models.CharField(max_length=50, blank=True, null=True, verbose_name="Tipo de Local")
     identificador_local = models.CharField(max_length=50, blank=True, null=True, verbose_name="Identificador do Local")
     posicao_local = models.CharField(max_length=100, blank=True, null=True, verbose_name="Posição / Subdivisão")
-    numero_serie = models.CharField(max_length=100, blank=True, null=True, verbose_name="Número de Série")
+    numero_serie = models.CharField(max_length=100, blank=True, null=True, unique=True, verbose_name="Número de Série")
     documentacao = models.FileField(upload_to='documentos_itens/', blank=True, null=True, verbose_name="Documentação")
     foto_principal = models.ImageField(upload_to='fotos_itens/', blank=True, null=True, verbose_name="Foto Principal")
     links = models.TextField(blank=True, null=True, verbose_name="Links", help_text="Links úteis (um por linha)")

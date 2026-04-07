@@ -106,7 +106,8 @@ def lista_estoque(request):
             Q(tipo_local__icontains=query) |
             Q(identificador_local__icontains=query) |
             Q(posicao_local__icontains=query) |
-            Q(local_armazenamento__icontains=query)
+            Q(local_armazenamento__icontains=query) |
+            Q(numero_serie__icontains=query)
         )
 
     # Filtro por tipo
