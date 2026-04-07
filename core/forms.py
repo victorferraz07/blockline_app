@@ -10,11 +10,15 @@ from .models import (
 class ItemEstoqueForm(forms.ModelForm):
     class Meta:
         model = ItemEstoque
-        fields = ['nome', 'descricao', 'quantidade', 'tipo_local', 'identificador_local', 'posicao_local', 'links', 'documentacao', 'foto_principal']
+        fields = ['nome', 'descricao', 'quantidade', 'numero_serie', 'tipo_local', 'identificador_local', 'posicao_local', 'links', 'documentacao', 'foto_principal']
         widgets = {
             'nome': forms.TextInput(attrs={'class': 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm ...'}),
             'descricao': forms.Textarea(attrs={'class': 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm ...', 'rows': 4}),
             'quantidade': forms.NumberInput(attrs={'class': 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm ...'}),
+            'numero_serie': forms.TextInput(attrs={
+                'class': 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm',
+                'placeholder': 'Ex: SN-20240101-001',
+            }),
             'tipo_local': forms.TextInput(attrs={
                 'class': 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm',
                 'list': 'opcoes_tipo_local',
